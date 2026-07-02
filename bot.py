@@ -166,27 +166,61 @@ def make_news_post(articles: list) -> str:
 Если есть счёт — пиши точно (например 2:1). Без ссылок."""
     return claude(prompt)
 
-def make_morning_post() -> str:
+def get_upcoming_matches() -> list:
+    """Берём матчи на сегодня с football-data.org (бесплатный план)."""
+    today = now_astana().strftime("%Y-%m-%d")
+    matches = []
     try:
-        feed   = feedparser.parse("https://lenta.ru/rss/news/sport/football")
-        titles = [e.get("title","") for e in feed.entries[:10] if e.get("title")]
-    except:
-        titles = []
+        r = requests.get(
+            "https://api.football-data.org/v4/matches",
+            headers={"X-Auth-Token": os.environ.get("FOOTBALL_API_KEY", "")},  # бесплатный ключ
+            params={"dateFrom": today, "dateTo": today},
+            timeout=10,
+        )
+        if r.ok:
+            for m in r.json().get("matches", [])[:10]:
+                home = m.get("homeTeam", {}).get("name", "")
+                away = m.get("awayTeam", {}).get("name", "")
+                utc_time = m.get("utcDate", "")
+                if utc_time and home and away:
+                    # Конвертируем UTC -> AST (+5)
+                    from datetime import datetime as dt
+                    utc = dt.strptime(utc_time, "%Y-%m-%dT%H:%M:%SZ")
+                    ast = utc.replace(tzinfo=timezone.utc).astimezone(ASTANA_TZ)
+                    # Показываем только будущие матчи
+                    if ast > now_astana():
+                        matches.append(f"{home} — {away} в {ast.strftime('%H:%M')} (AST)")
+    except Exception as e:
+        print(f"  [WARN] football-data.org: {e}")
+    return matches
 
-    prompt = f"""Ты — спортивный Telegram-канал. Только русский язык.
-Сегодня {now_astana().strftime('%d.%m.%Y')}.
-Заголовки: {"; ".join(titles[:8])}
+def make_morning_post() -> str:
+    matches = get_upcoming_matches()
+    today = now_astana().strftime("%d.%m.%Y")
 
-Формат поста:
-☀️ МАТЧИ ДНЯ — {now_astana().strftime('%d.%m')}
+    if matches:
+        matches_block = "\n".join(f"• {m}" for m in matches)
+        prompt = f"""Ты — спортивный Telegram-канал. Только русский язык.
+Ближайшие 24 часа. Реальные предстоящие матчи:
+{matches_block}
 
-🆚 Команда А — Команда Б | 🕐 ЧЧ:ММ (AST)
+Напиши анонс. Формат:
+⚽ МАТЧИ БЛИЖАЙШИХ 24 ЧАСОВ
+
+🆚 Команда А — Команда Б | 🕐 ДД.ММ ЧЧ:ММ (AST)
 🔮 одна смешная фраза-прогноз
 
-(3-4 матча)
+Используй ТОЧНЫЕ названия команд и ТОЧНОЕ время из списка. Без ссылок."""
+    else:
+        prompt = f"""Ты — спортивный Telegram-канал. Только русский язык.
+Текущее время в Астане: {now_astana().strftime('%d.%m %H:%M')} AST.
 
-Без ссылок. Если точное время неизвестно — не пиши время."""
-    return claude(prompt, max_tokens=350)
+Напиши короткий анонс: сегодня и завтра ожидаются матчи ЧМ-2026. Формат:
+⚽ МАТЧИ БЛИЖАЙШИХ 24 ЧАСОВ
+
+Перечисли 3-4 реальных предстоящих матча ЧМ-2026 которые ты знаешь с примерным временем по AST.
+Без ссылок."""
+    return claude(prompt, max_tokens=400)
 
 def make_fact_post() -> str:
     prompt = f"""Ты — спортивный Telegram-канал. Только русский язык.
@@ -388,7 +422,7 @@ if __name__ == "__main__":
 
     job_morning()
 
-    schedule.every().day.at("04:00").do(job_morning)  # 09:00 AST
+    schedule.every().day.at("04:00").do(job_morning)  # 09:00 AST (раз в сутки)
     schedule.every().day.at("10:00").do(job_news)     # 15:00 AST
     schedule.every().day.at("15:00").do(job_fact)     # 20:00 AST
 
