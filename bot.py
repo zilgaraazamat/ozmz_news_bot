@@ -258,12 +258,13 @@ def make_fact_post():
 
 # ── Отправка ──────────────────────────────────────────────────────────────────
 
-def send(caption):
+def send(caption, photo=None):
     if not is_valid_post(caption):
         print("  [СТОП] Текст не прошёл проверку — не отправляем в группу")
         return
 
-    photo = pick_photo()
+    if photo is None:
+        photo = pick_photo()
     try:
         r = requests.post(
             f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
@@ -383,11 +384,7 @@ def quiz_result(answers):
 
 def start_quiz(user_id, user_name):
     global quiz_used_today
-    today = now_astana().strftime("%d.%m.%Y")
-    if quiz_used_today == today:
-        send_msg(user_id, "⚽ Тест уже прошли сегодня! Возвращайся завтра 😄")
-        return
-    quiz_used_today = today
+    quiz_used_today = now_astana().strftime("%d.%m.%Y")
     quiz_sessions[user_id] = {"answers": [], "step": 0, "name": user_name}
     q, opts = QUIZ_QUESTIONS[0]
     send_msg(user_id,
@@ -408,12 +405,61 @@ def handle_quiz_answer(user_id, text):
     if step >= len(QUIZ_QUESTIONS):
         send_msg(user_id, "⏳ Анализирую результат...")
         result = quiz_result(session["answers"]) or f"🏆 Ты — {random.choice(FOOTBALLERS)}!"
-        name = session["name"]
-        send(f"🎮 <b>{name}</b> прошёл тест!\n\n{result}\n\n#КтоТыИзФутболистов")
+        name   = session["name"]
+
+        # Извлекаем имя футболиста из результата
+        player_name = next((p for p in FOOTBALLERS if p in result), None)
+        photo_url   = PLAYER_PHOTOS.get(player_name, pick_photo()) if player_name else pick_photo()
+
+        # 1. Отправляем результат в личку с фото
+        personal_text = f"🏆 <b>Твой результат:</b>\n\n{result}\n\n👥 Поделись с командой: @football_igraem_astana"
+        send_photo_msg(user_id, personal_text, photo_url)
+
+        # 2. Постим в группу с фото и ссылками
+        bot_username = "@football_igraem_astana"
+        group_text = (
+            f"🎮 <b>{name}</b> прошёл тест!\n\n"
+            f"{result}\n\n"
+            f"👥 Наша группа: @football_igraem_astana\n"
+            f"🤖 Пройди тест сам — напиши боту <b>кто я</b>\n\n"
+            f"#КтоТыИзФутболистов"
+        )
+        send(group_text, photo_url)
         del quiz_sessions[user_id]
     else:
         q, opts = QUIZ_QUESTIONS[step]
         send_msg(user_id, f"<b>Вопрос {step+1}/10:</b>\n{q}", [[o] for o in opts])
+
+# Фото футболистов для результата
+PLAYER_PHOTOS = {
+    "Криштиану Роналду":   "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Cristiano_Ronaldo_in_2018.jpg/800px-Cristiano_Ronaldo_in_2018.jpg",
+    "Лионель Месси":       "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Messi_vs_Nigeria_2018.jpg/1024px-Messi_vs_Nigeria_2018.jpg",
+    "Килиан Мбаппе":       "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/2019-07-17_SG_Dynamo_Dresden_vs._Paris_Saint-Germain_F.C._by_Sandro_Halank–074_%28cropped%29.jpg/800px-2019-07-17_SG_Dynamo_Dresden_vs._Paris_Saint-Germain_F.C._by_Sandro_Halank–074_%28cropped%29.jpg",
+    "Эрлинг Холанд":       "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Erling_Haaland_2022_%28cropped%29.jpg/800px-Erling_Haaland_2022_%28cropped%29.jpg",
+    "Неймар":              "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Bra-Col_%281%29_%28cropped%29.jpg/800px-Bra-Col_%281%29_%28cropped%29.jpg",
+    "Зинедин Зидан":       "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Zinedine_Zidane_by_Tasnim_03.jpg/800px-Zinedine_Zidane_by_Tasnim_03.jpg",
+    "Роналдиньо":          "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Ronaldinho_in_2018.jpg/800px-Ronaldinho_in_2018.jpg",
+    "Тьерри Анри":         "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Thierry_Henry_2.jpg/800px-Thierry_Henry_2.jpg",
+    "Андрес Иньеста":      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/fifty/Andres_Iniesta_2010.jpg/800px-Andres_Iniesta_2010.jpg",
+    "Роберт Левандовски":  "https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Robert_Lewandowski%2C_FC_Bayern_München_%28by_Sven_Mandel%2C_2019-09-28%29_02_%28cropped%29.jpg/800px-Robert_Lewandowski%2C_FC_Bayern_München_%28by_Sven_Mandel%2C_2019-09-28%29_02_%28cropped%29.jpg",
+}
+
+def send_photo_msg(chat_id, caption, photo_url):
+    """Отправляет фото в личку пользователю."""
+    try:
+        r = requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+            json={"chat_id": chat_id, "photo": photo_url, "caption": caption, "parse_mode": "HTML"},
+            timeout=20,
+        )
+        if r.ok:
+            return True
+        # fallback — текстом
+        send_msg(chat_id, caption)
+        return False
+    except:
+        send_msg(chat_id, caption)
+        return False
 
 def poll_updates():
     global quiz_offset
@@ -435,8 +481,27 @@ def poll_updates():
             name    = msg.get("from", {}).get("first_name", "Игрок")
             if not user_id or not text:
                 continue
-            if any(kw in text.lower() for kw in ["тест", "кто я", "футболист", "/тест", "quiz"]):
-                start_quiz(user_id, name)
+
+            if text in ("/start", "/help", "помощь", "help"):
+                send_msg(user_id,
+                    "👋 Привет! Я футбольный бот группы @football_igraem_astana\n\n"
+                    "Что умею:\n"
+                    "⚽ Постю новости футбола каждый день\n"
+                    "🧠 Кидаю факт дня\n"
+                    "📅 Анонсирую ближайшие матчи\n"
+                    "🎮 Тест — кто ты из футболистов?\n\n"
+                    "Напиши <b>кто я</b> или <b>тест</b> — и узнаешь на какого футболиста ты похож! 🏆"
+                )
+            elif any(kw in text.lower() for kw in ["тест", "кто я", "футболист", "/тест", "quiz"]):
+                today = now_astana().strftime("%d.%m.%Y")
+                if quiz_used_today == today:
+                    send_msg(user_id,
+                        "⚽ Тест уже прошли сегодня — тебе не повезло 😄\n\n"
+                        "Тест можно пройти только 1 раз в день, и кто-то успел раньше тебя.\n"
+                        "Возвращайся завтра — может в этот раз окажешься первым! 🏆"
+                    )
+                else:
+                    start_quiz(user_id, name)
             elif user_id in quiz_sessions:
                 handle_quiz_answer(user_id, text)
     except Exception as e:
