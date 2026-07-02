@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кто ты из футболистов?</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --grass:    #1a6b2f;
+    --lime:     #7ed957;
+    --white:    #f5f5f0;
+    --dark:     #0e1a12;
+    --mid:      #1e3024;
+    --accent:   #f5c518;
+    --muted:    #6b7c6e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--dark);
+    color: var(--white);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-x: hidden;
+  }
+
+  /* Поле как фон */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent 0px,
+        transparent 48%,
+        rgba(255,255,255,0.02) 48%,
+        rgba(255,255,255,0.02) 52%,
+        transparent 52%,
+        transparent 100%
+      ),
+      repeating-linear-gradient(
+        0deg,
+        var(--dark) 0px,
+        var(--dark) 60px,
+        var(--grass) 60px,
+        var(--grass) 120px
+      );
+    opacity: 0.4;
+    z-index: 0;
+  }
+
+  .card {
+    position: relative;
+    z-index: 1;
+    background: var(--mid);
+    border: 1px solid rgba(126,217,87,0.15);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 480px;
+    padding: 32px 28px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+
+  /* ЭКРАН: старт */
+  #screen-start { display: block; }
+  #screen-quiz  { display: none; }
+  #screen-result { display: none; }
+
+  .badge {
+    display: inline-block;
+    background: var(--lime);
+    color: var(--dark);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    line-height: 1;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  h1 span { color: var(--lime); }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 28px;
+  }
+
+  .ball-icon {
+    font-size: 64px;
+    text-align: center;
+    margin-bottom: 20px;
+    animation: bounce 2s ease-in-out infinite;
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-10px); }
+  }
+
+  .btn-start {
+    width: 100%;
+    padding: 16px;
+    background: var(--lime);
+    color: var(--dark);
+    border: none;
+    border-radius: 12px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  .btn-start:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(126,217,87,0.35);
+  }
+
+  .btn-start:active { transform: translateY(0); }
+
+  /* ЭКРАН: вопросы */
+  .progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--lime);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  .q-counter {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .q-text {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 24px;
+    min-height: 56px;
+  }
+
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .opt {
+    padding: 14px 18px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    color: var(--white);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+  }
+
+  .opt:hover {
+    background: rgba(126,217,87,0.12);
+    border-color: var(--lime);
+    color: var(--lime);
+  }
+
+  .opt.selected {
+    background: var(--lime);
+    border-color: var(--lime);
+    color: var(--dark);
+    font-weight: 700;
+  }
+
+  /* ЭКРАН: результат */
+  .result-header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .player-emoji {
+    font-size: 72px;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .result-label {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .player-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    color: var(--lime);
+    letter-spacing: 1px;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .result-desc {
+    font-size: 15px;
+    line-height: 1.7;
+    color: rgba(245,245,240,0.85);
+    background: rgba(255,255,255,0.04);
+    border-left: 3px solid var(--lime);
+    padding: 14px 16px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 24px;
+  }
+
+  .share-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn-share {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-tg {
+    background: #229ED9;
+    color: #fff;
+  }
+
+  .btn-tg:hover { background: #1a8abf; }
+
+  .btn-retry {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid rgba(255,255,255,0.1);
+    font-size: 14px;
+  }
+
+  .btn-retry:hover { color: var(--white); border-color: rgba(255,255,255,0.3); }
+
+  .group-link {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .group-link a {
+    color: var(--lime);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  /* Загрузка */
+  #loading {
+    display: none;
+    text-align: center;
+    padding: 24px 0;
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(126,217,87,0.2);
+    border-top-color: var(--lime);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 14px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text { color: var(--muted); font-size: 14px; }
+
+  /* canvas для скриншота */
+  #result-card {
+    background: var(--mid);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(126,217,87,0.2);
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- СТАРТ -->
+  <div id="screen-start">
+    <div class="ball-icon">⚽</div>
+    <div class="badge">Тест</div>
+    <h1>КТО ТЫ ИЗ <span>ФУТБОЛ&shy;ИСТОВ?</span></h1>
+    <p class="subtitle">10 вопросов — и мы скажем на кого из мировых звёзд ты похож на поле.</p>
+    <button class="btn-start" onclick="startQuiz()">НАЧАТЬ ТЕСТ →</button>
+  </div>
+
+  <!-- ВОПРОСЫ -->
+  <div id="screen-quiz">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress"></div>
+    </div>
+    <div class="q-counter" id="q-counter">Вопрос 1 из 10</div>
+    <div class="q-text" id="q-text"></div>
+    <div class="options" id="options"></div>
+    <div id="loading">
+      <div class="spinner"></div>
+      <div class="loading-text">Определяем твоего футболиста...</div>
+    </div>
+  </div>
+
+  <!-- РЕЗУЛЬТАТ -->
+  <div id="screen-result">
+    <div id="result-card">
+      <div class="result-header">
+        <span class="player-emoji" id="player-emoji">⭐</span>
+        <div class="result-label">Твой футболист</div>
+        <div class="player-name" id="player-name"></div>
+        <div class="result-desc" id="result-desc"></div>
+      </div>
+    </div>
+    <div class="share-section">
+      <button class="btn-share btn-tg" onclick="shareToTelegram()">
+        📲 Поделиться в группе
+      </button>
+      <button class="btn-share btn-retry" onclick="resetQuiz()">
+        Пройти ещё раз
+      </button>
+    </div>
+    <div class="group-link">
+      Наша группа: <a href="https://t.me/football_igraem_chat" target="_blank">@football_igraem_chat</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const QUESTIONS = [
+  { q: "Как ты ведёшь себя на поле?", opts: ["Я лидер, всё через меня", "Работяга в обороне", "Творю магию в атаке", "Дирижирую из центра"] },
+  { q: "Твой стиль игры?", opts: ["Скорость и дриблинг", "Сила и напор", "Точность и техника", "Умная позиция"] },
+  { q: "Что делаешь после гола?", opts: ["Бегу к угловому флагу", "Спокойно иду на центр", "Кричу и прыгаю на партнёров", "Показываю жест команде"] },
+  { q: "Твоя любимая позиция?", opts: ["Нападающий", "Полузащитник", "Защитник", "Всё равно — главное играть"] },
+  { q: "Финал, счёт 0:0, серия пенальти. Ты:", opts: ["Иду первым — не боюсь", "Жду своей очереди спокойно", "Отказываюсь — не мой день", "Бью последним, как герой"] },
+  { q: "Твоё отношение к тренеру?", opts: ["Спорю — я лучше знаю", "Уважаю и слушаюсь", "Делаю по-своему на поле", "Нейтрально, лишь бы играть"] },
+  { q: "Как готовишься к матчу?", opts: ["Музыка и полная концентрация", "Тактический разбор видео", "Разминка и растяжка", "Просто выхожу и играю"] },
+  { q: "Твой кумир в детстве?", opts: ["Роналду", "Месси", "Зидан", "Роналдиньо"] },
+  { q: "Что для тебя важнее?", opts: ["Личные голы и рекорды", "Командный трофей", "Красивая игра", "Признание болельщиков"] },
+  { q: "Как заканчиваешь карьеру?", opts: ["На вершине — ухожу чемпионом", "Играю до последнего", "Становлюсь тренером", "Ещё не думал об этом"] },
+];
+
+const PLAYERS = [
+  { name: "Криштиану Роналду", emoji: "🇵🇹", desc: "Ты — машина для голов и рекордов. Работаешь как проклятый и всегда хочешь быть первым. Эго? Есть. Результаты? Тоже есть 💪" },
+  { name: "Лионель Месси",     emoji: "🇦🇷", desc: "Ты скромный снаружи, но на поле — волшебник. Не кричишь, не хвалишься — просто делаешь то, что другие не могут. Тихий гений 🐐" },
+  { name: "Килиан Мбаппе",     emoji: "🇫🇷", desc: "Скорость, молодость, амбиции. Ты ещё не всё показал миру — и все это чувствуют. Будущее за тобой ⚡" },
+  { name: "Эрлинг Холанд",     emoji: "🇳🇴", desc: "Ты — машина. Бегаешь, давишь, забиваешь. Без лишних слов, без театра. Просто результат 🤖" },
+  { name: "Неймар",             emoji: "🇧🇷", desc: "Яркий, техничный, непредсказуемый. Иногда слишком артистичный — но это часть шоу. Футбол для тебя — праздник 🎪" },
+  { name: "Зинедин Зидан",     emoji: "🇫🇷", desc: "Элегантность и интеллект. Ты не бежишь — ты скользишь по полю. Два шага вперёд там, где другие делают пять 🎩" },
+  { name: "Роналдиньо",        emoji: "🇧🇷", desc: "Футбол для тебя — радость. Улыбка, финт, аплодисменты. Ты делаешь игру красивой и заставляешь улыбаться даже соперников 😁" },
+  { name: "Тьерри Анри",       emoji: "🇫🇷", desc: "Умный, быстрый, смертоносный. Ты не суетишься — ты ждёшь момента и бьёшь точно. Настоящий хищник штрафной 🎯" },
+  { name: "Андрес Иньеста",    emoji: "🇪🇸", desc: "Мозг команды. Ты видишь поле на три хода вперёд, не теряешь мяч и делаешь всё незаметно. Незаменимый 🧠" },
+  { name: "Роберт Левандовски", emoji: "🇵🇱", desc: "Профессионал до мозга костей. Режим, дисциплина, голы. Ты не звездишь — ты просто забиваешь снова и снова 🏹" },
+];
+
+let current = 0;
+let answers = [];
+
+function startQuiz() {
+  document.getElementById('screen-start').style.display = 'none';
+  document.getElementById('screen-quiz').style.display = 'block';
+  showQuestion(0);
+}
+
+function showQuestion(idx) {
+  const { q, opts } = QUESTIONS[idx];
+  document.getElementById('q-counter').textContent = `Вопрос ${idx + 1} из ${QUESTIONS.length}`;
+  document.getElementById('q-text').textContent = q;
+  document.getElementById('progress').style.width = `${(idx / QUESTIONS.length) * 100}%`;
+
+  const container = document.getElementById('options');
+  container.innerHTML = '';
+  opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.textContent = opt;
+    btn.onclick = () => selectAnswer(opt, i, btn);
+    container.appendChild(btn);
+  });
+}
+
+function selectAnswer(answer, idx, btn) {
+  // Подсветка выбора
+  document.querySelectorAll('.opt').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  answers.push(answer);
+
+  setTimeout(() => {
+    current++;
+    if (current >= QUESTIONS.length) {
+      showLoading();
+    } else {
+      showQuestion(current);
+    }
+  }, 300);
+}
+
+function showLoading() {
+  document.getElementById('options').style.display = 'none';
+  document.getElementById('q-text').style.display = 'none';
+  document.getElementById('q-counter').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+
+  setTimeout(() => showResult(), 1800);
+}
+
+function showResult() {
+  // Выбираем игрока на основе ответов
+  const player = pickPlayer();
+
+  document.getElementById('screen-quiz').style.display = 'none';
+  document.getElementById('screen-result').style.display = 'block';
+  document.getElementById('player-emoji').textContent = player.emoji;
+  document.getElementById('player-name').textContent = player.name;
+  document.getElementById('result-desc').textContent = player.desc;
+}
+
+function pickPlayer() {
+  // Простая логика на основе ответов
+  const scores = new Array(PLAYERS.length).fill(0);
+
+  // Вопрос 0: стиль на поле
+  if (answers[0] === "Я лидер, всё через меня") { scores[0] += 2; scores[2] += 1; }
+  if (answers[0] === "Работяга в обороне") { scores[9] += 2; scores[7] += 1; }
+  if (answers[0] === "Творю магию в атаке") { scores[1] += 2; scores[6] += 2; }
+  if (answers[0] === "Дирижирую из центра") { scores[8] += 2; scores[5] += 1; }
+
+  // Вопрос 1: стиль игры
+  if (answers[1] === "Скорость и дриблинг") { scores[2] += 2; scores[4] += 1; }
+  if (answers[1] === "Сила и напор") { scores[3] += 2; scores[0] += 1; }
+  if (answers[1] === "Точность и техника") { scores[1] += 2; scores[5] += 1; }
+  if (answers[1] === "Умная позиция") { scores[8] += 2; scores[7] += 1; }
+
+  // Вопрос 4: пенальти
+  if (answers[4] === "Иду первым — не боюсь") { scores[0] += 2; }
+  if (answers[4] === "Жду своей очереди спокойно") { scores[1] += 2; scores[9] += 1; }
+  if (answers[4] === "Бью последним, как герой") { scores[2] += 1; scores[7] += 1; }
+
+  // Вопрос 7: кумир
+  if (answers[7] === "Роналду") scores[0] += 3;
+  if (answers[7] === "Месси") scores[1] += 3;
+  if (answers[7] === "Зидан") scores[5] += 3;
+  if (answers[7] === "Роналдиньо") scores[6] += 3;
+
+  // Вопрос 8: что важнее
+  if (answers[8] === "Личные голы и рекорды") { scores[0] += 2; scores[3] += 1; }
+  if (answers[8] === "Командный трофей") { scores[8] += 2; scores[9] += 1; }
+  if (answers[8] === "Красивая игра") { scores[6] += 2; scores[1] += 1; }
+  if (answers[8] === "Признание болельщиков") { scores[4] += 2; scores[2] += 1; }
+
+  // Добавляем немного случайности (±1)
+  scores.forEach((_, i) => { scores[i] += Math.random() * 2; });
+
+  const maxIdx = scores.indexOf(Math.max(...scores));
+  return PLAYERS[maxIdx];
+}
+
+function shareToTelegram() {
+  const playerName = document.getElementById('player-name').textContent;
+  const text = encodeURIComponent(
+    `⚽ Прошёл тест "Кто ты из футболистов?"\n\n🏆 Я — ${playerName}!\n\nПройди тест и узнай своего футболиста 👇`
+  );
+  const url = encodeURIComponent(window.location.href);
+  window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank');
+}
+
+function resetQuiz() {
+  current = 0;
+  answers = [];
+  document.getElementById('screen-result').style.display = 'none';
+  document.getElementById('screen-start').style.display = 'block';
+}
+</script>
+</body>
+</html>
