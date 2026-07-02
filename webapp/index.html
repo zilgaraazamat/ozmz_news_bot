@@ -216,6 +216,18 @@
     margin-bottom: 24px;
   }
 
+  .player-photo {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: top;
+    border: 3px solid var(--lime);
+    box-shadow: 0 0 28px rgba(126,217,87,0.4);
+    margin: 0 auto 12px;
+    display: block;
+  }
+
   .player-emoji {
     font-size: 72px;
     margin-bottom: 12px;
@@ -441,16 +453,16 @@ const QUESTIONS = [
 ];
 
 const PLAYERS = [
-  { name: "Криштиану Роналду", emoji: "🇵🇹", desc: "Ты — машина для голов и рекордов. Работаешь как проклятый и всегда хочешь быть первым. Эго? Есть. Результаты? Тоже есть 💪" },
-  { name: "Лионель Месси",     emoji: "🇦🇷", desc: "Ты скромный снаружи, но на поле — волшебник. Не кричишь, не хвалишься — просто делаешь то, что другие не могут. Тихий гений 🐐" },
-  { name: "Килиан Мбаппе",     emoji: "🇫🇷", desc: "Скорость, молодость, амбиции. Ты ещё не всё показал миру — и все это чувствуют. Будущее за тобой ⚡" },
-  { name: "Эрлинг Холанд",     emoji: "🇳🇴", desc: "Ты — машина. Бегаешь, давишь, забиваешь. Без лишних слов, без театра. Просто результат 🤖" },
-  { name: "Неймар",             emoji: "🇧🇷", desc: "Яркий, техничный, непредсказуемый. Иногда слишком артистичный — но это часть шоу. Футбол для тебя — праздник 🎪" },
-  { name: "Зинедин Зидан",     emoji: "🇫🇷", desc: "Элегантность и интеллект. Ты не бежишь — ты скользишь по полю. Два шага вперёд там, где другие делают пять 🎩" },
-  { name: "Роналдиньо",        emoji: "🇧🇷", desc: "Футбол для тебя — радость. Улыбка, финт, аплодисменты. Ты делаешь игру красивой и заставляешь улыбаться даже соперников 😁" },
-  { name: "Тьерри Анри",       emoji: "🇫🇷", desc: "Умный, быстрый, смертоносный. Ты не суетишься — ты ждёшь момента и бьёшь точно. Настоящий хищник штрафной 🎯" },
-  { name: "Андрес Иньеста",    emoji: "🇪🇸", desc: "Мозг команды. Ты видишь поле на три хода вперёд, не теряешь мяч и делаешь всё незаметно. Незаменимый 🧠" },
-  { name: "Роберт Левандовски", emoji: "🇵🇱", desc: "Профессионал до мозга костей. Режим, дисциплина, голы. Ты не звездишь — ты просто забиваешь снова и снова 🏹" },
+  { name: "Криштиану Роналду", emoji: "🇵🇹", photo: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Cristiano_Ronaldo_in_2018.jpg/400px-Cristiano_Ronaldo_in_2018.jpg", desc: "Ты — машина для голов и рекордов. Работаешь как проклятый и всегда хочешь быть первым. Эго? Есть. Результаты? Тоже есть 💪" },
+  { name: "Лионель Месси",     emoji: "🇦🇷", photo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Messi_vs_Nigeria_2018.jpg/400px-Messi_vs_Nigeria_2018.jpg", desc: "Ты скромный снаружи, но на поле — волшебник. Не кричишь, не хвалишься — просто делаешь то, что другие не могут. Тихий гений 🐐" },
+  { name: "Килиан Мбаппе",     emoji: "🇫🇷", photo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/2019-07-17_SG_Dynamo_Dresden_vs._Paris_Saint-Germain_F.C._by_Sandro_Halank%E2%80%93074_%28cropped%29.jpg/400px-2019-07-17_SG_Dynamo_Dresden_vs._Paris_Saint-Germain_F.C._by_Sandro_Halank%E2%80%93074_%28cropped%29.jpg", desc: "Скорость, молодость, амбиции. Ты ещё не всё показал миру — и все это чувствуют. Будущее за тобой ⚡" },
+  { name: "Эрлинг Холанд",     emoji: "🇳🇴", photo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Erling_Haaland_2022_%28cropped%29.jpg/400px-Erling_Haaland_2022_%28cropped%29.jpg", desc: "Ты — машина. Бегаешь, давишь, забиваешь. Без лишних слов, без театра. Просто результат 🤖" },
+  { name: "Неймар",             emoji: "🇧🇷", photo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Bra-Col_%281%29_%28cropped%29.jpg/400px-Bra-Col_%281%29_%28cropped%29.jpg", desc: "Яркий, техничный, непредсказуемый. Иногда слишком артистичный — но это часть шоу. Футбол для тебя — праздник 🎪" },
+  { name: "Зинедин Зидан",     emoji: "🇫🇷", photo: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Zinedine_Zidane_by_Tasnim_03.jpg/400px-Zinedine_Zidane_by_Tasnim_03.jpg", desc: "Элегантность и интеллект. Ты не бежишь — ты скользишь по полю. Два шага вперёд там, где другие делают пять 🎩" },
+  { name: "Роналдиньо",        emoji: "🇧🇷", photo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Ronaldinho_in_2018.jpg/400px-Ronaldinho_in_2018.jpg", desc: "Футбол для тебя — радость. Улыбка, финт, аплодисменты. Ты делаешь игру красивой и заставляешь улыбаться даже соперников 😁" },
+  { name: "Тьерри Анри",       emoji: "🇫🇷", photo: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Thierry_Henry_2.jpg/400px-Thierry_Henry_2.jpg", desc: "Умный, быстрый, смертоносный. Ты не суетишься — ты ждёшь момента и бьёшь точно. Настоящий хищник штрафной 🎯" },
+  { name: "Андрес Иньеста",    emoji: "🇪🇸", photo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Andres_Iniesta_%28Euro_2012_cropped%29.jpg/400px-Andres_Iniesta_%28Euro_2012_cropped%29.jpg", desc: "Мозг команды. Ты видишь поле на три хода вперёд, не теряешь мяч и делаешь всё незаметно. Незаменимый 🧠" },
+  { name: "Роберт Левандовски", emoji: "🇵🇱", photo: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Robert_Lewandowski%2C_FC_Bayern_M%C3%BCnchen_%28by_Sven_Mandel%2C_2019-09-28%29_02_%28cropped%29.jpg/400px-Robert_Lewandowski%2C_FC_Bayern_M%C3%BCnchen_%28by_Sven_Mandel%2C_2019-09-28%29_02_%28cropped%29.jpg", desc: "Профессионал до мозга костей. Режим, дисциплина, голы. Ты не звездишь — ты просто забиваешь снова и снова 🏹" },
 ];
 
 let current = 0;
@@ -510,7 +522,26 @@ function showResult() {
 
   document.getElementById('screen-quiz').style.display = 'none';
   document.getElementById('screen-result').style.display = 'block';
-  document.getElementById('player-emoji').textContent = player.emoji;
+
+  // Показываем фото если есть, иначе эмодзи
+  const emojiEl = document.getElementById('player-emoji');
+  const existingPhoto = document.getElementById('player-photo');
+  if (existingPhoto) existingPhoto.remove();
+
+  if (player.photo) {
+    const img = document.createElement('img');
+    img.id = 'player-photo';
+    img.className = 'player-photo';
+    img.src = player.photo;
+    img.alt = player.name;
+    img.onerror = function() { this.style.display='none'; emojiEl.style.display='block'; };
+    emojiEl.style.display = 'none';
+    emojiEl.parentNode.insertBefore(img, emojiEl);
+  } else {
+    emojiEl.style.display = 'block';
+    emojiEl.textContent = player.emoji;
+  }
+
   document.getElementById('player-name').textContent = player.name;
   document.getElementById('result-desc').textContent = player.desc;
 }
