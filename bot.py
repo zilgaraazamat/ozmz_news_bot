@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import time
 import random
 import hashlib
@@ -8,7 +9,6 @@ import schedule
 import feedparser
 from datetime import datetime, timezone, timedelta
 
-# ── Настройки ─────────────────────────────────────────────────────────────────
 BOT_TOKEN     = os.environ.get("BOT_TOKEN", "")
 CHAT_ID       = os.environ.get("CHAT_ID", "")
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -22,7 +22,6 @@ def is_night():
     h = now_astana().hour
     return h >= 23 or h < 8
 
-# ── RSS источники ─────────────────────────────────────────────────────────────
 RSS_FEEDS = [
     ("Lenta.ru",  "https://lenta.ru/rss/news/sport/football"),
     ("Чемпионат", "https://www.championat.com/football/rss.xml"),
@@ -31,7 +30,6 @@ RSS_FEEDS = [
     ("Soccer.ru",  "https://www.soccer.ru/rss/news.xml"),
 ]
 
-# ── 16 фото ───────────────────────────────────────────────────────────────────
 PHOTOS = [
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Wembley_Stadium_interior.jpg/1280px-Wembley_Stadium_interior.jpg",
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Camp_Nou_aerial_%28cropped%29.jpg/1280px-Camp_Nou_aerial_%28cropped%29.jpg",
@@ -51,10 +49,10 @@ PHOTOS = [
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/2018_FIFA_World_Cup_Russia%2C_Round_of_16%2C_France_vs_Argentina_%2801%29.jpg/1280px-2018_FIFA_World_Cup_Russia%2C_Round_of_16%2C_France_vs_Argentina_%2801%29.jpg",
 ]
 
-used_photos: list = []
-sent_hashes: set  = set()
+used_photos = []
+sent_hashes = set()
 
-def pick_photo() -> str:
+def pick_photo():
     available = [p for p in PHOTOS if p not in used_photos[-6:]]
     if not available:
         available = PHOTOS
@@ -62,9 +60,28 @@ def pick_photo() -> str:
     used_photos.append(photo)
     return photo
 
+# ── Проверка что текст — реальный пост, а не объяснение ──────────────────────
+
+BAD_PHRASES = [
+    "я не могу", "не могу написать", "у меня нет данных", "дезинформация",
+    "нет информации", "к сожалению", "извините", "не имею доступа",
+    "что могу сделать", "что я могу", "турнир ещё не начался",
+    "могу предложить", "если ты скинешь", "шаблон поста",
+]
+
+def is_valid_post(text: str) -> bool:
+    if not text or len(text) < 50:
+        return False
+    text_lower = text.lower()
+    for phrase in BAD_PHRASES:
+        if phrase in text_lower:
+            print(f"  [WARN] Текст содержит запрещённую фразу: '{phrase}' — не постим")
+            return False
+    return True
+
 # ── Получение новостей ────────────────────────────────────────────────────────
 
-def fetch_article_text(url: str) -> str:
+def fetch_article_text(url):
     try:
         r = requests.get(url, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
         if not r.ok:
@@ -76,7 +93,7 @@ def fetch_article_text(url: str) -> str:
     except:
         return ""
 
-def fetch_all_news() -> list:
+def fetch_all_news():
     articles = []
     for name, url in RSS_FEEDS:
         try:
@@ -98,17 +115,55 @@ def fetch_all_news() -> list:
             print(f"  [{name}] ОШИБКА: {e}")
     return articles
 
-def get_new(articles: list) -> list:
+def get_new(articles):
     return [a for a in articles
             if hashlib.md5(a["title"].encode()).hexdigest() not in sent_hashes]
 
-def mark_sent(articles: list):
+def mark_sent(articles):
     for a in articles:
         sent_hashes.add(hashlib.md5(a["title"].encode()).hexdigest())
 
+# ── Расписание матчей ─────────────────────────────────────────────────────────
+
+def get_upcoming_matches():
+    matches = []
+    now = now_astana()
+    try:
+        date_from = now.astimezone(timezone.utc).strftime("%Y-%m-%d")
+        date_to   = (now + timedelta(days=1)).astimezone(timezone.utc).strftime("%Y-%m-%d")
+        r = requests.get(
+            "https://api.football-data.org/v4/matches",
+            headers={"X-Auth-Token": os.environ.get("FOOTBALL_API_KEY", "")},
+            params={"dateFrom": date_from, "dateTo": date_to},
+            timeout=10,
+        )
+        if r.ok:
+            for m in r.json().get("matches", []):
+                status   = m.get("status", "")
+                if status not in ("TIMED", "SCHEDULED"):
+                    continue
+                utc_time = m.get("utcDate", "")
+                home     = m.get("homeTeam", {}).get("name", "")
+                away     = m.get("awayTeam", {}).get("name", "")
+                comp     = m.get("competition", {}).get("name", "")
+                if utc_time and home and away:
+                    utc_dt  = datetime.strptime(utc_time, "%Y-%m-%dT%H:%M:%SZ")
+                    ast_dt  = utc_dt.replace(tzinfo=timezone.utc).astimezone(ASTANA_TZ)
+                    if ast_dt > now:
+                        matches.append({
+                            "home": home, "away": away,
+                            "time": ast_dt.strftime("%d.%m %H:%M"),
+                            "comp": comp,
+                        })
+        else:
+            print(f"  [WARN] football-data.org: {r.status_code}")
+    except Exception as e:
+        print(f"  [WARN] football-data.org: {e}")
+    return matches[:6]
+
 # ── Claude API ────────────────────────────────────────────────────────────────
 
-def claude(prompt: str, max_tokens: int = 350) -> str:
+def claude(prompt, max_tokens=350):
     try:
         r = requests.post(
             "https://api.anthropic.com/v1/messages",
@@ -131,7 +186,7 @@ def claude(prompt: str, max_tokens: int = 350) -> str:
 
 # ── Составление постов ────────────────────────────────────────────────────────
 
-def make_news_post(articles: list) -> str:
+def make_news_post(articles):
     if len(articles) >= 3:
         block = "\n".join(
             f"{i+1}. {a['title']} — {(a.get('full_text') or a.get('summary',''))[:400]}"
@@ -142,14 +197,14 @@ def make_news_post(articles: list) -> str:
 Новости:
 {block}
 
-Формат поста:
+Напиши пост. Формат:
 🔥 ГОРЯЧЕЕ
 
 • [эмодзи] Новость 1: точный счёт/факт + 1 смешная фраза
 • [эмодзи] Новость 2: точный счёт/факт + 1 смешная фраза
 • [эмодзи] Новость 3: точный счёт/факт + 1 смешная фраза
 
-Счёт и имена — строго из текста. Коротко. Без ссылок."""
+Счёт и имена — строго из текста. Коротко. Без ссылок. Без объяснений."""
     else:
         a     = articles[0]
         facts = (a.get("full_text") or a.get("summary", ""))[:1200]
@@ -158,88 +213,56 @@ def make_news_post(articles: list) -> str:
 Новость: {a["title"]}
 Текст: {facts}
 
-Формат поста:
-[эмодзи] [1 предложение: суть с точным счётом и именами]
+Напиши короткий пост:
+[эмодзи] [суть с точным счётом и именами — 1 предложение]
 
-[2 предложения смешного комментария с эмодзи]
+[2 смешных предложения с эмодзи]
 
-Если есть счёт — пиши точно (например 2:1). Без ссылок."""
+Без ссылок. Без объяснений."""
     return claude(prompt)
 
-def get_upcoming_matches() -> list:
-    """Берём матчи на сегодня с football-data.org (бесплатный план)."""
-    today = now_astana().strftime("%Y-%m-%d")
-    matches = []
-    try:
-        r = requests.get(
-            "https://api.football-data.org/v4/matches",
-            headers={"X-Auth-Token": os.environ.get("FOOTBALL_API_KEY", "")},  # бесплатный ключ
-            params={"dateFrom": today, "dateTo": today},
-            timeout=10,
-        )
-        if r.ok:
-            for m in r.json().get("matches", [])[:10]:
-                home = m.get("homeTeam", {}).get("name", "")
-                away = m.get("awayTeam", {}).get("name", "")
-                utc_time = m.get("utcDate", "")
-                if utc_time and home and away:
-                    # Конвертируем UTC -> AST (+5)
-                    from datetime import datetime as dt
-                    utc = dt.strptime(utc_time, "%Y-%m-%dT%H:%M:%SZ")
-                    ast = utc.replace(tzinfo=timezone.utc).astimezone(ASTANA_TZ)
-                    # Показываем только будущие матчи
-                    if ast > now_astana():
-                        matches.append(f"{home} — {away} в {ast.strftime('%H:%M')} (AST)")
-    except Exception as e:
-        print(f"  [WARN] football-data.org: {e}")
-    return matches
+def make_morning_post(matches):
+    if not matches:
+        return ""
+    block = "\n".join(
+        f"• {m['home']} — {m['away']} | {m['time']} AST | {m['comp']}"
+        for m in matches
+    )
+    prompt = f"""Ты — спортивный Telegram-канал. Только русский язык.
 
-def make_morning_post() -> str:
-    matches = get_upcoming_matches()
-    today = now_astana().strftime("%d.%m.%Y")
-
-    if matches:
-        matches_block = "\n".join(f"• {m}" for m in matches)
-        prompt = f"""Ты — спортивный Telegram-канал. Только русский язык.
-Ближайшие 24 часа. Реальные предстоящие матчи:
-{matches_block}
+Реальные предстоящие матчи (ближайшие 24 часа):
+{block}
 
 Напиши анонс. Формат:
 ⚽ МАТЧИ БЛИЖАЙШИХ 24 ЧАСОВ
 
-🆚 Команда А — Команда Б | 🕐 ДД.ММ ЧЧ:ММ (AST)
+🆚 Команда А — Команда Б | 🕐 ДД.ММ ЧЧ:ММ AST
 🔮 одна смешная фраза-прогноз
 
-Используй ТОЧНЫЕ названия команд и ТОЧНОЕ время из списка. Без ссылок."""
-    else:
-        prompt = f"""Ты — спортивный Telegram-канал. Только русский язык.
-Текущее время в Астане: {now_astana().strftime('%d.%m %H:%M')} AST.
-
-Напиши короткий анонс: сегодня и завтра ожидаются матчи ЧМ-2026. Формат:
-⚽ МАТЧИ БЛИЖАЙШИХ 24 ЧАСОВ
-
-Перечисли 3-4 реальных предстоящих матча ЧМ-2026 которые ты знаешь с примерным временем по AST.
-Без ссылок."""
+Используй ТОЧНЫЕ названия и время из списка выше. Без ссылок. Без объяснений."""
     return claude(prompt, max_tokens=400)
 
-def make_fact_post() -> str:
+def make_fact_post():
     prompt = f"""Ты — спортивный Telegram-канал. Только русский язык.
+Сегодня {now_astana().strftime('%d.%m.%Y')}.
 
-Напиши один интересный футбольный факт. Это должно быть что-то неожиданное, малоизвестное или смешное из истории футбола.
-Каждый раз выбирай разную тему: рекорды, курьёзы, странные правила, необычные истории игроков, удивительная статистика.
-Сегодня {now_astana().strftime('%d.%m.%Y')} — придумай факт который ещё не приелся.
+Напиши один интересный малоизвестный факт из истории футбола. Каждый раз разная тема.
 
 Формат:
 🧠 ФАКТ ДНЯ
 
-[эмодзи] [сам факт — 2-3 предложения, интересно и с лёгким юмором]
+[эмодзи] [факт — 2-3 предложения, интересно и с лёгким юмором]
 
-Без ссылок. Только русский."""
+Без ссылок."""
     return claude(prompt, max_tokens=250)
 
 # ── Отправка ──────────────────────────────────────────────────────────────────
 
-def send(caption: str):
+def send(caption):
+    if not is_valid_post(caption):
+        print("  [СТОП] Текст не прошёл проверку — не отправляем в группу")
+        return
+
     photo = pick_photo()
     try:
         r = requests.post(
@@ -253,7 +276,7 @@ def send(caption: str):
             timeout=20,
         )
         if r.ok:
-            print(f"  [OK] Фото отправлено")
+            print("  [OK] Фото отправлено")
             return
         print(f"  [WARN] Фото не прошло ({r.status_code}), шлём текстом")
     except Exception as e:
@@ -272,10 +295,16 @@ def send(caption: str):
 # ── Задачи ────────────────────────────────────────────────────────────────────
 
 def job_morning():
-    print(f"\n[{now_astana().strftime('%H:%M')} AST] Утренний анонс...")
-    text = make_morning_post()
-    if text:
-        send(f"{text}\n\n#АнонсМатчей")
+    print(f"\n[{now_astana().strftime('%H:%M')} AST] Утренний анонс матчей...")
+    matches = get_upcoming_matches()
+    if not matches:
+        print("  Матчи не найдены через API — пропускаем")
+        return
+    text = make_morning_post(matches)
+    if not text or not is_valid_post(text):
+        print("  Текст не прошёл проверку — пропускаем")
+        return
+    send(f"{text}\n\n#АнонсМатчей")
 
 def job_news():
     print(f"\n[{now_astana().strftime('%H:%M')} AST] Новостной пост...")
@@ -289,7 +318,8 @@ def job_news():
         return
     top  = new[:3] if len(new) >= 3 else new[:1]
     text = make_news_post(top)
-    if not text:
+    if not text or not is_valid_post(text):
+        print("  Текст не прошёл проверку — пропускаем")
         return
     mark_sent(top)
     send(f"{text}\n\n#Футбол")
@@ -297,26 +327,28 @@ def job_news():
 def job_fact():
     print(f"\n[{now_astana().strftime('%H:%M')} AST] Факт дня...")
     text = make_fact_post()
-    if text:
-        send(f"{text}\n\n#ФактДня #Футбол")
+    if not text or not is_valid_post(text):
+        print("  Текст не прошёл проверку — пропускаем")
+        return
+    send(f"{text}\n\n#ФактДня #Футбол")
 
 # ── Тест "Кто ты из футболистов?" ────────────────────────────────────────────
 
-quiz_used_today: str = ""
-quiz_sessions: dict  = {}
-quiz_offset: int     = 0
+quiz_used_today = ""
+quiz_sessions   = {}
+quiz_offset     = 0
 
 QUIZ_QUESTIONS = [
     ("Как ты ведёшь себя на поле?", ["Я лидер, всё через меня", "Работяга в обороне", "Творю магию в атаке", "Дирижирую из центра"]),
     ("Твой стиль игры?", ["Скорость и дриблинг", "Сила и напор", "Точность и техника", "Умная позиция"]),
-    ("Что делаешь после гола?", ["Бегу к угловому флагу", "Спокойно иду на центр", "Кричу и прыгаю", "Показываю жест команде"]),
+    ("Что делаешь после гола?", ["Бегу к угловому флагу", "Спокойно иду на центр", "Кричу и прыгаю на партнёров", "Показываю жест команде"]),
     ("Твоя любимая позиция?", ["Нападающий", "Полузащитник", "Защитник", "Всё равно — главное играть"]),
-    ("Ты в финале, счёт 0:0, пенальти. Ты:", ["Иду первым — не боюсь", "Жду своей очереди спокойно", "Отказываюсь — не мой день", "Бью последним, как герой"]),
-    ("Твоё отношение к тренеру?", ["Спорю — я лучше знаю", "Уважаю, слушаюсь", "Делаю по-своему на поле", "Нейтрально"]),
-    ("Как ты готовишься к матчу?", ["Музыка и концентрация", "Тактический разбор", "Разминка и растяжка", "Просто выхожу и играю"]),
+    ("Финал, 0:0, серия пенальти. Ты:", ["Иду первым — не боюсь", "Жду своей очереди спокойно", "Отказываюсь — не мой день", "Бью последним, как герой"]),
+    ("Твоё отношение к тренеру?", ["Спорю — я лучше знаю", "Уважаю и слушаюсь", "Делаю по-своему на поле", "Нейтрально, лишь бы играть"]),
+    ("Как готовишься к матчу?", ["Музыка и концентрация", "Тактический разбор", "Разминка и растяжка", "Просто выхожу и играю"]),
     ("Твой кумир в детстве?", ["Роналду", "Месси", "Зидан", "Роналдиньо"]),
-    ("Что важнее?", ["Личные голы и рекорды", "Командный трофей", "Красивая игра", "Деньги и слава"]),
-    ("Как заканчиваешь карьеру?", ["На вершине — ухожу чемпионом", "Играю до последнего", "Тренером после", "Ещё не думал об этом"]),
+    ("Что важнее?", ["Личные голы и рекорды", "Командный трофей", "Красивая игра", "Признание болельщиков"]),
+    ("Как заканчиваешь карьеру?", ["На вершине — ухожу чемпионом", "Играю до последнего", "Становлюсь тренером", "Ещё не думал об этом"]),
 ]
 
 FOOTBALLERS = ["Криштиану Роналду", "Лионель Месси", "Килиан Мбаппе", "Эрлинг Холанд",
@@ -332,19 +364,19 @@ def send_msg(chat_id, text, keyboard=None):
         print(f"  [ERROR] send_msg: {e}")
 
 def quiz_result(answers):
-    answers_text = "\n".join(f"{i+1}. {QUIZ_QUESTIONS[i][0]} - {a}" for i, a in enumerate(answers))
+    answers_text = "\n".join(f"{i+1}. {QUIZ_QUESTIONS[i][0]} — {a}" for i, a in enumerate(answers))
     prompt = f"""Пользователь прошёл тест "Кто ты из футболистов?".
 
-Его ответы:
+Ответы:
 {answers_text}
 
-Список футболистов: {", ".join(FOOTBALLERS)}
+Список: {", ".join(FOOTBALLERS)}
 
-Выбери ОДНОГО подходящего футболиста и напиши:
+Выбери ОДНОГО футболиста и напиши результат:
 
 🏆 Ты — [имя]!
 
-[2-3 предложения почему именно он, смешно и по ответам]
+[2-3 предложения почему — смешно и по ответам]
 
 Только русский. Без ссылок."""
     return claude(prompt, max_tokens=250)
@@ -415,14 +447,13 @@ def poll_updates():
 if __name__ == "__main__":
     print(f"🤖 Бот запущен | Астана: {now_astana().strftime('%d.%m.%Y %H:%M')}")
     print("Расписание:")
-    print("  09:00 AST — Утренний анонс матчей")
+    print("  09:00 AST — Анонс матчей (ближайшие 24ч)")
     print("  15:00 AST — Новостной пост")
     print("  20:00 AST — Факт дня")
-    print("  Тест: пиши боту в ЛС слово 'тест'")
 
     job_morning()
 
-    schedule.every().day.at("04:00").do(job_morning)  # 09:00 AST (раз в сутки)
+    schedule.every().day.at("04:00").do(job_morning)  # 09:00 AST
     schedule.every().day.at("10:00").do(job_news)     # 15:00 AST
     schedule.every().day.at("15:00").do(job_fact)     # 20:00 AST
 
