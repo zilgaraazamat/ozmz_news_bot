@@ -491,15 +491,37 @@ def poll_updates():
                 continue
 
             if text in ("/start", "/help", "помощь", "help"):
-                send_msg(user_id,
-                    "👋 Привет! Я футбольный бот группы @football_igraem_astana\n\n"
-                    "Что умею:\n"
-                    "⚽ Постю новости футбола каждый день\n"
-                    "🧠 Кидаю факт дня\n"
-                    "📅 Анонсирую ближайшие матчи\n"
-                    "🎮 Тест — кто ты из футболистов?\n\n"
-                    "Напиши <b>кто я</b> или <b>тест</b> — и узнаешь на какого футболиста ты похож! 🏆"
-                )
+                # Получаем URL сервера
+                port = os.environ.get("PORT", "8080")
+                railway_url = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
+                if railway_url:
+                    quiz_url = f"https://{railway_url}/quiz"
+                else:
+                    quiz_url = f"http://localhost:{port}/quiz"
+
+                keyboard = [[{"text": "🎮 Пройти тест!", "web_app": {"url": quiz_url}}]]
+                payload = {
+                    "chat_id": user_id,
+                    "text": (
+                        "👋 Привет! Я бот группы <b>OZ MZ Football Astana</b>\n\n"
+                        "Мы организуем футбольные игры в Астане 🏙️⚽\n\n"
+                        "Нажми кнопку ниже чтобы узнать — кто ты из великих футболистов! 👇"
+                    ),
+                    "parse_mode": "HTML",
+                    "reply_markup": {
+                        "keyboard": keyboard,
+                        "resize_keyboard": True,
+                    }
+                }
+                try:
+                    requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload, timeout=10)
+                except Exception as e:
+                    print(f"  [ERROR] /start: {e}")
+                    # fallback без web_app
+                    send_msg(user_id,
+                        f"👋 Привет! Я бот группы OZ MZ Football Astana\n\n"
+                        f"Пройди тест — кто ты из великих футболистов:\n{quiz_url}"
+                    )
             elif any(kw in text.lower() for kw in ["тест", "кто я", "футболист", "/тест", "quiz"]):
                 today = now_astana().strftime("%d.%m.%Y")
                 if quiz_used_today == today:
