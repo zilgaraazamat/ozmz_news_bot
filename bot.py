@@ -550,6 +550,40 @@ class AdminHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass  # отключаем логи запросов
 
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    def do_POST(self):
+        self.command = "POST"
+        if self.path == "/api/quiz-result":
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body)
+                quiz_history.append({
+                    "name":    data.get("name", "Аноним"),
+                    "player":  data.get("player", "Неизвестно"),
+                    "date":    now_astana().strftime("%d.%m.%Y %H:%M"),
+                    "user_id": "web",
+                })
+                print(f"  [WEB QUIZ] {data.get('name')} → {data.get('player')}")
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(b'{"ok":true}')
+            except Exception as e:
+                print(f"  [WARN] quiz-result: {e}")
+                self.send_response(400)
+                self.end_headers()
+        else:
+            self.send_response(404)
+            self.end_headers()
+
     def do_GET(self):
         if self.path == "/quiz":
             self.send_response(200)
@@ -558,6 +592,37 @@ class AdminHandler(BaseHTTPRequestHandler):
             with open(os.path.join(os.path.dirname(__file__), "webapp", "index.html"), "rb") as f:
                 self.wfile.write(f.read())
             return
+        if self.path == "/api/quiz-result" and self.command == "POST":
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body)
+                quiz_history.append({
+                    "name":    data.get("name", "Аноним"),
+                    "player":  data.get("player", "Неизвестно"),
+                    "date":    now_astana().strftime("%d.%m.%Y %H:%M"),
+                    "user_id": "web",
+                })
+                print(f"  [WEB QUIZ] {data.get('name')} → {data.get('player')}")
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(b'{"ok":true}')
+            except Exception as e:
+                print(f"  [WARN] quiz-result: {e}")
+                self.send_response(400)
+                self.end_headers()
+            return
+
+        if self.path == "/api/quiz-result":
+            self.send_response(200)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.end_headers()
+            return
+
         if self.path == "/logo.jpg":
             self.send_response(200)
             self.send_header("Content-type", "image/jpeg")
