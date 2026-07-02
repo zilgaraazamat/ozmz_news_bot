@@ -338,6 +338,7 @@ def job_fact():
 quiz_used_today = ""
 quiz_sessions   = {}
 quiz_offset     = 0
+quiz_history    = []  # [{name, player, date, user_id}]
 
 QUIZ_QUESTIONS = [
     ("Как ты ведёшь себя на поле?", ["Я лидер, всё через меня", "Работяга в обороне", "Творю магию в атаке", "Дирижирую из центра"]),
@@ -411,12 +412,19 @@ def handle_quiz_answer(user_id, text):
         player_name = next((p for p in FOOTBALLERS if p in result), None)
         photo_url   = PLAYER_PHOTOS.get(player_name, pick_photo()) if player_name else pick_photo()
 
+        # Сохраняем в историю
+        quiz_history.append({
+            "name":    name,
+            "player":  player_name or "Неизвестно",
+            "date":    now_astana().strftime("%d.%m.%Y %H:%M"),
+            "user_id": user_id,
+        })
+
         # 1. Отправляем результат в личку с фото
         personal_text = f"🏆 <b>Твой результат:</b>\n\n{result}\n\n👥 Поделись с командой: @football_igraem_astana"
         send_photo_msg(user_id, personal_text, photo_url)
 
         # 2. Постим в группу с фото и ссылками
-        bot_username = "@football_igraem_astana"
         group_text = (
             f"🎮 <b>{name}</b> прошёл тест!\n\n"
             f"{result}\n\n"
@@ -509,12 +517,104 @@ def poll_updates():
 
 # ── Запуск ────────────────────────────────────────────────────────────────────
 
+# ── Веб-сервер для панели админа ─────────────────────────────────────────────
+
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
+
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "football2026")
+
+class AdminHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass  # отключаем логи запросов
+
+    def do_GET(self):
+        if self.path == "/":
+            self.send_response(200)
+            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.end_headers()
+
+            # Статистика
+            total     = len(quiz_history)
+            players   = {}
+            for h in quiz_history:
+                players[h["player"]] = players.get(h["player"], 0) + 1
+            top_player = max(players, key=players.get) if players else "—"
+
+            rows = ""
+            for i, h in enumerate(reversed(quiz_history), 1):
+                rows += f"""
+                <tr>
+                  <td>{i}</td>
+                  <td>{h['name']}</td>
+                  <td><span class="badge">{h['player']}</span></td>
+                  <td>{h['date']}</td>
+                </tr>"""
+
+            html = f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>⚽ Панель Админа</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ font-family: -apple-system, sans-serif; background: #0e1a12; color: #f5f5f0; min-height: 100vh; padding: 24px; }}
+  .header {{ display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }}
+  .header h1 {{ font-size: 24px; font-weight: 700; }}
+  .header span {{ font-size: 32px; }}
+  .stats {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 28px; }}
+  .stat {{ background: #1e3024; border: 1px solid rgba(126,217,87,.15); border-radius: 12px; padding: 16px; }}
+  .stat-num {{ font-size: 32px; font-weight: 700; color: #7ed957; }}
+  .stat-label {{ font-size: 13px; color: #6b7c6e; margin-top: 4px; }}
+  .table-wrap {{ background: #1e3024; border: 1px solid rgba(126,217,87,.15); border-radius: 12px; overflow: hidden; }}
+  table {{ width: 100%; border-collapse: collapse; }}
+  th {{ background: rgba(126,217,87,.1); padding: 12px 16px; text-align: left; font-size: 12px; color: #7ed957; letter-spacing: 1px; text-transform: uppercase; }}
+  td {{ padding: 12px 16px; border-top: 1px solid rgba(255,255,255,.05); font-size: 14px; }}
+  tr:hover td {{ background: rgba(255,255,255,.03); }}
+  .badge {{ background: rgba(126,217,87,.15); color: #7ed957; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }}
+  .empty {{ text-align: center; padding: 48px; color: #6b7c6e; }}
+  .refresh {{ margin-top: 16px; text-align: center; }}
+  .refresh a {{ color: #7ed957; text-decoration: none; font-size: 13px; }}
+</style>
+</head>
+<body>
+<div class="header"><span>⚽</span><h1>Панель Админа — Football Bot</h1></div>
+<div class="stats">
+  <div class="stat"><div class="stat-num">{total}</div><div class="stat-label">Тестов пройдено</div></div>
+  <div class="stat"><div class="stat-num">{len(players)}</div><div class="stat-label">Разных футболистов</div></div>
+  <div class="stat"><div class="stat-num" style="font-size:18px">{top_player}</div><div class="stat-label">Самый популярный</div></div>
+  <div class="stat"><div class="stat-num">{now_astana().strftime('%H:%M')}</div><div class="stat-label">Время (AST)</div></div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>#</th><th>Игрок</th><th>Футболист</th><th>Дата и время</th></tr></thead>
+    <tbody>{"" if rows else '<tr><td colspan="4" class="empty">Тестов ещё не было 🎮</td></tr>'}{rows}</tbody>
+  </table>
+</div>
+<div class="refresh"><a href="/">↻ Обновить</a></div>
+</body></html>"""
+            self.wfile.write(html.encode("utf-8"))
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+def run_admin_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), AdminHandler)
+    print(f"  Панель админа: http://0.0.0.0:{port}")
+    server.serve_forever()
+
 if __name__ == "__main__":
     print(f"🤖 Бот запущен | Астана: {now_astana().strftime('%d.%m.%Y %H:%M')}")
     print("Расписание:")
     print("  09:00 AST — Анонс матчей (ближайшие 24ч)")
     print("  15:00 AST — Новостной пост")
     print("  20:00 AST — Факт дня")
+
+    # Запускаем панель админа в фоне
+    admin_thread = threading.Thread(target=run_admin_server, daemon=True)
+    admin_thread.start()
 
     job_morning()
 
