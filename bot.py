@@ -5,7 +5,8 @@ import requests
 from config import BOT_TOKEN, RAILWAY_DOMAIN, PORT
 from api import now_astana, send_msg, tg_post
 from posts import job_morning, job_news, job_fact
-from quiz import quiz_sessions, quiz_used_today, start_quiz, handle_quiz_answer
+import quiz
+from quiz import quiz_sessions, start_quiz, handle_quiz_answer
 from predict import predict_state, handle_prediction
 import server
 
@@ -72,7 +73,7 @@ def _handle(user_id, name, text):
     # квиз — запуск
     elif any(kw in tl for kw in ["тест", "кто я", "футболист", "/тест", "quiz"]):
         today = now_astana().strftime("%d.%m.%Y")
-        if quiz_used_today == today:
+        if quiz.quiz_used_today == today:
             send_msg(user_id,
                 "⚽ Тест уже прошли сегодня — тебе не повезло 😄\n\n"
                 "Тест можно пройти только 1 раз в день.\n"
