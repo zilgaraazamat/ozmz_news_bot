@@ -104,16 +104,24 @@
     margin-bottom: 28px;
   }
 
-  .ball-icon {
-    font-size: 64px;
+  .logo-wrap {
     text-align: center;
     margin-bottom: 20px;
+  }
+
+  .logo-wrap img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--lime);
+    box-shadow: 0 0 24px rgba(126,217,87,0.3);
     animation: bounce 2s ease-in-out infinite;
   }
 
   @keyframes bounce {
     0%, 100% { transform: translateY(0); }
-    50%       { transform: translateY(-10px); }
+    50%       { transform: translateY(-8px); }
   }
 
   .btn-start {
@@ -325,7 +333,9 @@
 
   <!-- СТАРТ -->
   <div id="screen-start">
-    <div class="ball-icon">⚽</div>
+    <div class="logo-wrap">
+      <img src="/logo.jpg" alt="OZ MZ Football">
+    </div>
     <div class="badge">Тест</div>
     <h1>КТО ТЫ ИЗ <span>ФУТБОЛ&shy;ИСТОВ?</span></h1>
     <p class="subtitle">10 вопросов — и мы скажем на кого из мировых звёзд ты похож на поле.</p>

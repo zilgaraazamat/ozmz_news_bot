@@ -536,6 +536,13 @@ class AdminHandler(BaseHTTPRequestHandler):
             with open(os.path.join(os.path.dirname(__file__), "webapp", "index.html"), "rb") as f:
                 self.wfile.write(f.read())
             return
+        if self.path == "/logo.jpg":
+            self.send_response(200)
+            self.send_header("Content-type", "image/jpeg")
+            self.end_headers()
+            with open(os.path.join(os.path.dirname(__file__), "webapp", "logo.jpg"), "rb") as f:
+                self.wfile.write(f.read())
+            return
         if self.path == "/":
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
@@ -586,7 +593,7 @@ class AdminHandler(BaseHTTPRequestHandler):
 </style>
 </head>
 <body>
-<div class="header"><span>⚽</span><h1>Панель Админа — Football Bot</h1></div>
+<div class="header"><img src="/logo.jpg" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #7ed957"><h1>Панель Админа — Football Bot</h1></div>
 <div class="stats">
   <div class="stat"><div class="stat-num">{total}</div><div class="stat-label">Тестов пройдено</div></div>
   <div class="stat"><div class="stat-num">{len(players)}</div><div class="stat-label">Разных футболистов</div></div>
