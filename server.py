@@ -7,6 +7,7 @@ from api import now_astana, tg_post
 from config import PORT
 from quiz import quiz_history
 from predict import get_stats as predict_stats, announce_result
+from battle import create_battle, join_battle, get_state, submit_answer
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -51,17 +52,63 @@ class Handler(BaseHTTPRequestHandler):
                     self._json({"ok": False, "error": "no score"})
             except Exception as e:
                 self.send_response(400); self.end_headers()
+
+        elif self.path == "/api/battle/create":
+            try:
+                data = json.loads(body)
+                name = (data.get("name") or "Игрок")[:20]
+                code, player_id = create_battle(name)
+                self._json({"code": code, "player_id": player_id})
+            except Exception as e:
+                print(f"  [WARN] battle/create: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif self.path == "/api/battle/join":
+            try:
+                data = json.loads(body)
+                code = (data.get("code") or "")[:8]
+                name = (data.get("name") or "Игрок")[:20]
+                player_id, error = join_battle(code, name)
+                if error:
+                    self._json({"error": error})
+                else:
+                    self._json({"player_id": player_id})
+            except Exception as e:
+                print(f"  [WARN] battle/join: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif self.path == "/api/battle/answer":
+            try:
+                data      = json.loads(body)
+                code      = data.get("code", "")
+                player_id = data.get("player_id", "")
+                answer    = data.get("answer", "")
+                result = submit_answer(code, player_id, answer)
+                self._json(result if result else {"error": "invalid"})
+            except Exception as e:
+                print(f"  [WARN] battle/answer: {e}")
+                self.send_response(400); self.end_headers()
+
         else:
             self.send_response(404); self.end_headers()
 
     def do_GET(self):
         if self.path == "/quiz":
             self._file("webapp/index.html", "text/html; charset=utf-8")
+        elif self.path == "/battle":
+            self._file("webapp/battle.html", "text/html; charset=utf-8")
         elif self.path == "/logo.jpg":
             self._file("webapp/logo.jpg", "image/jpeg")
         elif self.path == "/api/stats":
             stats = predict_stats()
             self._json(stats)
+        elif self.path.startswith("/api/battle/state"):
+            from urllib.parse import urlparse, parse_qs
+            q = parse_qs(urlparse(self.path).query)
+            code = (q.get("code") or [""])[0]
+            player_id = (q.get("player_id") or [""])[0]
+            state = get_state(code, player_id)
+            self._json(state if state else {"error": "not_found"})
         elif self.path == "/":
             self._admin_html()
         else:

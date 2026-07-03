@@ -84,6 +84,23 @@ def _handle(user_id, name, text):
     elif tl.startswith("/teams"):
         handle_teams_command(user_id, text)
 
+    # ⚔️ батл на знание футбола — веб-версия
+    elif tl.startswith("/battle") or "батл" in tl:
+        battle_url = (
+            f"https://{RAILWAY_DOMAIN}/battle"
+            if RAILWAY_DOMAIN
+            else f"http://localhost:{PORT}/battle"
+        )
+        keyboard = [[{"text": "⚔️ Открыть батл", "web_app": {"url": battle_url}}]]
+        try:
+            tg_post(user_id, "sendMessage", **{
+                "text": "⚔️ <b>Футбольный батл 1×1!</b>\n\nСоздай комнату или введи код друга — и проверьте, кто лучше знает футбол.",
+                "parse_mode": "HTML",
+                "reply_markup": {"keyboard": keyboard, "resize_keyboard": True},
+            })
+        except:
+            send_msg(user_id, f"⚔️ Батл: {battle_url}")
+
     # квиз — запуск
     elif any(kw in tl for kw in ["тест", "кто я", "футболист", "/тест", "quiz"]):
         today = now_astana().strftime("%d.%m.%Y")
