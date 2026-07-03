@@ -7,13 +7,15 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0e1a12;color:#f5f5f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;-webkit-hyphens:none;hyphens:none}
-.wrap{width:100%;max-width:400px}
-.hidden{display:none}
+html{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0e1a12;color:#f5f5f0;min-height:100%;padding:24px 16px 60px;-webkit-hyphens:none;hyphens:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.wrap{width:100%;max-width:400px;margin:0 auto;position:relative}
+.hidden{display:none!important}
+.profile-fab{position:absolute;top:-4px;right:0;width:46px;height:46px;border-radius:50%;background:#1e3024;border:2px solid #7ed957;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.45);z-index:5;transition:transform .15s}
+.profile-fab:active{transform:scale(.92)}
 
 /* ── меню ── */
-.head{text-align:center;margin-bottom:22px}
+.head{text-align:center;margin-bottom:22px;padding-top:8px}
 .logo{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #7ed957;margin-bottom:12px;box-shadow:0 0 24px rgba(126,217,87,.35)}
 .head h1{font-size:20px;font-weight:900}
 .head p{font-size:13px;color:#6b7c6e;margin-top:4px}
@@ -35,7 +37,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .role-badge .txt div:first-child{font-size:11px;color:#6b7c6e;text-transform:uppercase;letter-spacing:.5px}
 .role-badge .txt div:last-child{font-size:14px;font-weight:800;color:#7ed957}
 label{font-size:12px;color:#6b7c6e;display:block;margin-bottom:6px}
-input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:15px;margin-bottom:6px}
+input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:16px;margin-bottom:6px}
 input:focus{outline:none;border-color:#7ed957}
 .hint{font-size:11px;color:#4a5a4d;margin-bottom:16px}
 .btn{width:100%;padding:14px;border:none;border-radius:12px;font-weight:800;font-size:15px;cursor:pointer;background:#7ed957;color:#0e1a12;transition:transform .15s}
@@ -57,6 +59,9 @@ input:focus{outline:none;border-color:#7ed957}
 </head>
 <body>
 <div class="wrap">
+
+  <!-- Профиль — отдельная кнопка-аватарка, не в общем списке -->
+  <div class="profile-fab" id="profile-fab" onclick="showProfile()">👤</div>
 
   <!-- ЭКРАН: меню -->
   <div id="screen-menu">
@@ -80,15 +85,6 @@ input:focus{outline:none;border-color:#7ed957}
       <div class="menu-text">
         <h2>Батл с другом</h2>
         <p>Проверьте знание футбола 1×1</p>
-      </div>
-      <div class="menu-arrow">→</div>
-    </div>
-
-    <div class="menu-card" onclick="showProfile()">
-      <div class="menu-icon">👤</div>
-      <div class="menu-text">
-        <h2>Профиль</h2>
-        <p>Сохрани ник, посмотри свою роль</p>
       </div>
       <div class="menu-arrow">→</div>
     </div>
@@ -173,12 +169,14 @@ function go(path) {
 function showMenu() {
   document.getElementById("screen-profile").classList.add("hidden");
   document.getElementById("screen-menu").classList.remove("hidden");
+  document.getElementById("profile-fab").classList.remove("hidden");
   if (window.Telegram && Telegram.WebApp) Telegram.WebApp.BackButton.hide();
 }
 
 function showProfile() {
   document.getElementById("screen-menu").classList.add("hidden");
   document.getElementById("screen-profile").classList.remove("hidden");
+  document.getElementById("profile-fab").classList.add("hidden");
   if (window.Telegram && Telegram.WebApp) {
     Telegram.WebApp.BackButton.show();
     Telegram.WebApp.BackButton.onClick(showMenu);
