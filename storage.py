@@ -44,6 +44,12 @@ def init_db():
             name    TEXT,
             score   TEXT
         )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS users(
+            user_id   TEXT PRIMARY KEY,
+            name      TEXT,
+            phone     TEXT,
+            joined_at TEXT
+        )""")
 
 
 def get_role(user_id):
@@ -168,3 +174,31 @@ def get_predictions():
 def clear_predictions():
     with _lock, _conn() as c:
         c.execute("DELETE FROM predict_predictions")
+
+
+# ── Авторизация по номеру телефона ───────────────────────────────────────────
+
+def has_phone(user_id):
+    user_id = str(user_id)
+    with _lock, _conn() as c:
+        row = c.execute("SELECT phone FROM users WHERE user_id=?", (user_id,)).fetchone()
+    return bool(row and row[0])
+
+
+def save_phone(user_id, name, phone):
+    user_id = str(user_id)
+    with _lock, _conn() as c:
+        c.execute("""INSERT INTO users(user_id, name, phone, joined_at)
+                     VALUES(?, ?, ?, datetime('now'))
+                     ON CONFLICT(user_id) DO UPDATE SET
+                        name=excluded.name, phone=excluded.phone""",
+                  (user_id, name, phone))
+
+
+def get_user(user_id):
+    user_id = str(user_id)
+    with _lock, _conn() as c:
+        row = c.execute(
+            "SELECT name, phone, joined_at FROM users WHERE user_id=?", (user_id,)
+        ).fetchone()
+    return {"name": row[0], "phone": row[1], "joined_at": row[2]} if row else None

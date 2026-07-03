@@ -7,7 +7,7 @@ from api import now_astana, send_msg, tg_post
 from posts import job_morning, job_news, job_fact
 from quiz import quiz_sessions, handle_quiz_answer
 from predict import handle_prediction
-from storage import init_db, get_role
+from storage import init_db, get_role, has_phone, save_phone
 from teams import handle_teams_command
 import server
 
@@ -31,10 +31,18 @@ def poll():
             msg = update.get("message", {})
             if not msg:
                 continue
-            text    = msg.get("text", "").strip()
             user_id = str(msg.get("from", {}).get("id", ""))
             name    = msg.get("from", {}).get("first_name", "Игрок")
-            if not user_id or not text:
+            if not user_id:
+                continue
+
+            contact = msg.get("contact")
+            if contact:
+                _handle_contact(user_id, name, contact)
+                continue
+
+            text = msg.get("text", "").strip()
+            if not text:
                 continue
             _handle(user_id, name, text)
     except Exception as e:
@@ -46,7 +54,35 @@ def _app_url():
             else f"http://localhost:{PORT}/app")
 
 
+def _request_phone(user_id):
+    keyboard = [[{"text": "📱 Поделиться номером", "request_contact": True}]]
+    tg_post(user_id, "sendMessage", **{
+        "text": (
+            "👋 Привет! Я бот группы <b>OZMZ Football Astana</b>\n\n"
+            "Чтобы начать — поделись номером телефона (нужно для связи по играм и записи).\n\n"
+            "Жми кнопку ниже 👇"
+        ),
+        "parse_mode": "HTML",
+        "reply_markup": {"keyboard": keyboard, "resize_keyboard": True, "one_time_keyboard": True},
+    })
+
+
+def _handle_contact(user_id, name, contact):
+    sender_id = contact.get("user_id")
+    if sender_id and str(sender_id) != user_id:
+        send_msg(user_id, "⚠️ Пришли, пожалуйста, свой собственный номер — через кнопку ниже.")
+        _request_phone(user_id)
+        return
+    phone = contact.get("phone_number", "")
+    save_phone(user_id, name, phone)
+    _open_app(user_id)
+
+
 def _open_app(user_id):
+    if not has_phone(user_id):
+        _request_phone(user_id)
+        return
+
     role = get_role(user_id)
     if role:
         greeting = (
