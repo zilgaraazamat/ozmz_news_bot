@@ -25,6 +25,7 @@ def poll():
             timeout=10,
         )
         if not r.ok:
+            print(f"  [WARN] getUpdates HTTP {r.status_code}: {r.text[:300]}")
             return
         for update in r.json().get("result", []):
             _offset = update["update_id"] + 1
@@ -158,6 +159,12 @@ def _handle(user_id, name, text):
 
 if __name__ == "__main__":
     init_db()
+    try:
+        r = requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook",
+                          json={"drop_pending_updates": False}, timeout=10)
+        print(f"  [WEBHOOK] delete: {r.json()}")
+    except Exception as e:
+        print(f"  [WARN] deleteWebhook: {e}")
     _setup_menu_button()
     print(f"🤖 OZMZ Bot started | Астана: {now_astana().strftime('%d.%m.%Y %H:%M')}")
     print("Schedule:")
