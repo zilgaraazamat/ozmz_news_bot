@@ -116,8 +116,6 @@ class Handler(BaseHTTPRequestHandler):
             self._file("webapp/index.html", "text/html; charset=utf-8")
         elif self.path == "/battle":
             self._file("webapp/battle.html", "text/html; charset=utf-8")
-        elif self.path == "/profile":
-            self._file("webapp/profile.html", "text/html; charset=utf-8")
         elif self.path == "/logo.jpg":
             self._file("webapp/logo.jpg", "image/jpeg")
         elif self.path == "/api/stats":

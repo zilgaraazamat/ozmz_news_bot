@@ -10,6 +10,9 @@
 html,body{height:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0e1a12;color:#f5f5f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;-webkit-hyphens:none;hyphens:none}
 .wrap{width:100%;max-width:400px}
+.hidden{display:none}
+
+/* ── меню ── */
 .head{text-align:center;margin-bottom:22px}
 .logo{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #7ed957;margin-bottom:12px;box-shadow:0 0 24px rgba(126,217,87,.35)}
 .head h1{font-size:20px;font-weight:900}
@@ -21,64 +24,184 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .menu-text p{font-size:12px;color:#6b7c6e;line-height:1.4}
 .menu-arrow{margin-left:auto;color:#7ed957;font-size:18px}
 .footer{text-align:center;margin-top:18px;font-size:11px;color:#4a5a4d}
+
+/* ── профиль ── */
+.card{width:100%;background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:22px;padding:22px 18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.avatar{width:72px;height:72px;border-radius:50%;background:rgba(126,217,87,.12);border:2px solid #7ed957;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 14px}
+.card h1{font-size:19px;font-weight:900;text-align:center;margin-bottom:4px}
+.sub{text-align:center;font-size:13px;color:#6b7c6e;margin-bottom:20px}
+.role-badge{display:flex;align-items:center;gap:10px;background:rgba(126,217,87,.08);border:1px solid rgba(126,217,87,.25);border-radius:12px;padding:12px 14px;margin-bottom:18px}
+.role-badge .ic{font-size:22px}
+.role-badge .txt div:first-child{font-size:11px;color:#6b7c6e;text-transform:uppercase;letter-spacing:.5px}
+.role-badge .txt div:last-child{font-size:14px;font-weight:800;color:#7ed957}
+label{font-size:12px;color:#6b7c6e;display:block;margin-bottom:6px}
+input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:15px;margin-bottom:6px}
+input:focus{outline:none;border-color:#7ed957}
+.hint{font-size:11px;color:#4a5a4d;margin-bottom:16px}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-weight:800;font-size:15px;cursor:pointer;background:#7ed957;color:#0e1a12;transition:transform .15s}
+.btn:active{transform:scale(.97)}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.saved{text-align:center;color:#7ed957;font-size:13px;margin-top:10px;opacity:0;transition:opacity .3s}
+.saved.show{opacity:1}
+.no-role{text-align:center;font-size:13px;color:#6b7c6e;padding:12px;background:rgba(255,255,255,.03);border-radius:10px;margin-bottom:18px}
+.error-banner{background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.35);color:#ff8080;font-size:12px;padding:10px 12px;border-radius:10px;margin-bottom:16px;line-height:1.4}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="head">
-    <img class="logo" src="/logo.jpg" alt="OZMZ">
-    <h1>OZMZ Football Astana</h1>
-    <p>Выбери, что хочешь сделать</p>
-  </div>
 
-  <div class="menu-card" onclick="go('/quiz')">
-    <div class="menu-icon">🎮</div>
-    <div class="menu-text">
-      <h2>Кто ты из футболистов?</h2>
-      <p>Пройди тест из 10 вопросов</p>
+  <!-- ЭКРАН: меню -->
+  <div id="screen-menu">
+    <div class="head">
+      <img class="logo" src="/logo.jpg" alt="OZMZ">
+      <h1>OZMZ Football Astana</h1>
+      <p>Выбери, что хочешь сделать</p>
     </div>
-    <div class="menu-arrow">→</div>
-  </div>
 
-  <div class="menu-card" onclick="go('/battle')">
-    <div class="menu-icon">⚔️</div>
-    <div class="menu-text">
-      <h2>Батл с другом</h2>
-      <p>Проверьте знание футбола 1×1</p>
+    <div class="menu-card" onclick="go('/quiz')">
+      <div class="menu-icon">🎮</div>
+      <div class="menu-text">
+        <h2>Кто ты из футболистов?</h2>
+        <p>Пройди тест из 10 вопросов</p>
+      </div>
+      <div class="menu-arrow">→</div>
     </div>
-    <div class="menu-arrow">→</div>
-  </div>
 
-  <div class="menu-card" onclick="go('/profile')">
-    <div class="menu-icon">👤</div>
-    <div class="menu-text">
-      <h2>Профиль</h2>
-      <p>Сохрани ник, посмотри свою роль</p>
+    <div class="menu-card" onclick="go('/battle')">
+      <div class="menu-icon">⚔️</div>
+      <div class="menu-text">
+        <h2>Батл с другом</h2>
+        <p>Проверьте знание футбола 1×1</p>
+      </div>
+      <div class="menu-arrow">→</div>
     </div>
-    <div class="menu-arrow">→</div>
+
+    <div class="menu-card" onclick="showProfile()">
+      <div class="menu-icon">👤</div>
+      <div class="menu-text">
+        <h2>Профиль</h2>
+        <p>Сохрани ник, посмотри свою роль</p>
+      </div>
+      <div class="menu-arrow">→</div>
+    </div>
+
+    <div class="footer">@football_igraem_astana</div>
   </div>
 
-  <div class="footer">@football_igraem_astana</div>
+  <!-- ЭКРАН: профиль (та же страница, без перехода) -->
+  <div id="screen-profile" class="hidden">
+    <div class="card">
+      <div class="avatar">👤</div>
+      <h1 id="display-name">Профиль</h1>
+      <div class="sub">Ник виден другим в батлах и постах команды</div>
+
+      <div id="error-banner"></div>
+      <div id="role-block"></div>
+
+      <label for="nick-input">Твой ник</label>
+      <input id="nick-input" placeholder="Как тебя называть?" maxlength="24">
+      <div class="hint">До 24 символов. Виден в батлах и итогах теста.</div>
+
+      <button class="btn" id="save-btn" onclick="saveNick()">Сохранить</button>
+      <div class="saved" id="saved-msg">✅ Сохранено</div>
+    </div>
+  </div>
+
 </div>
 
 <script>
+let userId = null;
+
 if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
-  Telegram.WebApp.BackButton.hide();
-}
-
-function getUid() {
-  const qp = new URLSearchParams(location.search).get("uid");
-  if (qp) return qp;
-  const tw = window.Telegram && Telegram.WebApp;
-  const tgUser = tw && tw.initDataUnsafe && tw.initDataUnsafe.user;
-  return tgUser ? String(tgUser.id) : null;
+  const tw = Telegram.WebApp;
+  const tgUser = tw.initDataUnsafe && tw.initDataUnsafe.user;
+  if (tgUser) userId = String(tgUser.id);
 }
 
 function go(path) {
-  const uid = getUid();
-  location.href = path + (uid ? ("?uid=" + uid) : "");
+  location.href = path + (userId ? ("?uid=" + userId) : "");
+}
+
+function showMenu() {
+  document.getElementById("screen-profile").classList.add("hidden");
+  document.getElementById("screen-menu").classList.remove("hidden");
+  if (window.Telegram && Telegram.WebApp) Telegram.WebApp.BackButton.hide();
+}
+
+function showProfile() {
+  document.getElementById("screen-menu").classList.add("hidden");
+  document.getElementById("screen-profile").classList.remove("hidden");
+  if (window.Telegram && Telegram.WebApp) {
+    Telegram.WebApp.BackButton.show();
+    Telegram.WebApp.BackButton.onClick(showMenu);
+  }
+  loadProfile();
+}
+
+function showError(msg) {
+  document.getElementById("error-banner").innerHTML = `<div class="error-banner">⚠️ ${msg}</div>`;
+}
+
+async function loadProfile() {
+  document.getElementById("error-banner").innerHTML = "";
+  if (!userId) {
+    document.getElementById("display-name").textContent = "Не определён пользователь";
+    document.getElementById("save-btn").setAttribute("disabled", "true");
+    showError("Не удалось получить Telegram ID. Полностью закрой мини-приложение и открой заново через кнопку в чате с ботом.");
+    return;
+  }
+  try {
+    const r = await fetch(`/api/profile?user_id=${userId}`).then(r => r.json());
+    document.getElementById("display-name").textContent = r.nickname || r.name || "Профиль";
+    document.getElementById("nick-input").value = r.nickname || "";
+    document.getElementById("nick-input").placeholder = r.name ? `Например, ${r.name}` : "Как тебя называть?";
+
+    const roleBlock = document.getElementById("role-block");
+    if (r.role) {
+      roleBlock.innerHTML = `
+        <div class="role-badge">
+          <div class="ic">🏆</div>
+          <div class="txt">
+            <div>Твой футболист</div>
+            <div>${r.role.player} · ${r.role.category}</div>
+          </div>
+        </div>`;
+    } else {
+      roleBlock.innerHTML = `<div class="no-role">Ещё не проходил тест «Кто ты из футболистов?»</div>`;
+    }
+  } catch (e) {
+    showError("Не удалось загрузить профиль. Попробуй ещё раз.");
+  }
+}
+
+async function saveNick() {
+  const nickname = document.getElementById("nick-input").value.trim();
+  if (!userId) { showError("Нет Telegram ID."); return; }
+  if (!nickname) { showError("Введи ник перед сохранением."); return; }
+
+  const btn = document.getElementById("save-btn");
+  btn.setAttribute("disabled", "true");
+  try {
+    const res = await fetch("/api/profile", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, nickname })
+    }).then(r => r.json());
+
+    if (!res.ok) {
+      showError("Сервер не сохранил ник: " + (res.error || "неизвестная ошибка"));
+    } else {
+      document.getElementById("error-banner").innerHTML = "";
+      document.getElementById("display-name").textContent = nickname;
+      const saved = document.getElementById("saved-msg");
+      saved.classList.add("show");
+      setTimeout(() => saved.classList.remove("show"), 1800);
+    }
+  } catch (e) {
+    showError("Не получилось сохранить — проверь соединение.");
+  }
+  btn.removeAttribute("disabled");
 }
 </script>
 </body>
