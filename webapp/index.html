@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Кто ты из футболистов? — OZMZ Football</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow-x:hidden}
@@ -133,6 +134,12 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 </div>
 
 <script>
+if (window.Telegram && Telegram.WebApp) {
+  Telegram.WebApp.ready();
+  Telegram.WebApp.expand();
+  Telegram.WebApp.BackButton.show();
+  Telegram.WebApp.BackButton.onClick(() => { location.href = "/app"; });
+}
 const QS=[
   {q:"Как ты ведёшь себя на поле?",o:["Я лидер, всё через меня","Пашу в обороне — надёжность прежде всего","Творю магию в атаке","Дирижирую из центра"]},
   {q:"Твой стиль игры?",o:["Скорость и дриблинг","Сила и напор","Точность и техника","Умная позиция"]},

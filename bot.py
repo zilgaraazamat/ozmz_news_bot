@@ -5,8 +5,7 @@ import requests
 from config import BOT_TOKEN, RAILWAY_DOMAIN, PORT
 from api import now_astana, send_msg, tg_post
 from posts import job_morning, job_news, job_fact
-import quiz
-from quiz import quiz_sessions, start_quiz, handle_quiz_answer
+from quiz import quiz_sessions, handle_quiz_answer
 from predict import predict_state, handle_prediction
 from storage import init_db, get_role
 from teams import handle_teams_command
@@ -42,39 +41,42 @@ def poll():
         print(f"  [WARN] poll: {e}")
 
 
+def _app_url():
+    return (f"https://{RAILWAY_DOMAIN}/app" if RAILWAY_DOMAIN
+            else f"http://localhost:{PORT}/app")
+
+
+def _open_app(user_id):
+    role = get_role(user_id)
+    if role:
+        greeting = (
+            f"👋 С возвращением!\n\n"
+            f"🏆 Ты — <b>{role['player']}</b> ({role['category']})\n\n"
+            f"Открой приложение — тест, батл с другом и не только 👇"
+        )
+    else:
+        greeting = (
+            "👋 Привет! Я бот группы <b>OZMZ Football Astana</b>\n\n"
+            "Мы организуем футбольные игры в Астане 🏙️⚽\n\n"
+            "Жми на кнопку — внутри тест «Кто ты из футболистов» и батл с другом 👇"
+        )
+    keyboard = [[{"text": "🟢 Открыть OZMZ", "web_app": {"url": _app_url()}}]]
+    try:
+        tg_post(user_id, "sendMessage", **{
+            "text": greeting,
+            "parse_mode": "HTML",
+            "reply_markup": {"keyboard": keyboard, "resize_keyboard": True},
+        })
+    except:
+        send_msg(user_id, f"👋 Открой приложение: {_app_url()}")
+
+
 def _handle(user_id, name, text):
     tl = text.lower()
 
     # /start
     if text in ("/start", "/help", "помощь", "help"):
-        role = get_role(user_id)
-        if role:
-            send_msg(user_id,
-                f"👋 С возвращением!\n\n"
-                f"🏆 Ты — <b>{role['player']}</b>\n"
-                f"📋 Категория: <b>{role['category']}</b>\n\n"
-                f"Хочешь пройти тест заново — напиши <b>кто я</b>.")
-            return
-        quiz_url = (
-            f"https://{RAILWAY_DOMAIN}/quiz"
-            if RAILWAY_DOMAIN
-            else f"http://localhost:{PORT}/quiz"
-        )
-        keyboard = [[{"text": "🎮 Пройти тест!", "web_app": {"url": quiz_url}}]]
-        payload = {
-            "text": (
-                "👋 Привет! Я бот группы <b>OZMZ Football Astana</b>\n\n"
-                "Мы организуем футбольные игры в Астане 🏙️⚽\n\n"
-                "Нажми кнопку ниже — узнай, кто ты из великих футболистов! 👇"
-            ),
-            "parse_mode": "HTML",
-            "reply_markup": {"keyboard": keyboard, "resize_keyboard": True},
-        }
-        try:
-            tg_post(user_id, "sendMessage", **payload)
-        except:
-            send_msg(user_id,
-                f"👋 Привет! Пройди тест: {quiz_url}")
+        _open_app(user_id)
 
     # 🎯 прогноз счёта
     elif tl.startswith("/счёт") or tl.startswith("/score"):
@@ -84,35 +86,11 @@ def _handle(user_id, name, text):
     elif tl.startswith("/teams"):
         handle_teams_command(user_id, text)
 
-    # ⚔️ батл на знание футбола — веб-версия
-    elif tl.startswith("/battle") or "батл" in tl:
-        battle_url = (
-            f"https://{RAILWAY_DOMAIN}/battle"
-            if RAILWAY_DOMAIN
-            else f"http://localhost:{PORT}/battle"
-        )
-        keyboard = [[{"text": "⚔️ Открыть батл", "web_app": {"url": battle_url}}]]
-        try:
-            tg_post(user_id, "sendMessage", **{
-                "text": "⚔️ <b>Футбольный батл 1×1!</b>\n\nСоздай комнату или введи код друга — и проверьте, кто лучше знает футбол.",
-                "parse_mode": "HTML",
-                "reply_markup": {"keyboard": keyboard, "resize_keyboard": True},
-            })
-        except:
-            send_msg(user_id, f"⚔️ Батл: {battle_url}")
+    # ⚔️ батл / 🎮 тест — всё внутри единого приложения
+    elif tl.startswith("/battle") or "батл" in tl or any(kw in tl for kw in ["тест", "кто я", "футболист", "/тест", "quiz"]):
+        _open_app(user_id)
 
-    # квиз — запуск
-    elif any(kw in tl for kw in ["тест", "кто я", "футболист", "/тест", "quiz"]):
-        today = now_astana().strftime("%d.%m.%Y")
-        if quiz.quiz_used_today == today:
-            send_msg(user_id,
-                "⚽ Тест уже прошли сегодня — тебе не повезло 😄\n\n"
-                "Тест можно пройти только 1 раз в день.\n"
-                "Возвращайся завтра — может успеешь первым! 🏆")
-        else:
-            start_quiz(user_id, name)
-
-    # квиз — ответ
+    # квиз — ответ (для чат-версии теста, если где-то ещё используется)
     elif user_id in quiz_sessions:
         handle_quiz_answer(user_id, text)
 

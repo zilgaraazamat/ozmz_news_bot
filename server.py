@@ -93,7 +93,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(404); self.end_headers()
 
     def do_GET(self):
-        if self.path == "/quiz":
+        if self.path == "/app":
+            self._file("webapp/app.html", "text/html; charset=utf-8")
+        elif self.path == "/quiz":
             self._file("webapp/index.html", "text/html; charset=utf-8")
         elif self.path == "/battle":
             self._file("webapp/battle.html", "text/html; charset=utf-8")

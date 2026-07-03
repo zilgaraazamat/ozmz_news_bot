@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Футбольный батл — OZMZ</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow-x:hidden}
@@ -97,6 +98,13 @@ input:focus{outline:none;border-color:#7ed957}
 
 <script>
 let state = { code: null, playerId: null, name: null, tab: "create", pollTimer: null, answeredThisStep: false };
+
+if (window.Telegram && Telegram.WebApp) {
+  Telegram.WebApp.ready();
+  Telegram.WebApp.expand();
+  Telegram.WebApp.BackButton.show();
+  Telegram.WebApp.BackButton.onClick(() => { location.href = "/app"; });
+}
 
 // восстановление сессии при перезагрузке страницы (Telegram WebView иногда рефрешит)
 try {
