@@ -49,9 +49,10 @@ def poll():
         print(f"  [WARN] poll: {e}")
 
 
-def _app_url():
-    return (f"https://{RAILWAY_DOMAIN}/app" if RAILWAY_DOMAIN
+def _app_url(user_id=None):
+    base = (f"https://{RAILWAY_DOMAIN}/app" if RAILWAY_DOMAIN
             else f"http://localhost:{PORT}/app")
+    return f"{base}?uid={user_id}" if user_id else base
 
 
 def _request_phone(user_id):
@@ -83,6 +84,8 @@ def _open_app(user_id):
         _request_phone(user_id)
         return
 
+    _setup_menu_button(user_id)
+
     role = get_role(user_id)
     if role:
         greeting = (
@@ -96,7 +99,7 @@ def _open_app(user_id):
             "Мы организуем футбольные игры в Астане 🏙️⚽\n\n"
             "Жми на кнопку — внутри тест «Кто ты из футболистов» и батл с другом 👇"
         )
-    keyboard = [[{"text": "🟢 Открыть OZMZ", "web_app": {"url": _app_url()}}]]
+    keyboard = [[{"text": "🟢 Открыть OZMZ", "web_app": {"url": _app_url(user_id)}}]]
     try:
         tg_post(user_id, "sendMessage", **{
             "text": greeting,
@@ -104,7 +107,27 @@ def _open_app(user_id):
             "reply_markup": {"keyboard": keyboard, "resize_keyboard": True},
         })
     except:
-        send_msg(user_id, f"👋 Открой приложение: {_app_url()}")
+        send_msg(user_id, f"👋 Открой приложение: {_app_url(user_id)}")
+
+
+def _setup_menu_button(user_id=None):
+    """Системная кнопка меню (слева от поля ввода). Персонализируем под чат,
+    когда знаем user_id — тогда ссылка сразу содержит ?uid=."""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/setChatMenuButton"
+    payload = {
+        "menu_button": {
+            "type": "web_app",
+            "text": "Открыть OZMZ",
+            "web_app": {"url": _app_url(user_id)},
+        }
+    }
+    if user_id:
+        payload["chat_id"] = int(user_id)
+    try:
+        r = requests.post(url, json=payload, timeout=10)
+        print(f"  [MENU BUTTON] {r.json()}")
+    except Exception as e:
+        print(f"  [WARN] menu button setup: {e}")
 
 
 def _handle(user_id, name, text):
@@ -135,6 +158,7 @@ def _handle(user_id, name, text):
 
 if __name__ == "__main__":
     init_db()
+    _setup_menu_button()
     print(f"🤖 OZMZ Bot started | Астана: {now_astana().strftime('%d.%m.%Y %H:%M')}")
     print("Schedule:")
     print("  04:00 UTC (09:00 AST) — Match announcement + Prediction contest")

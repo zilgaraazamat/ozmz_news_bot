@@ -112,25 +112,19 @@ input:focus{outline:none;border-color:#7ed957}
 </div>
 
 <script>
-let userId = null;
+let userId = new URLSearchParams(location.search).get("uid");
 
 if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
-  const tw = Telegram.WebApp;
-  const tgUser = tw.initDataUnsafe && tw.initDataUnsafe.user;
-  if (tgUser) userId = String(tgUser.id);
 }
 
 (function renderDebug() {
   const tw = window.Telegram && window.Telegram.WebApp;
   const info = {
-    "userId (итог)": userId || "null",
+    "userId (из URL)": userId || "null — БОТ НЕ ПЕРЕДАЛ uid В ССЫЛКЕ",
     "Telegram.WebApp есть": !!tw,
     "WebApp.version": tw ? tw.version : "—",
-    "WebApp.platform": tw ? tw.platform : "—",
-    "initData (длина)": tw ? (tw.initData || "").length : "—",
-    "initDataUnsafe.user": tw ? JSON.stringify(tw.initDataUnsafe && tw.initDataUnsafe.user) : "—",
     "location.href": window.location.href,
   };
   const el = document.getElementById("debug-block");
