@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Футбольный батл — OZMZ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow-x:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0e1a12;color:#f5f5f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{position:relative;background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:22px;width:100%;max-width:400px;padding:22px 18px;box-shadow:0 20px 60px rgba(0,0,0,.5);-webkit-hyphens:none;hyphens:none}
+h1{font-size:22px;font-weight:900;margin-bottom:4px}
+.sub{color:#6b7c6e;font-size:13px;line-height:1.5;margin-bottom:18px}
+input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:15px;margin-bottom:10px}
+input:focus{outline:none;border-color:#7ed957}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-weight:800;font-size:15px;cursor:pointer;margin-bottom:10px;transition:transform .15s}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:#7ed957;color:#0e1a12}
+.btn-outline{background:transparent;color:#7ed957;border:1px solid rgba(126,217,87,.4)}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tab{flex:1;padding:10px;text-align:center;border-radius:10px;background:rgba(255,255,255,.05);color:#6b7c6e;font-size:13px;font-weight:700;cursor:pointer}
+.tab.active{background:rgba(126,217,87,.15);color:#7ed957}
+.code-box{text-align:center;background:rgba(126,217,87,.08);border:1px dashed rgba(126,217,87,.4);border-radius:12px;padding:16px;margin-bottom:14px}
+.code-box .code{font-size:32px;font-weight:900;letter-spacing:6px;color:#7ed957}
+.spin{width:30px;height:30px;border:3px solid rgba(126,217,87,.15);border-top-color:#7ed957;border-radius:50%;animation:spin .8s linear infinite;margin:16px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.scoreboard{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.04);border-radius:12px;padding:12px 14px;margin-bottom:16px}
+.sc-player{text-align:center;flex:1}
+.sc-name{font-size:12px;color:#6b7c6e;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-score{font-size:22px;font-weight:900;color:#7ed957}
+.sc-vs{font-size:12px;color:#6b7c6e;padding:0 8px}
+.qnum{font-size:11px;color:#6b7c6e;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+.qtext{font-size:17px;font-weight:700;line-height:1.35;margin-bottom:16px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{padding:12px 14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:10px;color:#f5f5f0;font-size:14px;font-weight:600;cursor:pointer;text-align:left;transition:all .15s}
+.opt:active{background:rgba(126,217,87,.12);border-color:#7ed957}
+.opt.correct{background:#7ed957;border-color:#7ed957;color:#0e1a12}
+.opt.wrong{background:rgba(255,80,80,.2);border-color:#ff5050}
+.opt[disabled]{pointer-events:none}
+.waiting-msg{text-align:center;color:#6b7c6e;font-size:13px;margin-top:14px}
+.result-title{text-align:center;font-size:20px;font-weight:900;margin-bottom:14px}
+.result-row{display:flex;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:10px;margin-bottom:8px;font-size:14px}
+.result-row.win{background:rgba(126,217,87,.15);border:1px solid #7ed957}
+.err{color:#ff8080;font-size:12px;margin:-4px 0 10px;min-height:14px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="card">
+
+  <!-- ЭКРАН 1: старт -->
+  <div id="s-home">
+    <h1>⚔️ Футбольный батл</h1>
+    <div class="sub">Проверь себя и друга на знание футбола. 10 вопросов, побеждает точность.</div>
+
+    <div class="tabs">
+      <div class="tab active" id="tab-create" onclick="switchTab('create')">Создать</div>
+      <div class="tab" id="tab-join" onclick="switchTab('join')">Войти по коду</div>
+    </div>
+
+    <input id="name-input" placeholder="Твоё имя" maxlength="20">
+    <input id="code-input" class="hidden" placeholder="Код комнаты (напр. A1B2)" maxlength="4" style="text-transform:uppercase">
+    <div class="err" id="home-err"></div>
+    <button class="btn btn-primary" id="home-btn" onclick="onHomeAction()">Создать батл</button>
+  </div>
+
+  <!-- ЭКРАН 2: ожидание соперника -->
+  <div id="s-waiting" class="hidden">
+    <h1>⚔️ Батл создан</h1>
+    <div class="sub">Скинь другу код — он должен открыть эту же ссылку и ввести его.</div>
+    <div class="code-box"><div class="code" id="room-code">----</div></div>
+    <div class="spin"></div>
+    <div class="waiting-msg">Ждём второго игрока...</div>
+  </div>
+
+  <!-- ЭКРАН 3: игра -->
+  <div id="s-game" class="hidden">
+    <div class="scoreboard">
+      <div class="sc-player"><div class="sc-name" id="me-name">Ты</div><div class="sc-score" id="me-score">0</div></div>
+      <div class="sc-vs">VS</div>
+      <div class="sc-player"><div class="sc-name" id="opp-name">Соперник</div><div class="sc-score" id="opp-score">0</div></div>
+    </div>
+    <div class="qnum" id="qnum">Вопрос 1/10</div>
+    <div class="qtext" id="qtext">...</div>
+    <div class="opts" id="opts"></div>
+    <div class="waiting-msg hidden" id="wait-opp">✅ Ответ принят. Ждём соперника...</div>
+  </div>
+
+  <!-- ЭКРАН 4: итоги -->
+  <div id="s-result" class="hidden">
+    <div class="result-title" id="result-title">🏆 Батл завершён</div>
+    <div id="result-rows"></div>
+    <button class="btn btn-outline" onclick="location.reload()">Сыграть ещё раз</button>
+  </div>
+
+</div>
+
+<script>
+let state = { code: null, playerId: null, name: null, tab: "create", pollTimer: null, answeredThisStep: false };
+
+// восстановление сессии при перезагрузке страницы (Telegram WebView иногда рефрешит)
+try {
+  const saved = JSON.parse(sessionStorage.getItem("battle") || "null");
+  if (saved && saved.code && saved.playerId) {
+    state.code = saved.code;
+    state.playerId = saved.playerId;
+    state.name = saved.name;
+    showScreen("waiting");
+    startPolling();
+  }
+} catch (e) {}
+
+function saveSession() {
+  sessionStorage.setItem("battle", JSON.stringify({ code: state.code, playerId: state.playerId, name: state.name }));
+}
+
+function switchTab(tab) {
+  state.tab = tab;
+  document.getElementById("tab-create").classList.toggle("active", tab === "create");
+  document.getElementById("tab-join").classList.toggle("active", tab === "join");
+  document.getElementById("code-input").classList.toggle("hidden", tab !== "join");
+  document.getElementById("home-btn").textContent = tab === "create" ? "Создать батл" : "Присоединиться";
+  document.getElementById("home-err").textContent = "";
+}
+
+function showScreen(id) {
+  ["home", "waiting", "game", "result"].forEach(s =>
+    document.getElementById("s-" + s).classList.toggle("hidden", s !== id));
+}
+
+async function onHomeAction() {
+  const name = document.getElementById("name-input").value.trim();
+  const errEl = document.getElementById("home-err");
+  errEl.textContent = "";
+  if (!name) { errEl.textContent = "Введи имя"; return; }
+  state.name = name;
+
+  if (state.tab === "create") {
+    const r = await fetch("/api/battle/create", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    }).then(r => r.json());
+    state.code = r.code; state.playerId = r.player_id;
+    saveSession();
+    document.getElementById("room-code").textContent = r.code;
+    showScreen("waiting");
+    startPolling();
+  } else {
+    const code = document.getElementById("code-input").value.trim().toUpperCase();
+    if (code.length !== 4) { errEl.textContent = "Код — 4 символа"; return; }
+    const r = await fetch("/api/battle/join", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, name })
+    }).then(r => r.json());
+    if (r.error === "not_found") { errEl.textContent = "Комната не найдена"; return; }
+    if (r.error === "full") { errEl.textContent = "В комнате уже два игрока"; return; }
+    state.code = code; state.playerId = r.player_id;
+    saveSession();
+    showScreen("game");
+    startPolling();
+  }
+}
+
+function startPolling() {
+  if (state.pollTimer) clearInterval(state.pollTimer);
+  poll();
+  state.pollTimer = setInterval(poll, 1500);
+}
+
+async function poll() {
+  if (!state.code || !state.playerId) return;
+  const r = await fetch(`/api/battle/state?code=${state.code}&player_id=${state.playerId}`).then(r => r.json());
+  if (!r) return;
+
+  if (r.waiting) { showScreen("waiting"); return; }
+
+  document.getElementById("opp-name").textContent = r.opponent_name || "Соперник";
+
+  if (r.finished) {
+    clearInterval(state.pollTimer);
+    renderResult(r);
+    return;
+  }
+
+  const me = r.scores.find(s => s.is_me);
+  const opp = r.scores.find(s => !s.is_me);
+  document.getElementById("me-name").textContent = state.name;
+  document.getElementById("me-score").textContent = me ? me.score : 0;
+  document.getElementById("opp-score").textContent = opp ? opp.score : 0;
+
+  showScreen("game");
+
+  if (r.you_answered) {
+    document.getElementById("wait-opp").classList.remove("hidden");
+    return;
+  }
+  document.getElementById("wait-opp").classList.add("hidden");
+
+  if (state.renderedStep !== r.step) {
+    state.renderedStep = r.step;
+    state.answeredThisStep = false;
+    renderQuestion(r);
+  }
+}
+
+function renderQuestion(r) {
+  document.getElementById("qnum").textContent = `Вопрос ${r.step + 1}/${r.total}`;
+  document.getElementById("qtext").textContent = r.question.text;
+  const optsEl = document.getElementById("opts");
+  optsEl.innerHTML = "";
+  r.question.options.forEach(opt => {
+    const div = document.createElement("div");
+    div.className = "opt";
+    div.textContent = opt;
+    div.onclick = () => answer(opt, div);
+    optsEl.appendChild(div);
+  });
+}
+
+async function answer(text, el) {
+  if (state.answeredThisStep) return;
+  state.answeredThisStep = true;
+  document.querySelectorAll(".opt").forEach(o => o.setAttribute("disabled", "true"));
+
+  const r = await fetch("/api/battle/answer", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code: state.code, player_id: state.playerId, answer: text })
+  }).then(r => r.json());
+
+  if (r) {
+    el.classList.add(r.correct ? "correct" : "wrong");
+    if (!r.correct) {
+      document.querySelectorAll(".opt").forEach(o => {
+        if (o.textContent === r.correct_answer) o.classList.add("correct");
+      });
+    }
+  }
+  setTimeout(poll, 600);
+}
+
+function renderResult(r) {
+  const title = document.getElementById("result-title");
+  const rows = document.getElementById("result-rows");
+  rows.innerHTML = "";
+  const sorted = [...r.scores].sort((a, b) => b.score - a.score);
+  sorted.forEach(s => {
+    const row = document.createElement("div");
+    row.className = "result-row" + (r.winner && s.name === r.winner ? " win" : "");
+    row.innerHTML = `<span>${r.winner === s.name ? "🏆 " : ""}${s.name}${s.is_me ? " (ты)" : ""}</span><span>${s.score}/${r.total}</span>`;
+    rows.appendChild(row);
+  });
+  title.textContent = r.winner ? "🏆 Батл завершён" : "🤝 Ничья!";
+  sessionStorage.removeItem("battle");
+  showScreen("result");
+}
+</script>
+</body>
+</html>
