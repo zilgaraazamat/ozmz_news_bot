@@ -67,8 +67,18 @@ if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.expand();
   Telegram.WebApp.BackButton.hide();
 }
+
+function getUid() {
+  const qp = new URLSearchParams(location.search).get("uid");
+  if (qp) return qp;
+  const tw = window.Telegram && Telegram.WebApp;
+  const tgUser = tw && tw.initDataUnsafe && tw.initDataUnsafe.user;
+  return tgUser ? String(tgUser.id) : null;
+}
+
 function go(path) {
-  location.href = path + location.hash;
+  const uid = getUid();
+  location.href = path + (uid ? ("?uid=" + uid) : "");
 }
 </script>
 </body>

@@ -103,7 +103,10 @@ if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
   Telegram.WebApp.BackButton.show();
-  Telegram.WebApp.BackButton.onClick(() => { location.href = "/app" + location.hash; });
+  Telegram.WebApp.BackButton.onClick(() => {
+    const uid = new URLSearchParams(location.search).get("uid");
+    location.href = "/app" + (uid ? ("?uid=" + uid) : "");
+  });
 }
 
 // восстановление сессии при перезагрузке страницы (Telegram WebView иногда рефрешит)

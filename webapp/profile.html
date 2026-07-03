@@ -53,17 +53,27 @@ input:focus{outline:none;border-color:#7ed957}
 <script>
 let userId = null;
 
+function getUidFromQuery() {
+  return new URLSearchParams(location.search).get("uid");
+}
+
 if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
   Telegram.WebApp.BackButton.show();
-  Telegram.WebApp.BackButton.onClick(() => { location.href = "/app" + location.hash; });
-  const tgUser = Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
-  if (tgUser) userId = String(tgUser.id);
-  console.log("[profile] Telegram.WebApp найден, user:", tgUser);
-} else {
-  console.log("[profile] Telegram.WebApp недоступен — открыто не через Telegram");
+  Telegram.WebApp.BackButton.onClick(() => {
+    const uid = userId || getUidFromQuery();
+    location.href = "/app" + (uid ? ("?uid=" + uid) : "");
+  });
 }
+
+userId = getUidFromQuery();
+if (!userId) {
+  const tw = window.Telegram && Telegram.WebApp;
+  const tgUser = tw && tw.initDataUnsafe && tw.initDataUnsafe.user;
+  if (tgUser) userId = String(tgUser.id);
+}
+console.log("[profile] userId:", userId, "источник:", getUidFromQuery() ? "query" : "Telegram SDK");
 
 function showError(msg) {
   document.getElementById("error-banner").innerHTML =
@@ -73,13 +83,14 @@ function showError(msg) {
 function renderDebug() {
   const tw = window.Telegram && window.Telegram.WebApp;
   const info = {
+    "Итоговый userId": userId || "null",
+    "uid из query": getUidFromQuery() || "—",
     "Telegram.WebApp есть": !!tw,
     "WebApp.version": tw ? tw.version : "—",
     "WebApp.platform": tw ? tw.platform : "—",
     "initData (сырое, длина)": tw ? (tw.initData || "").length : "—",
     "initDataUnsafe.user": tw ? JSON.stringify(tw.initDataUnsafe && tw.initDataUnsafe.user) : "—",
     "location.href": window.location.href,
-    "location.hash (длина)": window.location.hash.length,
   };
   document.getElementById("debug-block").textContent =
     Object.entries(info).map(([k, v]) => `${k}: ${v}`).join("\n");
