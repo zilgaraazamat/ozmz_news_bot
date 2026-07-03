@@ -27,6 +27,7 @@ input:focus{outline:none;border-color:#7ed957}
 .saved{text-align:center;color:#7ed957;font-size:13px;margin-top:10px;opacity:0;transition:opacity .3s}
 .saved.show{opacity:1}
 .no-role{text-align:center;font-size:13px;color:#6b7c6e;padding:12px;background:rgba(255,255,255,.03);border-radius:10px;margin-bottom:18px}
+.error-banner{background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.35);color:#ff8080;font-size:12px;padding:10px 12px;border-radius:10px;margin-bottom:16px;line-height:1.4}
 </style>
 </head>
 <body>
@@ -35,6 +36,7 @@ input:focus{outline:none;border-color:#7ed957}
   <h1 id="display-name">Профиль</h1>
   <div class="sub">Ник виден другим в батлах и постах команды</div>
 
+  <div id="error-banner"></div>
   <div id="role-block"></div>
 
   <label for="nick-input">Твой ник</label>
@@ -55,49 +57,84 @@ if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.BackButton.onClick(() => { location.href = "/app"; });
   const tgUser = Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
   if (tgUser) userId = String(tgUser.id);
+  console.log("[profile] Telegram.WebApp найден, user:", tgUser);
+} else {
+  console.log("[profile] Telegram.WebApp недоступен — открыто не через Telegram");
+}
+
+function showError(msg) {
+  document.getElementById("error-banner").innerHTML =
+    `<div class="error-banner">⚠️ ${msg}</div>`;
 }
 
 async function loadProfile() {
   if (!userId) {
-    document.getElementById("display-name").textContent = "Открой через бота";
-    document.getElementById("sub") && (document.getElementById("sub").textContent = "");
+    document.getElementById("display-name").textContent = "Не определён пользователь";
     document.getElementById("save-btn").setAttribute("disabled", "true");
+    showError(
+      "Не удалось получить Telegram ID. Открой эту страницу через кнопку " +
+      "«🟢 Открыть OZMZ» в чате с ботом — прямая ссылка в обычном браузере не работает, " +
+      "так как Telegram не передаёт данные пользователя."
+    );
     return;
   }
-  const r = await fetch(`/api/profile?user_id=${userId}`).then(r => r.json());
-  document.getElementById("display-name").textContent = r.nickname || r.name || "Профиль";
-  document.getElementById("nick-input").value = r.nickname || "";
-  document.getElementById("nick-input").placeholder = r.name ? `Например, ${r.name}` : "Как тебя называть?";
+  try {
+    const r = await fetch(`/api/profile?user_id=${userId}`).then(r => r.json());
+    document.getElementById("display-name").textContent = r.nickname || r.name || "Профиль";
+    document.getElementById("nick-input").value = r.nickname || "";
+    document.getElementById("nick-input").placeholder = r.name ? `Например, ${r.name}` : "Как тебя называть?";
 
-  const roleBlock = document.getElementById("role-block");
-  if (r.role) {
-    roleBlock.innerHTML = `
-      <div class="role-badge">
-        <div class="ic">🏆</div>
-        <div class="txt">
-          <div>Твой футболист</div>
-          <div>${r.role.player} · ${r.role.category}</div>
-        </div>
-      </div>`;
-  } else {
-    roleBlock.innerHTML = `<div class="no-role">Ещё не проходил тест «Кто ты из футболистов?»</div>`;
+    const roleBlock = document.getElementById("role-block");
+    if (r.role) {
+      roleBlock.innerHTML = `
+        <div class="role-badge">
+          <div class="ic">🏆</div>
+          <div class="txt">
+            <div>Твой футболист</div>
+            <div>${r.role.player} · ${r.role.category}</div>
+          </div>
+        </div>`;
+    } else {
+      roleBlock.innerHTML = `<div class="no-role">Ещё не проходил тест «Кто ты из футболистов?»</div>`;
+    }
+  } catch (e) {
+    console.error("[profile] loadProfile error:", e);
+    showError("Не удалось загрузить профиль. Попробуй обновить страницу.");
   }
 }
 
 async function saveNick() {
   const nickname = document.getElementById("nick-input").value.trim();
-  if (!nickname || !userId) return;
+  if (!userId) {
+    showError("Нет Telegram ID — открой страницу через кнопку в боте.");
+    return;
+  }
+  if (!nickname) {
+    showError("Введи ник перед сохранением.");
+    return;
+  }
   const btn = document.getElementById("save-btn");
   btn.setAttribute("disabled", "true");
-  await fetch("/api/profile", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: userId, nickname })
-  });
+  try {
+    const res = await fetch("/api/profile", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, nickname })
+    }).then(r => r.json());
+
+    if (!res.ok) {
+      showError("Сервер не сохранил ник: " + (res.error || "неизвестная ошибка"));
+    } else {
+      document.getElementById("error-banner").innerHTML = "";
+      document.getElementById("display-name").textContent = nickname;
+      const saved = document.getElementById("saved-msg");
+      saved.classList.add("show");
+      setTimeout(() => saved.classList.remove("show"), 1800);
+    }
+  } catch (e) {
+    console.error("[profile] saveNick error:", e);
+    showError("Не получилось сохранить — проверь соединение и попробуй снова.");
+  }
   btn.removeAttribute("disabled");
-  document.getElementById("display-name").textContent = nickname;
-  const saved = document.getElementById("saved-msg");
-  saved.classList.add("show");
-  setTimeout(() => saved.classList.remove("show"), 1800);
 }
 
 loadProfile();
