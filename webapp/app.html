@@ -45,6 +45,13 @@ input:focus{outline:none;border-color:#7ed957}
 .saved.show{opacity:1}
 .no-role{text-align:center;font-size:13px;color:#6b7c6e;padding:12px;background:rgba(255,255,255,.03);border-radius:10px;margin-bottom:18px}
 .error-banner{background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.35);color:#ff8080;font-size:12px;padding:10px 12px;border-radius:10px;margin-bottom:16px;line-height:1.4}
+.nick-display{background:#0e1a12;border:1px solid rgba(126,217,87,.25);border-radius:10px;padding:12px 14px;font-size:15px;font-weight:700;margin-bottom:12px}
+.btn-outline{background:transparent;border:1px solid rgba(126,217,87,.4);color:#7ed957}
+.cta-card{background:linear-gradient(135deg,rgba(126,217,87,.14),rgba(126,217,87,.04));border:1px solid rgba(126,217,87,.3);border-radius:14px;padding:16px;margin-bottom:18px;text-align:center;cursor:pointer;transition:transform .15s}
+.cta-card:active{transform:scale(.97)}
+.cta-card .ic{font-size:28px;margin-bottom:8px}
+.cta-card .title{font-size:14px;font-weight:800;margin-bottom:4px}
+.cta-card .sub2{font-size:12px;color:#9db3a3}
 .debug{background:#000;border:1px solid rgba(126,217,87,.3);border-radius:10px;padding:10px 12px;margin-top:16px;font-family:monospace;font-size:10px;color:#7ed957;word-break:break-all;white-space:pre-wrap}
 </style>
 </head>
@@ -95,16 +102,27 @@ input:focus{outline:none;border-color:#7ed957}
     <div class="card">
       <div class="avatar">👤</div>
       <h1 id="display-name">Профиль</h1>
-      <div class="sub">Ник виден другим в батлах и постах команды</div>
+      <div class="sub" id="profile-sub">Ник виден другим в батлах и постах команды</div>
 
       <div id="error-banner"></div>
       <div id="role-block"></div>
 
-      <label for="nick-input">Твой ник</label>
-      <input id="nick-input" placeholder="Как тебя называть?" maxlength="24">
-      <div class="hint">До 24 символов. Виден в батлах и итогах теста.</div>
+      <!-- режим просмотра -->
+      <div id="view-mode">
+        <label>Твой ник</label>
+        <div class="nick-display" id="nick-display">—</div>
+        <button class="btn btn-outline" onclick="enterEditMode()">✏️ Редактировать ник</button>
+      </div>
 
-      <button class="btn" id="save-btn" onclick="saveNick()">Сохранить</button>
+      <!-- режим редактирования -->
+      <div id="edit-mode" class="hidden">
+        <label for="nick-input">Твой ник</label>
+        <input id="nick-input" placeholder="Как тебя называть?" maxlength="24">
+        <div class="hint">До 24 символов. Виден в батлах и итогах теста.</div>
+        <button class="btn" id="save-btn" onclick="saveNick()">Сохранить</button>
+        <button class="btn btn-outline" id="cancel-btn" onclick="cancelEdit()">Отмена</button>
+      </div>
+
       <div class="saved" id="saved-msg">✅ Сохранено</div>
     </div>
   </div>
@@ -155,32 +173,74 @@ function showError(msg) {
   document.getElementById("error-banner").innerHTML = `<div class="error-banner">⚠️ ${msg}</div>`;
 }
 
+function showView() {
+  document.getElementById("view-mode").classList.remove("hidden");
+  document.getElementById("edit-mode").classList.add("hidden");
+}
+
+function showEdit() {
+  document.getElementById("view-mode").classList.add("hidden");
+  document.getElementById("edit-mode").classList.remove("hidden");
+}
+
+function enterEditMode() {
+  document.getElementById("error-banner").innerHTML = "";
+  showEdit();
+  document.getElementById("nick-input").focus();
+}
+
+function cancelEdit() {
+  document.getElementById("error-banner").innerHTML = "";
+  // возвращаем инпут к сохранённому значению
+  document.getElementById("nick-input").value = window.__currentNickname || "";
+  showView();
+}
+
 async function loadProfile() {
   document.getElementById("error-banner").innerHTML = "";
   if (!userId) {
     document.getElementById("display-name").textContent = "Не определён пользователь";
-    document.getElementById("save-btn").setAttribute("disabled", "true");
     showError("Не удалось получить Telegram ID. Полностью закрой мини-приложение и открой заново через кнопку в чате с ботом.");
     return;
   }
   try {
     const r = await fetch(`/api/profile?user_id=${userId}`).then(r => r.json());
-    document.getElementById("display-name").textContent = r.nickname || r.name || "Профиль";
+    window.__currentNickname = r.nickname || "";
+
     document.getElementById("nick-input").value = r.nickname || "";
     document.getElementById("nick-input").placeholder = r.name ? `Например, ${r.name}` : "Как тебя называть?";
 
     const roleBlock = document.getElementById("role-block");
     if (r.role) {
+      document.getElementById("profile-sub").textContent = "Ник виден другим в батлах и постах команды";
       roleBlock.innerHTML = `
         <div class="role-badge">
           <div class="ic">🏆</div>
           <div class="txt">
-            <div>Твой футболист</div>
+            <div>Ты — футболист</div>
             <div>${r.role.player} · ${r.role.category}</div>
           </div>
         </div>`;
     } else {
-      roleBlock.innerHTML = `<div class="no-role">Ещё не проходил тест «Кто ты из футболистов?»</div>`;
+      roleBlock.innerHTML = `
+        <div class="cta-card" onclick="go('/quiz')">
+          <div class="ic">⚽</div>
+          <div class="title">Пройди тест и узнай,</div>
+          <div class="title">кто ты из легенд футбола!</div>
+          <div class="sub2">Займёт меньше минуты →</div>
+        </div>`;
+    }
+
+    if (r.nickname) {
+      document.getElementById("display-name").textContent = r.nickname;
+      document.getElementById("nick-display").textContent = r.nickname;
+      document.getElementById("cancel-btn").classList.remove("hidden");
+      showView();
+    } else {
+      document.getElementById("display-name").textContent = r.name || "Профиль";
+      document.getElementById("nick-display").textContent = "Ещё не задан";
+      document.getElementById("cancel-btn").classList.add("hidden");
+      showEdit();
     }
   } catch (e) {
     showError("Не удалось загрузить профиль. Попробуй ещё раз.");
@@ -205,6 +265,9 @@ async function saveNick() {
     } else {
       document.getElementById("error-banner").innerHTML = "";
       document.getElementById("display-name").textContent = nickname;
+      document.getElementById("nick-display").textContent = nickname;
+      window.__currentNickname = nickname;
+      showView();
       const saved = document.getElementById("saved-msg");
       saved.classList.add("show");
       setTimeout(() => saved.classList.remove("show"), 1800);
