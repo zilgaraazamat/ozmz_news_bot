@@ -8,6 +8,8 @@ from posts import job_morning, job_news, job_fact
 import quiz
 from quiz import quiz_sessions, start_quiz, handle_quiz_answer
 from predict import predict_state, handle_prediction
+from storage import init_db, get_role
+from teams import handle_teams_command
 import server
 
 # ── Polling ───────────────────────────────────────────────────────────────────
@@ -45,6 +47,14 @@ def _handle(user_id, name, text):
 
     # /start
     if text in ("/start", "/help", "помощь", "help"):
+        role = get_role(user_id)
+        if role:
+            send_msg(user_id,
+                f"👋 С возвращением!\n\n"
+                f"🏆 Ты — <b>{role['player']}</b>\n"
+                f"📋 Категория: <b>{role['category']}</b>\n\n"
+                f"Хочешь пройти тест заново — напиши <b>кто я</b>.")
+            return
         quiz_url = (
             f"https://{RAILWAY_DOMAIN}/quiz"
             if RAILWAY_DOMAIN
@@ -70,6 +80,10 @@ def _handle(user_id, name, text):
     elif tl.startswith("/счёт") or tl.startswith("/score"):
         handle_prediction(user_id, name, text)
 
+    # ⚽ баланс команд
+    elif tl.startswith("/teams"):
+        handle_teams_command(user_id, text)
+
     # квиз — запуск
     elif any(kw in tl for kw in ["тест", "кто я", "футболист", "/тест", "quiz"]):
         today = now_astana().strftime("%d.%m.%Y")
@@ -89,6 +103,7 @@ def _handle(user_id, name, text):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    init_db()
     print(f"🤖 OZMZ Bot started | Астана: {now_astana().strftime('%d.%m.%Y %H:%M')}")
     print("Schedule:")
     print("  04:00 UTC (09:00 AST) — Match announcement + Prediction contest")

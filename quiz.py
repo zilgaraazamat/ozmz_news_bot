@@ -1,6 +1,7 @@
 import random
 from api import claude, now_astana, send_msg, send_photo_msg, tg_post, from_config, pick_photo
-from config import QUIZ_QUESTIONS, FOOTBALLERS, PLAYER_PHOTOS
+from config import QUIZ_QUESTIONS, FOOTBALLERS, PLAYER_PHOTOS, PLAYER_CATEGORIES
+from storage import set_role
 
 quiz_used_today = ""
 quiz_sessions   = {}   # {user_id: {answers, step, name}}
@@ -61,6 +62,8 @@ def handle_quiz_answer(user_id, text):
 
         player_name = next((p for p in FOOTBALLERS if p in result), None)
         photo_url   = PLAYER_PHOTOS.get(player_name, pick_photo()) if player_name else pick_photo()
+        category    = PLAYER_CATEGORIES.get(player_name, "Центр")
+        set_role(user_id, name, player_name or "Неизвестно", category)
 
         quiz_history.append({
             "name":    name,
