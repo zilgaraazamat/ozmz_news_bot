@@ -8,7 +8,8 @@ from config import PORT, PLAYER_CATEGORIES, ADMIN_IDS, CHAT_ID
 from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
     get_profile, set_nickname, get_role, set_role,
-    create_game, get_all_games,
+    create_game, get_all_games, get_active_games, get_game,
+    signup_for_game, get_signups, get_my_signup, confirm_signup,
 )
 from predict import get_stats as predict_stats, announce_result
 from battle import create_battle, join_battle, get_state, submit_answer
@@ -157,6 +158,42 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"  [WARN] create-game: {e}")
                 self.send_response(400); self.end_headers()
 
+        elif path == "/api/games/signup":
+            try:
+                data = json.loads(body)
+                user_id = str(data.get("user_id", ""))
+                game_id = data.get("game_id")
+                if not user_id or not game_id:
+                    self._json({"ok": False, "error": "bad_request"})
+                    return
+
+                profile = get_profile(user_id)
+                role = get_role(user_id)
+                name = (profile["nickname"] if profile and profile.get("nickname")
+                        else (profile["name"] if profile else None)) or "Игрок"
+                player = role["player"] if role else None
+
+                signup_for_game(game_id, user_id, name, player)
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] games/signup: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/admin/confirm-signup":
+            try:
+                data = json.loads(body)
+                admin_id = str(data.get("user_id", ""))
+                if admin_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Нет прав администратора"})
+                    return
+                game_id = data.get("game_id")
+                player_user_id = str(data.get("player_user_id", ""))
+                confirm_signup(game_id, player_user_id)
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] confirm-signup: {e}")
+                self.send_response(400); self.end_headers()
+
         else:
             self.send_response(404); self.end_headers()
 
@@ -174,9 +211,27 @@ class Handler(BaseHTTPRequestHandler):
             self._file("webapp/battle.html", "text/html; charset=utf-8")
         elif path == "/admin":
             self._file("webapp/admin.html", "text/html; charset=utf-8")
+        elif path == "/games":
+            self._file("webapp/games.html", "text/html; charset=utf-8")
         elif path == "/api/is-admin":
             user_id = (q.get("user_id") or [""])[0]
             self._json({"is_admin": user_id in ADMIN_IDS})
+        elif path == "/api/games":
+            user_id = (q.get("user_id") or [""])[0]
+            games = get_active_games()
+            for g in games:
+                g["signups"] = get_signups(g["id"])
+                g["my_status"] = get_my_signup(g["id"], user_id) if user_id else None
+            self._json({"games": games})
+        elif path == "/api/admin/games":
+            user_id = (q.get("user_id") or [""])[0]
+            if user_id not in ADMIN_IDS:
+                self._json({"error": "forbidden"})
+            else:
+                games = get_all_games()
+                for g in games:
+                    g["signups"] = get_signups(g["id"])
+                self._json({"games": games})
         elif path == "/logo.jpg":
             self._file("webapp/logo.jpg", "image/jpeg")
         elif path == "/api/stats":

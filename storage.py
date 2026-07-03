@@ -71,6 +71,16 @@ def init_db():
             status           TEXT DEFAULT 'active'
         )""")
 
+        c.execute("""CREATE TABLE IF NOT EXISTS game_signups(
+            game_id    INTEGER,
+            user_id    TEXT,
+            name       TEXT,
+            player     TEXT,
+            status     TEXT DEFAULT 'pending',
+            created_at TEXT,
+            PRIMARY KEY (game_id, user_id)
+        )""")
+
 
 def get_role(user_id):
     user_id = str(user_id)
@@ -282,3 +292,54 @@ def get_all_games():
     keys = ["id", "date", "time", "location", "num_players", "num_teams",
             "players_per_team", "price", "extra_info", "created_by", "created_at", "status"]
     return [dict(zip(keys, r)) for r in rows]
+
+
+def get_active_games():
+    return [g for g in get_all_games() if g["status"] == "active"]
+
+
+def get_game(game_id):
+    with _lock, _conn() as c:
+        row = c.execute("""SELECT id, game_date, game_time, location, num_players, num_teams,
+                                   players_per_team, price, extra_info, created_by, created_at, status
+                            FROM games WHERE id=?""", (game_id,)).fetchone()
+    if not row:
+        return None
+    keys = ["id", "date", "time", "location", "num_players", "num_teams",
+            "players_per_team", "price", "extra_info", "created_by", "created_at", "status"]
+    return dict(zip(keys, row))
+
+
+# ── Записи на игры ────────────────────────────────────────────────────────────
+
+def signup_for_game(game_id, user_id, name, player):
+    user_id = str(user_id)
+    with _lock, _conn() as c:
+        c.execute("""INSERT INTO game_signups(game_id, user_id, name, player, status, created_at)
+                     VALUES(?, ?, ?, ?, 'pending', datetime('now'))
+                     ON CONFLICT(game_id, user_id) DO UPDATE SET
+                        name=excluded.name, player=excluded.player""",
+                  (game_id, user_id, name, player))
+
+
+def get_signups(game_id):
+    with _lock, _conn() as c:
+        rows = c.execute("""SELECT user_id, name, player, status, created_at
+                             FROM game_signups WHERE game_id=? ORDER BY created_at""",
+                          (game_id,)).fetchall()
+    return [{"user_id": r[0], "name": r[1], "player": r[2], "status": r[3], "created_at": r[4]} for r in rows]
+
+
+def get_my_signup(game_id, user_id):
+    user_id = str(user_id)
+    with _lock, _conn() as c:
+        row = c.execute("""SELECT status FROM game_signups WHERE game_id=? AND user_id=?""",
+                         (game_id, user_id)).fetchone()
+    return row[0] if row else None
+
+
+def confirm_signup(game_id, user_id):
+    user_id = str(user_id)
+    with _lock, _conn() as c:
+        c.execute("UPDATE game_signups SET status='confirmed' WHERE game_id=? AND user_id=?",
+                  (game_id, user_id))

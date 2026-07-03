@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Игры — OZMZ</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0e1a12;color:#f5f5f0;min-height:100%;padding:24px 16px 60px;-webkit-hyphens:none;hyphens:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.wrap{width:100%;max-width:440px;margin:0 auto}
+.head{text-align:center;margin-bottom:20px}
+.head h1{font-size:20px;font-weight:900}
+.head p{font-size:13px;color:#6b7c6e;margin-top:4px}
+.hidden{display:none!important}
+.empty{text-align:center;color:#6b7c6e;font-size:14px;padding:40px 10px}
+.game-card{background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:18px;padding:18px;margin-bottom:16px}
+.game-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.game-when{font-size:16px;font-weight:800}
+.game-price{font-size:13px;font-weight:700;color:#7ed957;background:rgba(126,217,87,.12);padding:4px 10px;border-radius:8px;white-space:nowrap}
+.game-loc{font-size:13px;color:#9db3a3;margin-bottom:6px}
+.game-extra{font-size:12px;color:#6b7c6e;margin-bottom:10px;line-height:1.4}
+.game-count{font-size:12px;color:#6b7c6e;margin-bottom:12px}
+.roster{background:rgba(255,255,255,.03);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.roster-title{font-size:11px;color:#6b7c6e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.roster-row{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0}
+.roster-row .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot.confirmed{background:#7ed957}
+.dot.pending{background:#e0b84a}
+.roster-empty{font-size:12px;color:#4a5a4d}
+.btn{width:100%;padding:13px;border:none;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;background:#7ed957;color:#0e1a12;transition:transform .15s}
+.btn:active{transform:scale(.97)}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.status-badge{width:100%;text-align:center;padding:12px;border-radius:12px;font-size:13px;font-weight:700}
+.status-pending{background:rgba(224,184,74,.15);color:#e0b84a;border:1px solid rgba(224,184,74,.35)}
+.status-confirmed{background:rgba(126,217,87,.15);color:#7ed957;border:1px solid rgba(126,217,87,.35)}
+.error-banner{background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.35);color:#ff8080;font-size:12px;padding:10px 12px;border-radius:10px;margin-bottom:12px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>⚽ Игры</h1>
+    <p>Записывайся и приходи играть</p>
+  </div>
+  <div id="error-banner"></div>
+  <div id="games-list"></div>
+</div>
+
+<script>
+let userId = new URLSearchParams(location.search).get("uid");
+
+if (window.Telegram && Telegram.WebApp) {
+  Telegram.WebApp.ready();
+  Telegram.WebApp.expand();
+  Telegram.WebApp.BackButton.show();
+  Telegram.WebApp.BackButton.onClick(() => { location.href = "/app" + (userId ? ("?uid=" + userId) : ""); });
+}
+
+function showError(msg) {
+  document.getElementById("error-banner").innerHTML = `<div class="error-banner">⚠️ ${msg}</div>`;
+}
+
+function rosterHtml(signups) {
+  if (!signups || signups.length === 0) {
+    return `<div class="roster-empty">Пока никто не записался</div>`;
+  }
+  return signups.map(s => {
+    const cls = s.status === "confirmed" ? "confirmed" : "pending";
+    const label = s.player ? ` (${s.player})` : "";
+    return `<div class="roster-row"><span class="dot ${cls}"></span><span>${s.name}${label}</span></div>`;
+  }).join("");
+}
+
+function renderGames(games) {
+  const el = document.getElementById("games-list");
+  if (!games || games.length === 0) {
+    el.innerHTML = `<div class="empty">Активных игр пока нет ⚽<br>Загляни позже!</div>`;
+    return;
+  }
+
+  el.innerHTML = games.map(g => {
+    const confirmedCount = (g.signups || []).filter(s => s.status === "confirmed").length;
+    const totalCount = (g.signups || []).length;
+
+    let actionHtml;
+    if (g.my_status === "confirmed") {
+      actionHtml = `<div class="status-badge status-confirmed">✅ Ты записан и подтверждён</div>`;
+    } else if (g.my_status === "pending") {
+      actionHtml = `<div class="status-badge status-pending">⏳ Ожидает подтверждения оплаты</div>`;
+    } else {
+      actionHtml = `<button class="btn" onclick="signup(${g.id})">Записаться</button>`;
+    }
+
+    return `
+      <div class="game-card">
+        <div class="game-top">
+          <div class="game-when">📅 ${g.date} · 🕐 ${g.time}</div>
+          ${g.price ? `<div class="game-price">${g.price}</div>` : ""}
+        </div>
+        <div class="game-loc">📍 ${g.location}</div>
+        ${g.extra_info ? `<div class="game-extra">ℹ️ ${g.extra_info}</div>` : ""}
+        <div class="game-count">👥 ${confirmedCount}/${g.num_players || "?"} подтверждено${totalCount > confirmedCount ? `, ещё ${totalCount - confirmedCount} ожидает` : ""}</div>
+        <div class="roster">
+          <div class="roster-title">Записались</div>
+          ${rosterHtml(g.signups)}
+        </div>
+        ${actionHtml}
+      </div>`;
+  }).join("");
+}
+
+async function loadGames() {
+  try {
+    const r = await fetch(`/api/games?user_id=${userId || ""}`).then(r => r.json());
+    renderGames(r.games);
+  } catch (e) {
+    showError("Не удалось загрузить игры. Попробуй ещё раз.");
+  }
+}
+
+async function signup(gameId) {
+  if (!userId) {
+    showError("Не удалось определить тебя. Открой игры заново через бота.");
+    return;
+  }
+  try {
+    const res = await fetch("/api/games/signup", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, game_id: gameId })
+    }).then(r => r.json());
+    if (!res.ok) {
+      showError(res.error || "Не удалось записаться.");
+    } else {
+      document.getElementById("error-banner").innerHTML = "";
+      loadGames();
+    }
+  } catch (e) {
+    showError("Ошибка сети — попробуй ещё раз.");
+  }
+}
+
+loadGames();
+</script>
+</body>
+</html>

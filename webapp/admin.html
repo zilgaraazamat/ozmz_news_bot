@@ -25,6 +25,14 @@ textarea{resize:vertical;min-height:70px}
 .saved{text-align:center;color:#7ed957;font-size:13px;margin-top:10px;opacity:0;transition:opacity .3s}
 .saved.show{opacity:1}
 .error-banner{background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.35);color:#ff8080;font-size:13px;padding:12px 14px;border-radius:10px;line-height:1.5;text-align:center}
+.manage-game{background:rgba(255,255,255,.03);border-radius:14px;padding:14px;margin-top:14px}
+.manage-title{font-size:14px;font-weight:800;margin-bottom:10px}
+.manage-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.06)}
+.manage-row:first-of-type{border-top:none}
+.manage-name{font-size:13px}
+.manage-confirm-btn{padding:6px 12px;border:none;border-radius:8px;background:#7ed957;color:#0e1a12;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.manage-confirmed-badge{font-size:12px;color:#7ed957;font-weight:700}
+.manage-empty{font-size:12px;color:#4a5a4d}
 .denied{text-align:center;padding:40px 10px}
 .denied .ic{font-size:40px;margin-bottom:12px}
 .hidden{display:none!important}
@@ -82,6 +90,12 @@ textarea{resize:vertical;min-height:70px}
 
 </div>
 
+<div class="card hidden" id="games-wrap" style="margin-top:16px">
+  <h1>📋 Записи на игры</h1>
+  <div class="sub">Подтверждай после получения оплаты</div>
+  <div id="games-manage-list"></div>
+</div>
+
 <script>
 let userId = new URLSearchParams(location.search).get("uid");
 
@@ -105,6 +119,8 @@ async function checkAccess() {
     document.getElementById("loading").classList.add("hidden");
     if (r.is_admin) {
       document.getElementById("form-wrap").classList.remove("hidden");
+      document.getElementById("games-wrap").classList.remove("hidden");
+      loadManageGames();
     } else {
       document.getElementById("denied").classList.remove("hidden");
     }
@@ -112,6 +128,49 @@ async function checkAccess() {
     document.getElementById("loading").classList.add("hidden");
     document.getElementById("denied").classList.remove("hidden");
   }
+}
+
+async function loadManageGames() {
+  try {
+    const r = await fetch(`/api/admin/games?user_id=${userId}`).then(r => r.json());
+    renderManageGames(r.games || []);
+  } catch (e) {}
+}
+
+function renderManageGames(games) {
+  const active = games.filter(g => g.status === "active");
+  const el = document.getElementById("games-manage-list");
+  if (active.length === 0) {
+    el.innerHTML = `<div class="manage-empty">Активных игр нет</div>`;
+    return;
+  }
+  el.innerHTML = active.map(g => {
+    const signups = g.signups || [];
+    const rows = signups.length
+      ? signups.map(s => {
+          const label = s.player ? ` (${s.player})` : "";
+          if (s.status === "confirmed") {
+            return `<div class="manage-row"><span class="manage-name">${s.name}${label}</span><span class="manage-confirmed-badge">✅ Подтверждён</span></div>`;
+          }
+          return `<div class="manage-row"><span class="manage-name">${s.name}${label}</span>
+            <button class="manage-confirm-btn" onclick="confirmPlayer(${g.id}, '${s.user_id}')">Подтвердить</button></div>`;
+        }).join("")
+      : `<div class="manage-empty">Записей ещё нет</div>`;
+    return `<div class="manage-game">
+      <div class="manage-title">📅 ${g.date} · 🕐 ${g.time} — ${g.location}</div>
+      ${rows}
+    </div>`;
+  }).join("");
+}
+
+async function confirmPlayer(gameId, playerUserId) {
+  try {
+    const res = await fetch("/api/admin/confirm-signup", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, game_id: gameId, player_user_id: playerUserId })
+    }).then(r => r.json());
+    if (res.ok) loadManageGames();
+  } catch (e) {}
 }
 
 async function createGame() {
@@ -148,6 +207,7 @@ async function createGame() {
       ["f-date","f-time","f-location","f-num-players","f-num-teams","f-players-per-team","f-price","f-extra"]
         .forEach(id => document.getElementById(id).value = "");
       setTimeout(() => saved.classList.remove("show"), 2500);
+      loadManageGames();
     }
   } catch (e) {
     showError("Ошибка сети — попробуй ещё раз.");
