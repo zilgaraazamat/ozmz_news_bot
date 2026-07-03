@@ -28,6 +28,7 @@ input:focus{outline:none;border-color:#7ed957}
 .saved.show{opacity:1}
 .no-role{text-align:center;font-size:13px;color:#6b7c6e;padding:12px;background:rgba(255,255,255,.03);border-radius:10px;margin-bottom:18px}
 .error-banner{background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.35);color:#ff8080;font-size:12px;padding:10px 12px;border-radius:10px;margin-bottom:16px;line-height:1.4}
+.debug{background:#000;border:1px solid rgba(126,217,87,.3);border-radius:10px;padding:10px 12px;margin-top:16px;font-family:monospace;font-size:10px;color:#7ed957;word-break:break-all;white-space:pre-wrap;max-height:220px;overflow-y:auto}
 </style>
 </head>
 <body>
@@ -45,6 +46,8 @@ input:focus{outline:none;border-color:#7ed957}
 
   <button class="btn" id="save-btn" onclick="saveNick()">Сохранить</button>
   <div class="saved" id="saved-msg">✅ Сохранено</div>
+
+  <div class="debug" id="debug-block">Загрузка диагностики...</div>
 </div>
 
 <script>
@@ -66,6 +69,22 @@ function showError(msg) {
   document.getElementById("error-banner").innerHTML =
     `<div class="error-banner">⚠️ ${msg}</div>`;
 }
+
+function renderDebug() {
+  const tw = window.Telegram && window.Telegram.WebApp;
+  const info = {
+    "Telegram.WebApp есть": !!tw,
+    "WebApp.version": tw ? tw.version : "—",
+    "WebApp.platform": tw ? tw.platform : "—",
+    "initData (сырое, длина)": tw ? (tw.initData || "").length : "—",
+    "initDataUnsafe.user": tw ? JSON.stringify(tw.initDataUnsafe && tw.initDataUnsafe.user) : "—",
+    "location.href": window.location.href,
+    "location.hash (длина)": window.location.hash.length,
+  };
+  document.getElementById("debug-block").textContent =
+    Object.entries(info).map(([k, v]) => `${k}: ${v}`).join("\n");
+}
+renderDebug();
 
 async function loadProfile() {
   if (!userId) {

@@ -163,6 +163,8 @@ class Handler(BaseHTTPRequestHandler):
                 data = f.read()
             self.send_response(200)
             self.send_header("Content-Type", content_type)
+            if content_type.startswith("text/html"):
+                self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
             self.end_headers()
             self.wfile.write(data)
         except FileNotFoundError:
