@@ -54,6 +54,10 @@ let userId = new URLSearchParams(location.search).get("uid");
 if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
+  if (!userId) {
+    const tgUser = Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+    if (tgUser && tgUser.id) userId = String(tgUser.id);
+  }
   Telegram.WebApp.BackButton.show();
   Telegram.WebApp.BackButton.onClick(() => { location.href = "/app" + (userId ? ("?uid=" + userId) : ""); });
 }

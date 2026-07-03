@@ -135,8 +135,17 @@ def _setup_menu_button(user_id=None):
         print(f"  [WARN] menu button setup: {e}")
 
 
+_menu_refreshed = set()  # user_id, кому уже обновили персональную Menu Button в этом запуске
+
+
 def _handle(user_id, name, text):
     tl = text.lower()
+
+    # подстраховка: если у пользователя ещё не было свежей персональной ссылки
+    # в этом запуске бота — обновляем её один раз, без спама запросов на каждое сообщение
+    if user_id not in _menu_refreshed and has_phone(user_id):
+        _setup_menu_button(user_id)
+        _menu_refreshed.add(user_id)
 
     # /start
     if text in ("/start", "/help", "помощь", "help"):

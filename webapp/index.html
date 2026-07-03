@@ -134,12 +134,19 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 </div>
 
 <script>
+function getUid() {
+  const fromUrl = new URLSearchParams(location.search).get("uid");
+  if (fromUrl) return fromUrl;
+  const tw = window.Telegram && window.Telegram.WebApp;
+  const tgUser = tw && tw.initDataUnsafe && tw.initDataUnsafe.user;
+  return (tgUser && tgUser.id) ? String(tgUser.id) : null;
+}
 if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
   Telegram.WebApp.BackButton.show();
   Telegram.WebApp.BackButton.onClick(() => {
-    const uid = new URLSearchParams(location.search).get("uid");
+    const uid = getUid();
     location.href = "/app" + (uid ? ("?uid=" + uid) : "");
   });
 }
@@ -308,7 +315,7 @@ function showRes(){
 
   // Отправляем результат на сервер для панели админа + записи роли
   try {
-    const uid = new URLSearchParams(location.search).get("uid");
+    const uid = getUid();
     fetch('/api/quiz-result', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
