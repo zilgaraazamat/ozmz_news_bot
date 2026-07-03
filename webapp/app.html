@@ -45,6 +45,7 @@ input:focus{outline:none;border-color:#7ed957}
 .saved.show{opacity:1}
 .no-role{text-align:center;font-size:13px;color:#6b7c6e;padding:12px;background:rgba(255,255,255,.03);border-radius:10px;margin-bottom:18px}
 .error-banner{background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.35);color:#ff8080;font-size:12px;padding:10px 12px;border-radius:10px;margin-bottom:16px;line-height:1.4}
+.debug{background:#000;border:1px solid rgba(126,217,87,.3);border-radius:10px;padding:10px 12px;margin-top:16px;font-family:monospace;font-size:10px;color:#7ed957;word-break:break-all;white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -86,6 +87,7 @@ input:focus{outline:none;border-color:#7ed957}
     </div>
 
     <div class="footer">@football_igraem_astana</div>
+    <div class="debug" id="debug-block">Загрузка диагностики...</div>
   </div>
 
   <!-- ЭКРАН: профиль (та же страница, без перехода) -->
@@ -119,6 +121,21 @@ if (window.Telegram && Telegram.WebApp) {
   const tgUser = tw.initDataUnsafe && tw.initDataUnsafe.user;
   if (tgUser) userId = String(tgUser.id);
 }
+
+(function renderDebug() {
+  const tw = window.Telegram && window.Telegram.WebApp;
+  const info = {
+    "userId (итог)": userId || "null",
+    "Telegram.WebApp есть": !!tw,
+    "WebApp.version": tw ? tw.version : "—",
+    "WebApp.platform": tw ? tw.platform : "—",
+    "initData (длина)": tw ? (tw.initData || "").length : "—",
+    "initDataUnsafe.user": tw ? JSON.stringify(tw.initDataUnsafe && tw.initDataUnsafe.user) : "—",
+    "location.href": window.location.href,
+  };
+  const el = document.getElementById("debug-block");
+  if (el) el.textContent = Object.entries(info).map(([k, v]) => `${k}: ${v}`).join("\n");
+})();
 
 function go(path) {
   location.href = path + (userId ? ("?uid=" + userId) : "");
