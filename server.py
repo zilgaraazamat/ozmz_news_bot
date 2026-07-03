@@ -25,10 +25,12 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
+        from urllib.parse import urlparse
+        path = urlparse(self.path).path
         length = int(self.headers.get("Content-Length", 0))
         body   = self.rfile.read(length)
 
-        if self.path == "/api/quiz-result":
+        if path == "/api/quiz-result":
             try:
                 data = json.loads(body)
                 add_quiz_history(
@@ -43,7 +45,7 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"  [WARN] quiz-result: {e}")
                 self.send_response(400); self.end_headers()
 
-        elif self.path == "/api/predict-result":
+        elif path == "/api/predict-result":
             # POST {"score": "2:1"} → объявить итоги конкурса
             try:
                 data  = json.loads(body)
@@ -56,7 +58,7 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 self.send_response(400); self.end_headers()
 
-        elif self.path == "/api/battle/create":
+        elif path == "/api/battle/create":
             try:
                 data = json.loads(body)
                 name = (data.get("name") or "Игрок")[:20]
@@ -66,7 +68,7 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"  [WARN] battle/create: {e}")
                 self.send_response(400); self.end_headers()
 
-        elif self.path == "/api/battle/join":
+        elif path == "/api/battle/join":
             try:
                 data = json.loads(body)
                 code = (data.get("code") or "")[:8]
@@ -80,7 +82,7 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"  [WARN] battle/join: {e}")
                 self.send_response(400); self.end_headers()
 
-        elif self.path == "/api/battle/answer":
+        elif path == "/api/battle/answer":
             try:
                 data      = json.loads(body)
                 code      = data.get("code", "")
@@ -92,7 +94,7 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"  [WARN] battle/answer: {e}")
                 self.send_response(400); self.end_headers()
 
-        elif self.path == "/api/profile":
+        elif path == "/api/profile":
             try:
                 data     = json.loads(body)
                 user_id  = str(data.get("user_id", ""))
@@ -110,27 +112,28 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(404); self.end_headers()
 
     def do_GET(self):
-        if self.path == "/app":
+        from urllib.parse import urlparse, parse_qs
+        parsed = urlparse(self.path)
+        path = parsed.path
+        q = parse_qs(parsed.query)
+
+        if path == "/app":
             self._file("webapp/app.html", "text/html; charset=utf-8")
-        elif self.path == "/quiz":
+        elif path == "/quiz":
             self._file("webapp/index.html", "text/html; charset=utf-8")
-        elif self.path == "/battle":
+        elif path == "/battle":
             self._file("webapp/battle.html", "text/html; charset=utf-8")
-        elif self.path == "/logo.jpg":
+        elif path == "/logo.jpg":
             self._file("webapp/logo.jpg", "image/jpeg")
-        elif self.path == "/api/stats":
+        elif path == "/api/stats":
             stats = predict_stats()
             self._json(stats)
-        elif self.path.startswith("/api/battle/state"):
-            from urllib.parse import urlparse, parse_qs
-            q = parse_qs(urlparse(self.path).query)
+        elif path == "/api/battle/state":
             code = (q.get("code") or [""])[0]
             player_id = (q.get("player_id") or [""])[0]
             state = get_state(code, player_id)
             self._json(state if state else {"error": "not_found"})
-        elif self.path.startswith("/api/profile"):
-            from urllib.parse import urlparse, parse_qs
-            q = parse_qs(urlparse(self.path).query)
+        elif path == "/api/profile":
             user_id = (q.get("user_id") or [""])[0]
             profile = get_profile(user_id)
             role = get_role(user_id)
@@ -139,7 +142,7 @@ class Handler(BaseHTTPRequestHandler):
                 "nickname": profile["nickname"] if profile else None,
                 "role": role,
             })
-        elif self.path == "/":
+        elif path == "/":
             self._admin_html()
         else:
             self.send_response(404); self.end_headers()
