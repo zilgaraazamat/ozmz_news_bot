@@ -12,7 +12,16 @@ from storage import (
     signup_for_game, get_signups, get_my_signup, confirm_signup,
 )
 from predict import get_stats as predict_stats, announce_result
-from battle import create_battle, join_battle, get_state, submit_answer
+from battle import create_battle, join_battle, get_state, submit_answer, list_open_battles
+
+
+def _display_name(user_id):
+    profile = get_profile(user_id)
+    if profile and profile.get("nickname"):
+        return profile["nickname"]
+    if profile and profile.get("name"):
+        return profile["name"]
+    return "Игрок"
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -67,9 +76,14 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/battle/create":
             try:
                 data = json.loads(body)
-                name = (data.get("name") or "Игрок")[:20]
-                code, player_id = create_battle(name)
-                self._json({"code": code, "player_id": player_id})
+                user_id = str(data.get("user_id", ""))
+                title = (data.get("title") or "").strip()
+                if not user_id:
+                    self._json({"error": "no_uid"})
+                    return
+                name = _display_name(user_id)
+                battle_id = create_battle(title, user_id, name)
+                self._json({"battle_id": battle_id})
             except Exception as e:
                 print(f"  [WARN] battle/create: {e}")
                 self.send_response(400); self.end_headers()
@@ -77,13 +91,14 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/battle/join":
             try:
                 data = json.loads(body)
-                code = (data.get("code") or "")[:8]
-                name = (data.get("name") or "Игрок")[:20]
-                player_id, error = join_battle(code, name)
-                if error:
-                    self._json({"error": error})
-                else:
-                    self._json({"player_id": player_id})
+                user_id = str(data.get("user_id", ""))
+                battle_id = str(data.get("battle_id", ""))
+                if not user_id or not battle_id:
+                    self._json({"error": "bad_request"})
+                    return
+                name = _display_name(user_id)
+                error = join_battle(battle_id, user_id, name)
+                self._json({"error": error} if error else {"ok": True})
             except Exception as e:
                 print(f"  [WARN] battle/join: {e}")
                 self.send_response(400); self.end_headers()
@@ -91,10 +106,10 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/battle/answer":
             try:
                 data      = json.loads(body)
-                code      = data.get("code", "")
-                player_id = data.get("player_id", "")
+                battle_id = str(data.get("battle_id", ""))
+                user_id   = str(data.get("user_id", ""))
                 answer    = data.get("answer", "")
-                result = submit_answer(code, player_id, answer)
+                result = submit_answer(battle_id, user_id, answer)
                 self._json(result if result else {"error": "invalid"})
             except Exception as e:
                 print(f"  [WARN] battle/answer: {e}")
@@ -237,10 +252,12 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/stats":
             stats = predict_stats()
             self._json(stats)
+        elif path == "/api/battle/list":
+            self._json({"battles": list_open_battles()})
         elif path == "/api/battle/state":
-            code = (q.get("code") or [""])[0]
-            player_id = (q.get("player_id") or [""])[0]
-            state = get_state(code, player_id)
+            battle_id = (q.get("battle_id") or [""])[0]
+            user_id = (q.get("user_id") or [""])[0]
+            state = get_state(battle_id, user_id)
             self._json(state if state else {"error": "not_found"})
         elif path == "/api/profile":
             user_id = (q.get("user_id") or [""])[0]

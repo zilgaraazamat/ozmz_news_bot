@@ -1,6 +1,3 @@
-import random
-import string
-import secrets
 import threading
 import time
 
@@ -28,78 +25,100 @@ FOOTBALL_TRIVIA = [
 ]
 
 _lock = threading.Lock()
-_battles = {}  # code -> state dict
-_TTL = 3600    # автоочистка старых комнат, сек
+_battles = {}   # battle_id -> state dict
+_next_id = [0]
+_TTL = 3600     # автоочистка старых баттлов, сек
 
 
-def _gen_code():
-    code = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
-    while code in _battles:
-        code = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
-    return code
+def _gen_id():
+    _next_id[0] += 1
+    return str(_next_id[0])
 
 
 def _cleanup():
     now = time.time()
-    dead = [c for c, b in _battles.items() if now - b["created"] > _TTL]
-    for c in dead:
-        del _battles[c]
+    dead = [bid for bid, b in _battles.items() if now - b["created"] > _TTL]
+    for bid in dead:
+        del _battles[bid]
 
 
-def create_battle(name):
+def create_battle(title, creator_id, creator_name):
+    """Создаёт открытый баттл, ждущий соперника. Возвращает battle_id."""
+    creator_id = str(creator_id)
     with _lock:
         _cleanup()
-        code = _gen_code()
-        player_id = secrets.token_hex(4)
-        _battles[code] = {
-            "players": {player_id: {"name": name, "score": 0}},
-            "order": [player_id],
+        battle_id = _gen_id()
+        _battles[battle_id] = {
+            "title": (title or "Футбольный баттл")[:40],
+            "players": {creator_id: {"name": creator_name, "score": 0}},
+            "order": [creator_id],
             "step": -1,
             "answered": {},
             "created": time.time(),
+            "status": "waiting",  # waiting -> active -> finished
         }
-    return code, player_id
+    return battle_id
 
 
-def join_battle(code, name):
-    code = code.upper().strip()
+def list_open_battles():
+    """Список открытых баттлов, ждущих соперника — видно всем."""
     with _lock:
-        b = _battles.get(code)
+        _cleanup()
+        return [
+            {
+                "id": bid,
+                "title": b["title"],
+                "creator_name": b["players"][b["order"][0]]["name"],
+            }
+            for bid, b in _battles.items() if b["status"] == "waiting"
+        ]
+
+
+def join_battle(battle_id, user_id, user_name):
+    """Первый, кто зайдёт — сразу стартует баттл. Возвращает None (ок) или строку ошибки."""
+    user_id = str(user_id)
+    with _lock:
+        b = _battles.get(battle_id)
         if not b:
-            return None, "not_found"
-        if len(b["players"]) >= 2:
-            return None, "full"
-        player_id = secrets.token_hex(4)
-        b["players"][player_id] = {"name": name, "score": 0}
-        b["order"].append(player_id)
+            return "not_found"
+        if user_id in b["players"]:
+            return None  # уже в баттле — просто продолжаем
+        if b["status"] != "waiting":
+            return "full"
+
+        b["players"][user_id] = {"name": user_name, "score": 0}
+        b["order"].append(user_id)
         b["step"] = 0
         b["answered"] = {}
-    return player_id, None
+        b["status"] = "active"
+    return None
 
 
-def get_state(code, player_id):
+def get_state(battle_id, user_id):
+    user_id = str(user_id)
     with _lock:
-        b = _battles.get(code)
-        if not b or player_id not in b["players"]:
+        b = _battles.get(battle_id)
+        if not b or user_id not in b["players"]:
             return None
 
-        if len(b["players"]) < 2:
-            return {"waiting": True, "opponent_name": None, "finished": False}
+        if b["status"] == "waiting":
+            return {"waiting": True, "title": b["title"], "finished": False}
 
-        opp_id = next((p for p in b["order"] if p != player_id), None)
+        opp_id = next((p for p in b["order"] if p != user_id), None)
         opponent = b["players"].get(opp_id)
         total = len(FOOTBALL_TRIVIA)
         finished = b["step"] >= total
 
         state = {
             "waiting": False,
+            "title": b["title"],
             "opponent_name": opponent["name"] if opponent else None,
             "step": min(b["step"], total),
             "total": total,
             "finished": finished,
-            "you_answered": player_id in b["answered"],
+            "you_answered": user_id in b["answered"],
             "scores": [
-                {"name": b["players"][pid]["name"], "score": b["players"][pid]["score"], "is_me": pid == player_id}
+                {"name": b["players"][pid]["name"], "score": b["players"][pid]["score"], "is_me": pid == user_id}
                 for pid in b["order"]
             ],
         }
@@ -114,22 +133,23 @@ def get_state(code, player_id):
         return state
 
 
-def submit_answer(code, player_id, answer_text):
+def submit_answer(battle_id, user_id, answer_text):
+    user_id = str(user_id)
     with _lock:
-        b = _battles.get(code)
-        if not b or player_id not in b["players"]:
+        b = _battles.get(battle_id)
+        if not b or user_id not in b["players"] or b["status"] != "active":
             return None
         total = len(FOOTBALL_TRIVIA)
-        if b["step"] >= total or player_id in b["answered"]:
+        if b["step"] >= total or user_id in b["answered"]:
             return None
         q, opts, correct_idx = FOOTBALL_TRIVIA[b["step"]]
         if answer_text not in opts:
             return None
 
         is_correct = opts.index(answer_text) == correct_idx
-        b["answered"][player_id] = is_correct
+        b["answered"][user_id] = is_correct
         if is_correct:
-            b["players"][player_id]["score"] += 1
+            b["players"][user_id]["score"] += 1
 
         if len(b["answered"]) >= len(b["players"]):
             b["step"] += 1
