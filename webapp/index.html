@@ -138,7 +138,7 @@ if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
   Telegram.WebApp.BackButton.show();
-  Telegram.WebApp.BackButton.onClick(() => { location.href = "/app"; });
+  Telegram.WebApp.BackButton.onClick(() => { location.href = "/app" + location.hash; });
 }
 const QS=[
   {q:"Как ты ведёшь себя на поле?",o:["Я лидер, всё через меня","Пашу в обороне — надёжность прежде всего","Творю магию в атаке","Дирижирую из центра"]},

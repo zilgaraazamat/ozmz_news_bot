@@ -68,7 +68,7 @@ if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.BackButton.hide();
 }
 function go(path) {
-  location.href = path;
+  location.href = path + location.hash;
 }
 </script>
 </body>
