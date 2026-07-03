@@ -56,6 +56,21 @@ def init_db():
         except sqlite3.OperationalError:
             pass  # колонка уже есть — база создана до этого обновления
 
+        c.execute("""CREATE TABLE IF NOT EXISTS games(
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            game_date        TEXT,
+            game_time        TEXT,
+            location         TEXT,
+            num_players      INTEGER,
+            num_teams        INTEGER,
+            players_per_team INTEGER,
+            price            TEXT,
+            extra_info       TEXT,
+            created_by       TEXT,
+            created_at       TEXT,
+            status           TEXT DEFAULT 'active'
+        )""")
+
 
 def get_role(user_id):
     user_id = str(user_id)
@@ -243,3 +258,27 @@ def get_all_roles():
             "SELECT user_id, name, player, category, updated_at FROM user_roles ORDER BY updated_at DESC"
         ).fetchall()
     return [{"user_id": r[0], "name": r[1], "player": r[2], "category": r[3], "updated_at": r[4]} for r in rows]
+
+
+# ── Игры ──────────────────────────────────────────────────────────────────────
+
+def create_game(game_date, game_time, location, num_players, num_teams,
+                 players_per_team, price, extra_info, created_by):
+    with _lock, _conn() as c:
+        cur = c.execute("""INSERT INTO games(
+                game_date, game_time, location, num_players, num_teams,
+                players_per_team, price, extra_info, created_by, created_at, status
+            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'active')""",
+            (game_date, game_time, location, num_players, num_teams,
+             players_per_team, price, extra_info, str(created_by)))
+        return cur.lastrowid
+
+
+def get_all_games():
+    with _lock, _conn() as c:
+        rows = c.execute("""SELECT id, game_date, game_time, location, num_players, num_teams,
+                                    players_per_team, price, extra_info, created_by, created_at, status
+                             FROM games ORDER BY id DESC""").fetchall()
+    keys = ["id", "date", "time", "location", "num_players", "num_teams",
+            "players_per_team", "price", "extra_info", "created_by", "created_at", "status"]
+    return [dict(zip(keys, r)) for r in rows]

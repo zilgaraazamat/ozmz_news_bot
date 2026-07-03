@@ -2,7 +2,7 @@ import time
 import schedule
 import requests
 
-from config import BOT_TOKEN, RAILWAY_DOMAIN, PORT
+from config import BOT_TOKEN, RAILWAY_DOMAIN, PORT, ADMIN_IDS
 from api import now_astana, send_msg, tg_post
 from posts import job_morning, job_news, job_fact
 from quiz import quiz_sessions, handle_quiz_answer
@@ -101,6 +101,10 @@ def _open_app(user_id):
             "Жми на кнопку — внутри тест «Кто ты из футболистов» и батл с другом 👇"
         )
     keyboard = [[{"text": "🟢 Открыть OZMZ", "web_app": {"url": _app_url(user_id)}}]]
+    if user_id in ADMIN_IDS:
+        admin_url = (f"https://{RAILWAY_DOMAIN}/admin?uid={user_id}" if RAILWAY_DOMAIN
+                     else f"http://localhost:{PORT}/admin?uid={user_id}")
+        keyboard.append([{"text": "⚙️ Создать игру (админ)", "web_app": {"url": admin_url}}])
     try:
         tg_post(user_id, "sendMessage", **{
             "text": greeting,

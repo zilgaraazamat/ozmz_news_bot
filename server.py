@@ -4,10 +4,11 @@ import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from api import now_astana, tg_post
-from config import PORT, PLAYER_CATEGORIES
+from config import PORT, PLAYER_CATEGORIES, ADMIN_IDS, CHAT_ID
 from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
     get_profile, set_nickname, get_role, set_role,
+    create_game, get_all_games,
 )
 from predict import get_stats as predict_stats, announce_result
 from battle import create_battle, join_battle, get_state, submit_answer
@@ -112,6 +113,50 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"  [WARN] profile: {e}")
                 self.send_response(400); self.end_headers()
 
+        elif path == "/api/admin/create-game":
+            try:
+                data = json.loads(body)
+                user_id = str(data.get("user_id", ""))
+                if user_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Нет прав администратора"})
+                    return
+
+                game_date = (data.get("date") or "").strip()
+                game_time = (data.get("time") or "").strip()
+                location  = (data.get("location") or "").strip()
+                if not game_date or not game_time or not location:
+                    self._json({"ok": False, "error": "Заполни дату, время и место"})
+                    return
+
+                num_players      = data.get("num_players") or None
+                num_teams        = data.get("num_teams") or None
+                players_per_team = data.get("players_per_team") or None
+                price            = (data.get("price") or "").strip()
+                extra_info       = (data.get("extra_info") or "").strip()
+
+                create_game(game_date, game_time, location, num_players, num_teams,
+                            players_per_team, price, extra_info, user_id)
+
+                lines = [
+                    "⚽ <b>НОВАЯ ИГРА!</b>",
+                    "",
+                    f"📅 {game_date} | 🕐 {game_time}",
+                    f"📍 {location}",
+                ]
+                if num_players:
+                    lines.append(f"👥 Игроков: {num_players}" + (f" ({num_teams} команды по {players_per_team})" if num_teams and players_per_team else ""))
+                if price:
+                    lines.append(f"💰 {price}")
+                if extra_info:
+                    lines.append(f"\nℹ️ {extra_info}")
+                lines.append("\n👉 Приходи и играй с нами! @football_igraem_astana")
+
+                tg_post(CHAT_ID, "sendMessage", text="\n".join(lines), parse_mode="HTML")
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] create-game: {e}")
+                self.send_response(400); self.end_headers()
+
         else:
             self.send_response(404); self.end_headers()
 
@@ -127,6 +172,11 @@ class Handler(BaseHTTPRequestHandler):
             self._file("webapp/index.html", "text/html; charset=utf-8")
         elif path == "/battle":
             self._file("webapp/battle.html", "text/html; charset=utf-8")
+        elif path == "/admin":
+            self._file("webapp/admin.html", "text/html; charset=utf-8")
+        elif path == "/api/is-admin":
+            user_id = (q.get("user_id") or [""])[0]
+            self._json({"is_admin": user_id in ADMIN_IDS})
         elif path == "/logo.jpg":
             self._file("webapp/logo.jpg", "image/jpeg")
         elif path == "/api/stats":

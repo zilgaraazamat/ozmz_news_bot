@@ -8,6 +8,9 @@ FOOTBALL_KEY  = os.environ.get("FOOTBALL_API_KEY", "")
 PORT          = int(os.environ.get("PORT", 8080))
 RAILWAY_DOMAIN = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
 
+# Список Telegram ID через запятую, например: ADMIN_IDS=123456789,987654321
+ADMIN_IDS = {x.strip() for x in os.environ.get("ADMIN_IDS", "").split(",") if x.strip()}
+
 ASTANA_TZ = timezone(timedelta(hours=5))
 
 RSS_FEEDS = [
