@@ -9,10 +9,10 @@ from config import (
     BOT_TOKEN, ANTHROPIC_KEY, FOOTBALL_KEY,
     ASTANA_TZ, RSS_FEEDS, PHOTOS, BAD_PHRASES
 )
+from storage import is_news_sent, mark_news_sent
 
 # ── State ─────────────────────────────────────────────────────────────────────
 _used_photos = []
-_sent_hashes = set()
 
 # ── Time ──────────────────────────────────────────────────────────────────────
 
@@ -79,11 +79,11 @@ def fetch_all_news():
 
 def get_new(articles):
     return [a for a in articles
-            if hashlib.md5(a["title"].encode()).hexdigest() not in _sent_hashes]
+            if not is_news_sent(hashlib.md5(a["title"].encode()).hexdigest())]
 
 def mark_sent(articles):
-    for a in articles:
-        _sent_hashes.add(hashlib.md5(a["title"].encode()).hexdigest())
+    hashes = [hashlib.md5(a["title"].encode()).hexdigest() for a in articles]
+    mark_news_sent(hashes)
 
 # ── Matches ───────────────────────────────────────────────────────────────────
 

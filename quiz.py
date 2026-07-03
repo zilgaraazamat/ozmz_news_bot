@@ -1,11 +1,10 @@
 import random
 from api import claude, now_astana, send_msg, send_photo_msg, tg_post, from_config, pick_photo
 from config import QUIZ_QUESTIONS, FOOTBALLERS, PLAYER_PHOTOS, PLAYER_CATEGORIES
-from storage import set_role
+from storage import set_role, add_quiz_history
 
 quiz_used_today = ""
-quiz_sessions   = {}   # {user_id: {answers, step, name}}
-quiz_history    = []   # [{name, player, date, user_id}]
+quiz_sessions   = {}   # {user_id: {answers, step, name}} — короткоживущий процесс, БД не нужна
 
 
 def quiz_result_text(answers):
@@ -65,12 +64,8 @@ def handle_quiz_answer(user_id, text):
         category    = PLAYER_CATEGORIES.get(player_name, "Центр")
         set_role(user_id, name, player_name or "Неизвестно", category)
 
-        quiz_history.append({
-            "name":    name,
-            "player":  player_name or "Неизвестно",
-            "date":    now_astana().strftime("%d.%m.%Y %H:%M"),
-            "user_id": user_id,
-        })
+        add_quiz_history(name, player_name or "Неизвестно",
+                         now_astana().strftime("%d.%m.%Y %H:%M"), user_id)
 
         # личка
         send_photo_msg(user_id,

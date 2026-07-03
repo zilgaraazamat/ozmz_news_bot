@@ -5,7 +5,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from api import now_astana, tg_post
 from config import PORT
-from quiz import quiz_history
+from storage import get_quiz_history, add_quiz_history
 from predict import get_stats as predict_stats, announce_result
 from battle import create_battle, join_battle, get_state, submit_answer
 
@@ -28,12 +28,12 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/quiz-result":
             try:
                 data = json.loads(body)
-                quiz_history.append({
-                    "name":    data.get("name", "Аноним"),
-                    "player":  data.get("player", "Неизвестно"),
-                    "date":    now_astana().strftime("%d.%m.%Y %H:%M"),
-                    "user_id": "web",
-                })
+                add_quiz_history(
+                    data.get("name", "Аноним"),
+                    data.get("player", "Неизвестно"),
+                    now_astana().strftime("%d.%m.%Y %H:%M"),
+                    "web",
+                )
                 print(f"  [WEB QUIZ] {data.get('name')} → {data.get('player')}")
                 self._json({"ok": True})
             except Exception as e:
@@ -139,6 +139,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(404); self.end_headers()
 
     def _admin_html(self):
+        quiz_history = get_quiz_history()
         total   = len(quiz_history)
         players = {}
         for h in quiz_history:

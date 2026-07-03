@@ -6,7 +6,7 @@ from config import BOT_TOKEN, RAILWAY_DOMAIN, PORT
 from api import now_astana, send_msg, tg_post
 from posts import job_morning, job_news, job_fact
 from quiz import quiz_sessions, handle_quiz_answer
-from predict import predict_state, handle_prediction
+from predict import handle_prediction
 from storage import init_db, get_role
 from teams import handle_teams_command
 import server
