@@ -306,12 +306,13 @@ function showRes(){
   document.getElementById('s-res').style.display='block';
   launchConfetti();
 
-  // Отправляем результат на сервер для панели админа
+  // Отправляем результат на сервер для панели админа + записи роли
   try {
+    const uid = new URLSearchParams(location.search).get("uid");
     fetch('/api/quiz-result', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({name: 'Игрок (веб)', player: p.n})
+      body: JSON.stringify({name: 'Игрок (веб)', player: p.n, user_id: uid})
     }).catch(()=>{});
   } catch(e){}
 }

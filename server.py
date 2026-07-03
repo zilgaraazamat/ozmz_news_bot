@@ -4,10 +4,10 @@ import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from api import now_astana, tg_post
-from config import PORT
+from config import PORT, PLAYER_CATEGORIES
 from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
-    get_profile, set_nickname, get_role,
+    get_profile, set_nickname, get_role, set_role,
 )
 from predict import get_stats as predict_stats, announce_result
 from battle import create_battle, join_battle, get_state, submit_answer
@@ -33,13 +33,17 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/quiz-result":
             try:
                 data = json.loads(body)
-                add_quiz_history(
-                    data.get("name", "Аноним"),
-                    data.get("player", "Неизвестно"),
-                    now_astana().strftime("%d.%m.%Y %H:%M"),
-                    "web",
-                )
-                print(f"  [WEB QUIZ] {data.get('name')} → {data.get('player')}")
+                name = data.get("name", "Аноним")
+                player = data.get("player", "Неизвестно")
+                user_id = data.get("user_id") or None
+
+                add_quiz_history(name, player, now_astana().strftime("%d.%m.%Y %H:%M"), user_id or "web")
+
+                if user_id:
+                    category = PLAYER_CATEGORIES.get(player, "Центр")
+                    set_role(user_id, name, player, category)
+
+                print(f"  [WEB QUIZ] {name} → {player} (uid={user_id})")
                 self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] quiz-result: {e}")
@@ -215,9 +219,11 @@ function announceResult(){{
         ) or '<tr><td colspan="4" class="empty">Тестов ещё не было 🎮</td></tr>'
 
         users_rows = "".join(
-            f"<tr><td>{i}</td><td>{u['name']}</td><td>{mask_phone(u['phone'])}</td><td>{u['joined_at']}</td></tr>"
+            f"<tr><td>{i}</td><td>{u['name'] or '—'}</td>"
+            f"<td>{('<span class=\"badge\">' + u['nickname'] + '</span>') if u.get('nickname') else '—'}</td>"
+            f"<td>{mask_phone(u['phone'])}</td><td>{u['joined_at']}</td></tr>"
             for i, u in enumerate(users, 1)
-        ) or '<tr><td colspan="4" class="empty">Пока никто не заходил 👀</td></tr>'
+        ) or '<tr><td colspan="5" class="empty">Пока никто не заходил 👀</td></tr>'
 
         roles_rows = "".join(
             f"<tr><td>{i}</td><td>{r['name']}</td>"
@@ -270,7 +276,7 @@ tr:hover td{{background:rgba(255,255,255,.03)}}
 <div class="section"><h2>📱 Пользователи (номера скрыты, кроме последних 4 цифр)</h2></div>
 <div class="table-wrap" style="margin-bottom:16px">
   <table>
-    <thead><tr><th>#</th><th>Имя</th><th>Телефон</th><th>Дата регистрации</th></tr></thead>
+    <thead><tr><th>#</th><th>Имя</th><th>Ник</th><th>Телефон</th><th>Дата регистрации</th></tr></thead>
     <tbody>{users_rows}</tbody>
   </table>
 </div>
