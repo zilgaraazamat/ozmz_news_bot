@@ -5,7 +5,10 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from api import now_astana, tg_post
 from config import PORT
-from storage import get_quiz_history, add_quiz_history
+from storage import (
+    get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
+    get_profile, set_nickname, get_role,
+)
 from predict import get_stats as predict_stats, announce_result
 from battle import create_battle, join_battle, get_state, submit_answer
 
@@ -89,6 +92,20 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"  [WARN] battle/answer: {e}")
                 self.send_response(400); self.end_headers()
 
+        elif self.path == "/api/profile":
+            try:
+                data     = json.loads(body)
+                user_id  = str(data.get("user_id", ""))
+                nickname = (data.get("nickname") or "").strip()[:24]
+                if not user_id or not nickname:
+                    self._json({"ok": False, "error": "bad_request"})
+                else:
+                    set_nickname(user_id, nickname)
+                    self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] profile: {e}")
+                self.send_response(400); self.end_headers()
+
         else:
             self.send_response(404); self.end_headers()
 
@@ -99,6 +116,8 @@ class Handler(BaseHTTPRequestHandler):
             self._file("webapp/index.html", "text/html; charset=utf-8")
         elif self.path == "/battle":
             self._file("webapp/battle.html", "text/html; charset=utf-8")
+        elif self.path == "/profile":
+            self._file("webapp/profile.html", "text/html; charset=utf-8")
         elif self.path == "/logo.jpg":
             self._file("webapp/logo.jpg", "image/jpeg")
         elif self.path == "/api/stats":
@@ -111,6 +130,17 @@ class Handler(BaseHTTPRequestHandler):
             player_id = (q.get("player_id") or [""])[0]
             state = get_state(code, player_id)
             self._json(state if state else {"error": "not_found"})
+        elif self.path.startswith("/api/profile"):
+            from urllib.parse import urlparse, parse_qs
+            q = parse_qs(urlparse(self.path).query)
+            user_id = (q.get("user_id") or [""])[0]
+            profile = get_profile(user_id)
+            role = get_role(user_id)
+            self._json({
+                "name": profile["name"] if profile else None,
+                "nickname": profile["nickname"] if profile else None,
+                "role": role,
+            })
         elif self.path == "/":
             self._admin_html()
         else:
@@ -146,6 +176,12 @@ class Handler(BaseHTTPRequestHandler):
             players[h["player"]] = players.get(h["player"], 0) + 1
         top_player = max(players, key=players.get) if players else "—"
 
+        users = get_all_users()
+        roles = get_all_roles()
+
+        def mask_phone(p):
+            return f"•••{p[-4:]}" if p and len(p) >= 4 else (p or "—")
+
         ps = predict_stats()
         predict_block = ""
         if ps["active"] and ps["match"]:
@@ -174,6 +210,18 @@ function announceResult(){{
             f"<td>{h['date']}</td></tr>"
             for i, h in enumerate(reversed(quiz_history), 1)
         ) or '<tr><td colspan="4" class="empty">Тестов ещё не было 🎮</td></tr>'
+
+        users_rows = "".join(
+            f"<tr><td>{i}</td><td>{u['name']}</td><td>{mask_phone(u['phone'])}</td><td>{u['joined_at']}</td></tr>"
+            for i, u in enumerate(users, 1)
+        ) or '<tr><td colspan="4" class="empty">Пока никто не заходил 👀</td></tr>'
+
+        roles_rows = "".join(
+            f"<tr><td>{i}</td><td>{r['name']}</td>"
+            f"<td><span class='badge'>{r['player']}</span></td>"
+            f"<td>{r['category']}</td></tr>"
+            for i, r in enumerate(roles, 1)
+        ) or '<tr><td colspan="4" class="empty">Ролей ещё нет 🎮</td></tr>'
 
         html = f"""<!DOCTYPE html>
 <html lang="ru">
@@ -209,12 +257,30 @@ tr:hover td{{background:rgba(255,255,255,.03)}}
   <h1>Панель Админа — OZMZ Football</h1>
 </div>
 <div class="stats">
+  <div class="stat"><div class="stat-num">{len(users)}</div><div class="stat-label">Пользователей</div></div>
   <div class="stat"><div class="stat-num">{total}</div><div class="stat-label">Тестов пройдено</div></div>
   <div class="stat"><div class="stat-num">{len(players)}</div><div class="stat-label">Разных футболистов</div></div>
-  <div class="stat"><div class="stat-num" style="font-size:16px">{top_player}</div><div class="stat-label">Самый популярный</div></div>
   <div class="stat"><div class="stat-num">{now_astana().strftime('%H:%M')}</div><div class="stat-label">Время (AST)</div></div>
 </div>
 {predict_block}
+
+<div class="section"><h2>📱 Пользователи (номера скрыты, кроме последних 4 цифр)</h2></div>
+<div class="table-wrap" style="margin-bottom:16px">
+  <table>
+    <thead><tr><th>#</th><th>Имя</th><th>Телефон</th><th>Дата регистрации</th></tr></thead>
+    <tbody>{users_rows}</tbody>
+  </table>
+</div>
+
+<div class="section"><h2>🏆 Роли игроков (для /teams)</h2></div>
+<div class="table-wrap" style="margin-bottom:16px">
+  <table>
+    <thead><tr><th>#</th><th>Имя</th><th>Футболист</th><th>Категория</th></tr></thead>
+    <tbody>{roles_rows}</tbody>
+  </table>
+</div>
+
+<div class="section"><h2>🎮 История квизов</h2></div>
 <div class="table-wrap">
   <table>
     <thead><tr><th>#</th><th>Игрок</th><th>Футболист</th><th>Дата и время</th></tr></thead>
