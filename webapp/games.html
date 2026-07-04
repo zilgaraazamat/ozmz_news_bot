@@ -29,6 +29,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .dot.confirmed{background:#7ed957}
 .dot.pending{background:#e0b84a}
 .roster-empty{font-size:12px;color:#4a5a4d}
+.guests-label{font-size:12px;color:#6b7c6e;display:block;margin-bottom:6px}
+.guests-input{width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:16px;margin-bottom:10px}
+.guests-input:focus{outline:none;border-color:#7ed957}
 .btn{width:100%;padding:13px;border:none;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;background:#7ed957;color:#0e1a12;transition:transform .15s}
 .btn:active{transform:scale(.97)}
 .btn[disabled]{opacity:.5;pointer-events:none}
@@ -73,8 +76,15 @@ function rosterHtml(signups) {
   return signups.map(s => {
     const cls = s.status === "confirmed" ? "confirmed" : "pending";
     const label = s.player ? ` (${s.player})` : "";
-    return `<div class="roster-row"><span class="dot ${cls}"></span><span>${s.name}${label}</span></div>`;
+    const guests = s.guests_count > 0 ? ` +${s.guests_count}` : "";
+    return `<div class="roster-row"><span class="dot ${cls}"></span><span>${s.name}${label}${guests}</span></div>`;
   }).join("");
+}
+
+function totalPeople(signups, statusFilter) {
+  return (signups || [])
+    .filter(s => !statusFilter || s.status === statusFilter)
+    .reduce((sum, s) => sum + 1 + (s.guests_count || 0), 0);
 }
 
 function renderGames(games) {
@@ -85,8 +95,8 @@ function renderGames(games) {
   }
 
   el.innerHTML = games.map(g => {
-    const confirmedCount = (g.signups || []).filter(s => s.status === "confirmed").length;
-    const totalCount = (g.signups || []).length;
+    const confirmedCount = totalPeople(g.signups, "confirmed");
+    const totalCount = totalPeople(g.signups, null);
 
     let actionHtml;
     if (g.my_status === "confirmed") {
@@ -94,7 +104,10 @@ function renderGames(games) {
     } else if (g.my_status === "pending") {
       actionHtml = `<div class="status-badge status-pending">⏳ Ожидает подтверждения оплаты</div>`;
     } else {
-      actionHtml = `<button class="btn" onclick="signup(${g.id})">Записаться</button>`;
+      actionHtml = `
+        <label class="guests-label">Сколько вас всего придёт (с тобой)?</label>
+        <input type="number" class="guests-input" id="guests-${g.id}" min="1" max="20" value="1">
+        <button class="btn" onclick="signup(${g.id})">Записаться</button>`;
     }
 
     return `
@@ -129,10 +142,14 @@ async function signup(gameId) {
     showError("Не удалось определить тебя. Открой игры заново через бота.");
     return;
   }
+  const guestsInput = document.getElementById(`guests-${gameId}`);
+  const totalPeopleCount = guestsInput ? parseInt(guestsInput.value, 10) || 1 : 1;
+  const guestsCount = Math.max(0, totalPeopleCount - 1);
+
   try {
     const res = await fetch("/api/games/signup", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, game_id: gameId })
+      body: JSON.stringify({ user_id: userId, game_id: gameId, guests_count: guestsCount })
     }).then(r => r.json());
     if (!res.ok) {
       showError(res.error || "Не удалось записаться.");

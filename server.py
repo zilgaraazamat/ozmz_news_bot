@@ -14,6 +14,7 @@ from storage import (
 )
 from predict import get_stats as predict_stats, announce_result
 from battle import create_battle, join_battle, get_state, submit_answer, list_open_battles
+from teams import assign_game_teams
 
 
 def _display_name(user_id):
@@ -179,8 +180,12 @@ class Handler(BaseHTTPRequestHandler):
                 data = json.loads(body)
                 user_id = str(data.get("user_id", ""))
                 game_id = data.get("game_id")
+                guests_count = int(data.get("guests_count") or 0)
                 if not user_id or not game_id:
                     self._json({"ok": False, "error": "bad_request"})
+                    return
+                if guests_count < 0 or guests_count > 20:
+                    self._json({"ok": False, "error": "Некорректное число людей"})
                     return
 
                 profile = get_profile(user_id)
@@ -189,7 +194,7 @@ class Handler(BaseHTTPRequestHandler):
                         else (profile["name"] if profile else None)) or "Игрок"
                 player = role["player"] if role else None
 
-                signup_for_game(game_id, user_id, name, player)
+                signup_for_game(game_id, user_id, name, player, guests_count)
                 self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] games/signup: {e}")
@@ -253,6 +258,19 @@ class Handler(BaseHTTPRequestHandler):
                         s["phone"] = profile["phone"] if profile else None
                     g["signups"] = signups
                 self._json({"games": games})
+        elif path == "/api/admin/assign-teams":
+            user_id = (q.get("user_id") or [""])[0]
+            game_id = (q.get("game_id") or [""])[0]
+            if user_id not in ADMIN_IDS:
+                self._json({"error": "forbidden"})
+            else:
+                game = get_game(game_id)
+                if not game:
+                    self._json({"error": "not_found"})
+                else:
+                    signups = get_signups(game_id)
+                    teams = assign_game_teams(game, signups)
+                    self._json({"teams": teams})
         elif path == "/logo.jpg":
             self._file("webapp/logo.jpg", "image/jpeg")
         elif path == "/api/stats":

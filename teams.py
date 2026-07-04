@@ -35,6 +35,28 @@ def split_teams(player_ids):
     return team_a, team_b
 
 
+def assign_game_teams(game, signups):
+    """confirmed signups (с учётом гостей) -> список команд.
+    Заполняем команду до players_per_team, излишек перетекает в следующую."""
+    num_teams = game.get("num_teams") or 2
+    per_team = game.get("players_per_team") or 10 ** 6
+    teams = [[] for _ in range(num_teams)]
+
+    confirmed = [s for s in signups if s["status"] == "confirmed"]
+    current = 0
+    for s in confirmed:
+        total_people = 1 + (s.get("guests_count") or 0)
+        for i in range(total_people):
+            while len(teams[current]) >= per_team and current < num_teams - 1:
+                current += 1
+            teams[current].append({
+                "name": s["name"] if i == 0 else f"{s['name']} (гость {i})",
+                "player": s["player"] if i == 0 else None,
+                "is_guest": i > 0,
+            })
+    return teams
+
+
 def handle_teams_command(user_id, text):
     """Формат: /teams id1 id2 id3 ..."""
     ids = [p for p in text.split()[1:] if p.isdigit()]

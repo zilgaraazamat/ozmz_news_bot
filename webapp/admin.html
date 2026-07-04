@@ -31,6 +31,11 @@ textarea{resize:vertical;min-height:70px}
 .manage-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .manage-msg-btn{font-size:12px;color:#7ed957;text-decoration:none;background:rgba(126,217,87,.12);padding:5px 10px;border-radius:8px;white-space:nowrap}
 .manage-no-username{font-size:11px;color:#4a5a4d;white-space:nowrap}
+.manage-guests{font-size:11px;color:#e0b84a;font-weight:700}
+.teams-btn{width:100%;padding:9px;margin-top:12px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}
+.team-block{background:rgba(255,255,255,.04);border-radius:10px;padding:10px 12px;margin-top:10px}
+.team-title{font-size:12px;font-weight:800;color:#7ed957;margin-bottom:6px}
+.team-player{font-size:12px;padding:3px 0}
 .manage-row:first-of-type{border-top:none}
 .manage-name{font-size:13px}
 .manage-confirm-btn{padding:6px 12px;border:none;border-radius:8px;background:#7ed957;color:#0e1a12;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
@@ -158,6 +163,7 @@ function renderManageGames(games) {
     const rows = signups.length
       ? signups.map(s => {
           const label = s.player ? ` (${s.player})` : "";
+          const guests = s.guests_count > 0 ? ` <span class="manage-guests">+${s.guests_count} чел.</span>` : "";
           const phoneDigits = s.phone ? s.phone.replace(/[^\d]/g, '') : '';
           const msgBtn = s.username
             ? `<a class="manage-msg-btn" href="https://t.me/${s.username}" target="_blank">💬 @${s.username}</a>`
@@ -166,12 +172,12 @@ function renderManageGames(games) {
                 : `<span class="manage-no-username">нет контакта</span>`);
           if (s.status === "confirmed") {
             return `<div class="manage-row">
-              <span class="manage-name">${s.name}${label}</span>
+              <span class="manage-name">${s.name}${label}${guests}</span>
               <div class="manage-actions">${msgBtn}<span class="manage-confirmed-badge">✅</span></div>
             </div>`;
           }
           return `<div class="manage-row">
-            <span class="manage-name">${s.name}${label}</span>
+            <span class="manage-name">${s.name}${label}${guests}</span>
             <div class="manage-actions">${msgBtn}
               <button class="manage-confirm-btn" onclick="confirmPlayer(${g.id}, '${s.user_id}')">Подтвердить</button>
             </div>
@@ -181,8 +187,23 @@ function renderManageGames(games) {
     return `<div class="manage-game">
       <div class="manage-title">📅 ${g.date} · 🕐 ${g.time} — ${g.location}</div>
       ${rows}
+      <button class="teams-btn" onclick="assignTeams(${g.id})">🎯 Разбить на команды</button>
+      <div id="teams-result-${g.id}"></div>
     </div>`;
   }).join("");
+}
+
+async function assignTeams(gameId) {
+  try {
+    const r = await fetch(`/api/admin/assign-teams?user_id=${userId}&game_id=${gameId}`).then(r => r.json());
+    const el = document.getElementById(`teams-result-${gameId}`);
+    if (!r.teams) { el.innerHTML = `<div class="manage-empty">Не удалось разбить — нет подтверждённых</div>`; return; }
+    el.innerHTML = r.teams.map((team, i) => `
+      <div class="team-block">
+        <div class="team-title">Команда ${i + 1} (${team.length})</div>
+        ${team.map(p => `<div class="team-player">${p.name}${p.player ? ` — <i>${p.player}</i>` : ""}</div>`).join("") || '<div class="manage-empty">пусто</div>'}
+      </div>`).join("");
+  } catch (e) {}
 }
 
 async function confirmPlayer(gameId, playerUserId) {
