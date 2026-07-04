@@ -22,30 +22,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .game-loc{font-size:13px;color:#9db3a3;margin-bottom:6px}
 .game-extra{font-size:12px;color:#6b7c6e;margin-bottom:10px;line-height:1.4}
 .game-count{font-size:12px;color:#6b7c6e;margin-bottom:12px}
-.roster{background:rgba(255,255,255,.03);border-radius:12px;padding:10px 12px;margin-bottom:12px}
-.roster-title{font-size:11px;color:#6b7c6e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-.roster-row{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0}
-.roster-row .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.dot.confirmed{background:#7ed957}
-.dot.pending{background:#e0b84a}
-.roster-empty{font-size:12px;color:#4a5a4d}
-.guests-label{font-size:12px;color:#6b7c6e;display:block;margin-bottom:6px}
-.guests-input{width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:16px;margin-bottom:10px}
-.guests-input:focus{outline:none;border-color:#7ed957}
-.btn{width:100%;padding:13px;border:none;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;background:#7ed957;color:#0e1a12;transition:transform .15s}
-.btn:active{transform:scale(.97)}
-.btn[disabled]{opacity:.5;pointer-events:none}
-.status-badge{width:100%;text-align:center;padding:12px;border-radius:12px;font-size:13px;font-weight:700}
-.status-pending{background:rgba(224,184,74,.15);color:#e0b84a;border:1px solid rgba(224,184,74,.35)}
-.status-confirmed{background:rgba(126,217,87,.15);color:#7ed957;border:1px solid rgba(126,217,87,.35)}
 .error-banner{background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.35);color:#ff8080;font-size:12px;padding:10px 12px;border-radius:10px;margin-bottom:12px;text-align:center}
+
+.slots-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-bottom:8px}
+.slot{border-radius:10px;padding:8px 6px;text-align:center;cursor:pointer;transition:transform .15s;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.slot:active{transform:scale(.94)}
+.slot-free{background:rgba(255,255,255,.04);border:1px dashed rgba(126,217,87,.3);color:#6b7c6e}
+.slot-mine{background:rgba(126,217,87,.16);border:1px solid #7ed957}
+.slot-confirmed{background:rgba(126,217,87,.28);border:1px solid #7ed957}
+.slot-other{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);cursor:default}
+.slot-num{font-size:9px;color:#6b7c6e;font-weight:700}
+.slot-name{font-size:11px;font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.slot-player{font-size:9px;color:#9db3a3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.slot-plus{font-size:18px;color:#7ed957}
+.no-slots{font-size:12px;color:#6b7c6e;text-align:center;padding:14px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="head">
     <h1>⚽ Игры</h1>
-    <p>Записывайся и приходи играть</p>
+    <p>Занимай слоты — можно несколько раз подряд</p>
   </div>
   <div id="error-banner"></div>
   <div id="games-list"></div>
@@ -69,22 +66,22 @@ function showError(msg) {
   document.getElementById("error-banner").innerHTML = `<div class="error-banner">⚠️ ${msg}</div>`;
 }
 
-function rosterHtml(signups) {
-  if (!signups || signups.length === 0) {
-    return `<div class="roster-empty">Пока никто не записался</div>`;
+function slotHtml(gameId, s) {
+  if (!s.user_id) {
+    return `<div class="slot slot-free" onclick="claimSlot(${gameId}, ${s.slot_index})">
+      <div class="slot-plus">+</div>
+      <div class="slot-num">№${s.slot_index}</div>
+    </div>`;
   }
-  return signups.map(s => {
-    const cls = s.status === "confirmed" ? "confirmed" : "pending";
-    const label = s.player ? ` (${s.player})` : "";
-    const guests = s.guests_count > 0 ? ` +${s.guests_count}` : "";
-    return `<div class="roster-row"><span class="dot ${cls}"></span><span>${s.name}${label}${guests}</span></div>`;
-  }).join("");
-}
-
-function totalPeople(signups, statusFilter) {
-  return (signups || [])
-    .filter(s => !statusFilter || s.status === statusFilter)
-    .reduce((sum, s) => sum + 1 + (s.guests_count || 0), 0);
+  const isMine = s.user_id === userId;
+  const cls = isMine ? (s.status === "confirmed" ? "slot-confirmed" : "slot-mine") : "slot-other";
+  const click = isMine ? `onclick="releaseSlot(${gameId}, ${s.slot_index})"` : "";
+  const hint = isMine ? (s.status === "confirmed" ? " ✅" : " (тап — уйти)") : "";
+  return `<div class="slot ${cls}" ${click}>
+    <div class="slot-name">${s.name}${isMine && s.status !== "confirmed" ? "" : ""}</div>
+    ${s.player ? `<div class="slot-player">${s.player}</div>` : ""}
+    <div class="slot-num">№${s.slot_index}${isMine && s.status === "confirmed" ? " ✅" : ""}</div>
+  </div>`;
 }
 
 function renderGames(games) {
@@ -95,20 +92,13 @@ function renderGames(games) {
   }
 
   el.innerHTML = games.map(g => {
-    const confirmedCount = totalPeople(g.signups, "confirmed");
-    const totalCount = totalPeople(g.signups, null);
+    const slots = g.slots || [];
+    const occupied = slots.filter(s => s.user_id).length;
+    const confirmed = slots.filter(s => s.status === "confirmed").length;
 
-    let actionHtml;
-    if (g.my_status === "confirmed") {
-      actionHtml = `<div class="status-badge status-confirmed">✅ Ты записан и подтверждён</div>`;
-    } else if (g.my_status === "pending") {
-      actionHtml = `<div class="status-badge status-pending">⏳ Ожидает подтверждения оплаты</div>`;
-    } else {
-      actionHtml = `
-        <label class="guests-label">Сколько вас всего придёт (с тобой)?</label>
-        <input type="number" class="guests-input" id="guests-${g.id}" min="1" max="20" value="1">
-        <button class="btn" onclick="signup(${g.id})">Записаться</button>`;
-    }
+    const grid = slots.length
+      ? `<div class="slots-grid">${slots.map(s => slotHtml(g.id, s)).join("")}</div>`
+      : `<div class="no-slots">Для этой игры не указано число слотов</div>`;
 
     return `
       <div class="game-card">
@@ -118,12 +108,8 @@ function renderGames(games) {
         </div>
         <div class="game-loc">📍 ${g.location}</div>
         ${g.extra_info ? `<div class="game-extra">ℹ️ ${g.extra_info}</div>` : ""}
-        <div class="game-count">👥 ${confirmedCount}/${g.num_players || "?"} подтверждено${totalCount > confirmedCount ? `, ещё ${totalCount - confirmedCount} ожидает` : ""}</div>
-        <div class="roster">
-          <div class="roster-title">Записались</div>
-          ${rosterHtml(g.signups)}
-        </div>
-        ${actionHtml}
+        <div class="game-count">👥 ${confirmed}/${slots.length} подтверждено, ${occupied} занято всего</div>
+        ${grid}
       </div>`;
   }).join("");
 }
@@ -137,32 +123,46 @@ async function loadGames() {
   }
 }
 
-async function signup(gameId) {
+async function claimSlot(gameId, slotIndex) {
   if (!userId) {
     showError("Не удалось определить тебя. Открой игры заново через бота.");
     return;
   }
-  const guestsInput = document.getElementById(`guests-${gameId}`);
-  const totalPeopleCount = guestsInput ? parseInt(guestsInput.value, 10) || 1 : 1;
-  const guestsCount = Math.max(0, totalPeopleCount - 1);
-
   try {
-    const res = await fetch("/api/games/signup", {
+    const res = await fetch("/api/games/claim-slot", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, game_id: gameId, guests_count: guestsCount })
+      body: JSON.stringify({ user_id: userId, game_id: gameId, slot_index: slotIndex })
     }).then(r => r.json());
     if (!res.ok) {
-      showError(res.error || "Не удалось записаться.");
+      showError(res.error || "Не удалось занять слот.");
     } else {
       document.getElementById("error-banner").innerHTML = "";
-      loadGames();
     }
+    loadGames();
+  } catch (e) {
+    showError("Ошибка сети — попробуй ещё раз.");
+  }
+}
+
+async function releaseSlot(gameId, slotIndex) {
+  try {
+    const res = await fetch("/api/games/release-slot", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, game_id: gameId, slot_index: slotIndex })
+    }).then(r => r.json());
+    if (!res.ok) {
+      showError(res.error || "Не удалось освободить слот.");
+    } else {
+      document.getElementById("error-banner").innerHTML = "";
+    }
+    loadGames();
   } catch (e) {
     showError("Ошибка сети — попробуй ещё раз.");
   }
 }
 
 loadGames();
+setInterval(loadGames, 4000);
 </script>
 </body>
 </html>

@@ -57,6 +57,24 @@ def assign_game_teams(game, signups):
     return teams
 
 
+def teams_from_slots(game, slots):
+    """Слоты 1..per_team -> команда 1, следующие per_team -> команда 2, и т.д.
+    Перемещение слота админом = перемещение игрока между командами."""
+    per_team = game.get("players_per_team") or 10 ** 9
+    num_teams = game.get("num_teams") or 2
+    teams = [[] for _ in range(num_teams)]
+
+    for s in slots:
+        if not s.get("user_id"):
+            continue
+        team_idx = min((s["slot_index"] - 1) // per_team, num_teams - 1)
+        teams[team_idx].append({
+            "name": s["name"], "player": s["player"],
+            "slot_index": s["slot_index"], "status": s["status"],
+        })
+    return teams
+
+
 def handle_teams_command(user_id, text):
     """Формат: /teams id1 id2 id3 ..."""
     ids = [p for p in text.split()[1:] if p.isdigit()]

@@ -11,10 +11,11 @@ from storage import (
     create_game, get_all_games, get_active_games, get_game,
     signup_for_game, get_signups, get_my_signup, confirm_signup,
     get_username,
+    init_game_slots, get_slots, claim_slot, release_slot, confirm_slot, admin_move_slot,
 )
 from predict import get_stats as predict_stats, announce_result
 from battle import create_battle, join_battle, get_state, submit_answer, list_open_battles
-from teams import assign_game_teams
+from teams import teams_from_slots
 
 
 def _display_name(user_id):
@@ -152,8 +153,9 @@ class Handler(BaseHTTPRequestHandler):
                 price            = (data.get("price") or "").strip()
                 extra_info       = (data.get("extra_info") or "").strip()
 
-                create_game(game_date, game_time, location, num_players, num_teams,
-                            players_per_team, price, extra_info, user_id)
+                game_id = create_game(game_date, game_time, location, num_players, num_teams,
+                                       players_per_team, price, extra_info, user_id)
+                init_game_slots(game_id, num_players)
 
                 lines = [
                     "⚽ <b>НОВАЯ ИГРА!</b>",
@@ -215,6 +217,97 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"  [WARN] confirm-signup: {e}")
                 self.send_response(400); self.end_headers()
 
+        elif path == "/api/games/claim-slot":
+            try:
+                data = json.loads(body)
+                user_id = str(data.get("user_id", ""))
+                game_id = data.get("game_id")
+                slot_index = int(data.get("slot_index"))
+                if not user_id or not game_id:
+                    self._json({"ok": False, "error": "bad_request"})
+                    return
+
+                profile = get_profile(user_id)
+                role = get_role(user_id)
+                name = (profile["nickname"] if profile and profile.get("nickname")
+                        else (profile["name"] if profile else None)) or "Игрок"
+                player = role["player"] if role else None
+
+                error = claim_slot(game_id, slot_index, user_id, name, player)
+                if error == "taken":
+                    self._json({"ok": False, "error": "Слот уже занят — обнови страницу"})
+                elif error == "not_found":
+                    self._json({"ok": False, "error": "Слот не найден"})
+                else:
+                    self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] claim-slot: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/games/release-slot":
+            try:
+                data = json.loads(body)
+                user_id = str(data.get("user_id", ""))
+                game_id = data.get("game_id")
+                slot_index = int(data.get("slot_index"))
+                error = release_slot(game_id, slot_index, user_id)
+                if error == "not_owner":
+                    self._json({"ok": False, "error": "Это не твой слот"})
+                else:
+                    self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] release-slot: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/admin/confirm-slot":
+            try:
+                data = json.loads(body)
+                admin_id = str(data.get("user_id", ""))
+                if admin_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Нет прав администратора"})
+                    return
+                confirm_slot(data.get("game_id"), int(data.get("slot_index")))
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] admin/confirm-slot: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/admin/release-slot":
+            try:
+                data = json.loads(body)
+                admin_id = str(data.get("user_id", ""))
+                if admin_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Нет прав администратора"})
+                    return
+                release_slot(data.get("game_id"), int(data.get("slot_index")), user_id=None)
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] admin/release-slot: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/admin/move-slot":
+            try:
+                data = json.loads(body)
+                admin_id = str(data.get("user_id", ""))
+                if admin_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Нет прав администратора"})
+                    return
+                game_id = data.get("game_id")
+                from_index = int(data.get("from_index"))
+                to_index = int(data.get("to_index"))
+                error = admin_move_slot(game_id, from_index, to_index)
+                if error == "empty_source":
+                    self._json({"ok": False, "error": "Исходный слот пуст"})
+                elif error == "taken":
+                    self._json({"ok": False, "error": "Целевой слот уже занят"})
+                elif error == "not_found":
+                    self._json({"ok": False, "error": "Целевой слот не найден"})
+                else:
+                    self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] admin/move-slot: {e}")
+                self.send_response(400); self.end_headers()
+
         else:
             self.send_response(404); self.end_headers()
 
@@ -241,8 +334,7 @@ class Handler(BaseHTTPRequestHandler):
             user_id = (q.get("user_id") or [""])[0]
             games = get_active_games()
             for g in games:
-                g["signups"] = get_signups(g["id"])
-                g["my_status"] = get_my_signup(g["id"], user_id) if user_id else None
+                g["slots"] = get_slots(g["id"])
             self._json({"games": games})
         elif path == "/api/admin/games":
             user_id = (q.get("user_id") or [""])[0]
@@ -251,12 +343,13 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 games = get_all_games()
                 for g in games:
-                    signups = get_signups(g["id"])
-                    for s in signups:
-                        s["username"] = get_username(s["user_id"])
-                        profile = get_profile(s["user_id"])
-                        s["phone"] = profile["phone"] if profile else None
-                    g["signups"] = signups
+                    slots = get_slots(g["id"])
+                    for s in slots:
+                        if s["user_id"]:
+                            s["username"] = get_username(s["user_id"])
+                            profile = get_profile(s["user_id"])
+                            s["phone"] = profile["phone"] if profile else None
+                    g["slots"] = slots
                 self._json({"games": games})
         elif path == "/api/admin/assign-teams":
             user_id = (q.get("user_id") or [""])[0]
@@ -268,8 +361,8 @@ class Handler(BaseHTTPRequestHandler):
                 if not game:
                     self._json({"error": "not_found"})
                 else:
-                    signups = get_signups(game_id)
-                    teams = assign_game_teams(game, signups)
+                    slots = get_slots(game_id)
+                    teams = teams_from_slots(game, slots)
                     self._json({"teams": teams})
         elif path == "/logo.jpg":
             self._file("webapp/logo.jpg", "image/jpeg")

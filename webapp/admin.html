@@ -32,6 +32,10 @@ textarea{resize:vertical;min-height:70px}
 .manage-msg-btn{font-size:12px;color:#7ed957;text-decoration:none;background:rgba(126,217,87,.12);padding:5px 10px;border-radius:8px;white-space:nowrap}
 .manage-no-username{font-size:11px;color:#4a5a4d;white-space:nowrap}
 .manage-guests{font-size:11px;color:#e0b84a;font-weight:700}
+.manage-free{color:#4a5a4d;font-style:italic}
+.manage-move-select{font-size:11px;padding:5px 6px;border-radius:6px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0}
+.manage-move-btn{padding:5px 8px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:6px;font-size:12px;cursor:pointer}
+.manage-kick-btn{padding:5px 9px;border:1px solid rgba(255,80,80,.35);background:transparent;color:#ff8080;border-radius:6px;font-size:12px;cursor:pointer}
 .teams-btn{width:100%;padding:9px;margin-top:12px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}
 .team-block{background:rgba(255,255,255,.04);border-radius:10px;padding:10px 12px;margin-top:10px}
 .team-title{font-size:12px;font-weight:800;color:#7ed957;margin-bottom:6px}
@@ -159,35 +163,49 @@ function renderManageGames(games) {
     return;
   }
   el.innerHTML = active.map(g => {
-    const signups = g.signups || [];
-    const rows = signups.length
-      ? signups.map(s => {
+    const slots = g.slots || [];
+    const freeSlots = slots.filter(s => !s.user_id).map(s => s.slot_index);
+
+    const rows = slots.length
+      ? slots.map(s => {
+          if (!s.user_id) {
+            return `<div class="manage-row"><span class="manage-name manage-free">Слот №${s.slot_index} — свободен</span></div>`;
+          }
           const label = s.player ? ` (${s.player})` : "";
-          const guests = s.guests_count > 0 ? ` <span class="manage-guests">+${s.guests_count} чел.</span>` : "";
           const phoneDigits = s.phone ? s.phone.replace(/[^\d]/g, '') : '';
           const msgBtn = s.username
             ? `<a class="manage-msg-btn" href="https://t.me/${s.username}" target="_blank">💬 @${s.username}</a>`
             : (phoneDigits
                 ? `<a class="manage-msg-btn" href="https://t.me/+${phoneDigits}" target="_blank">💬 ${s.phone}</a>`
                 : `<span class="manage-no-username">нет контакта</span>`);
-          if (s.status === "confirmed") {
-            return `<div class="manage-row">
-              <span class="manage-name">${s.name}${label}${guests}</span>
-              <div class="manage-actions">${msgBtn}<span class="manage-confirmed-badge">✅</span></div>
-            </div>`;
-          }
+
+          const moveSelect = freeSlots.length
+            ? `<select class="manage-move-select" id="move-${g.id}-${s.slot_index}">
+                 ${freeSlots.map(fi => `<option value="${fi}">№${fi}</option>`).join("")}
+               </select>
+               <button class="manage-move-btn" onclick="moveSlot(${g.id}, ${s.slot_index})">↔</button>`
+            : "";
+
+          const confirmOrBadge = s.status === "confirmed"
+            ? `<span class="manage-confirmed-badge">✅</span>`
+            : `<button class="manage-confirm-btn" onclick="confirmSlot(${g.id}, ${s.slot_index})">Подтвердить</button>`;
+
           return `<div class="manage-row">
-            <span class="manage-name">${s.name}${label}${guests}</span>
-            <div class="manage-actions">${msgBtn}
-              <button class="manage-confirm-btn" onclick="confirmPlayer(${g.id}, '${s.user_id}')">Подтвердить</button>
+            <span class="manage-name">№${s.slot_index} ${s.name}${label}</span>
+            <div class="manage-actions">
+              ${msgBtn}
+              ${confirmOrBadge}
+              ${moveSelect}
+              <button class="manage-kick-btn" onclick="kickSlot(${g.id}, ${s.slot_index})">✖</button>
             </div>
           </div>`;
         }).join("")
-      : `<div class="manage-empty">Записей ещё нет</div>`;
+      : `<div class="manage-empty">Слоты не заданы для этой игры</div>`;
+
     return `<div class="manage-game">
       <div class="manage-title">📅 ${g.date} · 🕐 ${g.time} — ${g.location}</div>
       ${rows}
-      <button class="teams-btn" onclick="assignTeams(${g.id})">🎯 Разбить на команды</button>
+      <button class="teams-btn" onclick="assignTeams(${g.id})">🎯 Показать команды по слотам</button>
       <div id="teams-result-${g.id}"></div>
     </div>`;
   }).join("");
@@ -197,22 +215,45 @@ async function assignTeams(gameId) {
   try {
     const r = await fetch(`/api/admin/assign-teams?user_id=${userId}&game_id=${gameId}`).then(r => r.json());
     const el = document.getElementById(`teams-result-${gameId}`);
-    if (!r.teams) { el.innerHTML = `<div class="manage-empty">Не удалось разбить — нет подтверждённых</div>`; return; }
+    if (!r.teams) { el.innerHTML = `<div class="manage-empty">Не удалось разбить</div>`; return; }
     el.innerHTML = r.teams.map((team, i) => `
       <div class="team-block">
         <div class="team-title">Команда ${i + 1} (${team.length})</div>
-        ${team.map(p => `<div class="team-player">${p.name}${p.player ? ` — <i>${p.player}</i>` : ""}</div>`).join("") || '<div class="manage-empty">пусто</div>'}
+        ${team.map(p => `<div class="team-player">№${p.slot_index} ${p.name}${p.player ? ` — <i>${p.player}</i>` : ""}${p.status === "confirmed" ? " ✅" : ""}</div>`).join("") || '<div class="manage-empty">пусто</div>'}
       </div>`).join("");
   } catch (e) {}
 }
 
-async function confirmPlayer(gameId, playerUserId) {
+async function confirmSlot(gameId, slotIndex) {
   try {
-    const res = await fetch("/api/admin/confirm-signup", {
+    const res = await fetch("/api/admin/confirm-slot", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, game_id: gameId, player_user_id: playerUserId })
+      body: JSON.stringify({ user_id: userId, game_id: gameId, slot_index: slotIndex })
     }).then(r => r.json());
     if (res.ok) loadManageGames();
+  } catch (e) {}
+}
+
+async function kickSlot(gameId, slotIndex) {
+  try {
+    const res = await fetch("/api/admin/release-slot", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, game_id: gameId, slot_index: slotIndex })
+    }).then(r => r.json());
+    if (res.ok) loadManageGames();
+  } catch (e) {}
+}
+
+async function moveSlot(gameId, fromIndex) {
+  const select = document.getElementById(`move-${gameId}-${fromIndex}`);
+  const toIndex = parseInt(select.value, 10);
+  try {
+    const res = await fetch("/api/admin/move-slot", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, game_id: gameId, from_index: fromIndex, to_index: toIndex })
+    }).then(r => r.json());
+    if (res.ok) loadManageGames();
+    else showError(res.error || "Не удалось переместить");
   } catch (e) {}
 }
 
