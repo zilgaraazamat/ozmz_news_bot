@@ -10,6 +10,7 @@ from storage import (
     get_profile, set_nickname, get_role, set_role,
     create_game, get_all_games, get_active_games, get_game,
     signup_for_game, get_signups, get_my_signup, confirm_signup,
+    get_username,
 )
 from predict import get_stats as predict_stats, announce_result
 from battle import create_battle, join_battle, get_state, submit_answer, list_open_battles
@@ -245,7 +246,10 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 games = get_all_games()
                 for g in games:
-                    g["signups"] = get_signups(g["id"])
+                    signups = get_signups(g["id"])
+                    for s in signups:
+                        s["username"] = get_username(s["user_id"])
+                    g["signups"] = signups
                 self._json({"games": games})
         elif path == "/logo.jpg":
             self._file("webapp/logo.jpg", "image/jpeg")
@@ -343,9 +347,10 @@ function announceResult(){{
         users_rows = "".join(
             f"<tr><td>{i}</td><td>{u['name'] or '—'}</td>"
             f"<td>{('<span class=\"badge\">' + u['nickname'] + '</span>') if u.get('nickname') else '—'}</td>"
+            f"<td>{('@' + u['username']) if u.get('username') else '—'}</td>"
             f"<td>{mask_phone(u['phone'])}</td><td>{u['joined_at']}</td></tr>"
             for i, u in enumerate(users, 1)
-        ) or '<tr><td colspan="5" class="empty">Пока никто не заходил 👀</td></tr>'
+        ) or '<tr><td colspan="6" class="empty">Пока никто не заходил 👀</td></tr>'
 
         roles_rows = "".join(
             f"<tr><td>{i}</td><td>{r['name']}</td>"
@@ -398,7 +403,7 @@ tr:hover td{{background:rgba(255,255,255,.03)}}
 <div class="section"><h2>📱 Пользователи (номера скрыты, кроме последних 4 цифр)</h2></div>
 <div class="table-wrap" style="margin-bottom:16px">
   <table>
-    <thead><tr><th>#</th><th>Имя</th><th>Ник</th><th>Телефон</th><th>Дата регистрации</th></tr></thead>
+    <thead><tr><th>#</th><th>Имя</th><th>Ник</th><th>Username</th><th>Телефон</th><th>Дата регистрации</th></tr></thead>
     <tbody>{users_rows}</tbody>
   </table>
 </div>

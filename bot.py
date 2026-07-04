@@ -7,7 +7,7 @@ from api import now_astana, send_msg, tg_post
 from posts import job_morning, job_news, job_fact
 from quiz import quiz_sessions, handle_quiz_answer
 from predict import handle_prediction
-from storage import init_db, get_role, has_phone, save_phone
+from storage import init_db, get_role, has_phone, save_phone, save_username
 from teams import handle_teams_command
 import server
 
@@ -32,10 +32,13 @@ def poll():
             msg = update.get("message", {})
             if not msg:
                 continue
-            user_id = str(msg.get("from", {}).get("id", ""))
-            name    = msg.get("from", {}).get("first_name", "Игрок")
+            user_id  = str(msg.get("from", {}).get("id", ""))
+            name     = msg.get("from", {}).get("first_name", "Игрок")
+            username = msg.get("from", {}).get("username")
             if not user_id:
                 continue
+            if username:
+                save_username(user_id, username)
 
             contact = msg.get("contact")
             if contact:

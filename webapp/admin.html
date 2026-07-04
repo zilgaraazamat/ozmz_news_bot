@@ -27,7 +27,10 @@ textarea{resize:vertical;min-height:70px}
 .error-banner{background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.35);color:#ff8080;font-size:13px;padding:12px 14px;border-radius:10px;line-height:1.5;text-align:center}
 .manage-game{background:rgba(255,255,255,.03);border-radius:14px;padding:14px;margin-top:14px}
 .manage-title{font-size:14px;font-weight:800;margin-bottom:10px}
-.manage-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.06)}
+.manage-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.06);flex-wrap:wrap}
+.manage-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.manage-msg-btn{font-size:12px;color:#7ed957;text-decoration:none;background:rgba(126,217,87,.12);padding:5px 10px;border-radius:8px;white-space:nowrap}
+.manage-no-username{font-size:11px;color:#4a5a4d;white-space:nowrap}
 .manage-row:first-of-type{border-top:none}
 .manage-name{font-size:13px}
 .manage-confirm-btn{padding:6px 12px;border:none;border-radius:8px;background:#7ed957;color:#0e1a12;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
@@ -155,11 +158,21 @@ function renderManageGames(games) {
     const rows = signups.length
       ? signups.map(s => {
           const label = s.player ? ` (${s.player})` : "";
+          const msgBtn = s.username
+            ? `<a class="manage-msg-btn" href="https://t.me/${s.username}" target="_blank">💬 @${s.username}</a>`
+            : `<span class="manage-no-username">без username</span>`;
           if (s.status === "confirmed") {
-            return `<div class="manage-row"><span class="manage-name">${s.name}${label}</span><span class="manage-confirmed-badge">✅ Подтверждён</span></div>`;
+            return `<div class="manage-row">
+              <span class="manage-name">${s.name}${label}</span>
+              <div class="manage-actions">${msgBtn}<span class="manage-confirmed-badge">✅</span></div>
+            </div>`;
           }
-          return `<div class="manage-row"><span class="manage-name">${s.name}${label}</span>
-            <button class="manage-confirm-btn" onclick="confirmPlayer(${g.id}, '${s.user_id}')">Подтвердить</button></div>`;
+          return `<div class="manage-row">
+            <span class="manage-name">${s.name}${label}</span>
+            <div class="manage-actions">${msgBtn}
+              <button class="manage-confirm-btn" onclick="confirmPlayer(${g.id}, '${s.user_id}')">Подтвердить</button>
+            </div>
+          </div>`;
         }).join("")
       : `<div class="manage-empty">Записей ещё нет</div>`;
     return `<div class="manage-game">

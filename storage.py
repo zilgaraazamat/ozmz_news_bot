@@ -49,12 +49,17 @@ def init_db():
             name      TEXT,
             phone     TEXT,
             nickname  TEXT,
+            username  TEXT,
             joined_at TEXT
         )""")
         try:
             c.execute("ALTER TABLE users ADD COLUMN nickname TEXT")
         except sqlite3.OperationalError:
             pass  # колонка уже есть — база создана до этого обновления
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN username TEXT")
+        except sqlite3.OperationalError:
+            pass
 
         c.execute("""CREATE TABLE IF NOT EXISTS games(
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -237,20 +242,21 @@ def get_user(user_id):
 def get_all_users():
     with _lock, _conn() as c:
         rows = c.execute(
-            "SELECT user_id, name, phone, nickname, joined_at FROM users ORDER BY joined_at DESC"
+            "SELECT user_id, name, phone, nickname, username, joined_at FROM users ORDER BY joined_at DESC"
         ).fetchall()
-    return [{"user_id": r[0], "name": r[1], "phone": r[2], "nickname": r[3], "joined_at": r[4]} for r in rows]
+    return [{"user_id": r[0], "name": r[1], "phone": r[2], "nickname": r[3],
+             "username": r[4], "joined_at": r[5]} for r in rows]
 
 
 def get_profile(user_id):
     user_id = str(user_id)
     with _lock, _conn() as c:
         row = c.execute(
-            "SELECT name, nickname, phone FROM users WHERE user_id=?", (user_id,)
+            "SELECT name, nickname, phone, username FROM users WHERE user_id=?", (user_id,)
         ).fetchone()
     if not row:
         return None
-    return {"name": row[0], "nickname": row[1], "phone": row[2]}
+    return {"name": row[0], "nickname": row[1], "phone": row[2], "username": row[3]}
 
 
 def set_nickname(user_id, nickname):
@@ -260,6 +266,25 @@ def set_nickname(user_id, nickname):
                      VALUES(?, ?, datetime('now'))
                      ON CONFLICT(user_id) DO UPDATE SET nickname=excluded.nickname""",
                   (user_id, nickname))
+
+
+def save_username(user_id, username):
+    """Кэшируем @username из Telegram — обновляем на каждом сообщении, т.к. юзер может сменить."""
+    user_id = str(user_id)
+    if not username:
+        return
+    with _lock, _conn() as c:
+        c.execute("""INSERT INTO users(user_id, username, joined_at)
+                     VALUES(?, ?, datetime('now'))
+                     ON CONFLICT(user_id) DO UPDATE SET username=excluded.username""",
+                  (user_id, username))
+
+
+def get_username(user_id):
+    user_id = str(user_id)
+    with _lock, _conn() as c:
+        row = c.execute("SELECT username FROM users WHERE user_id=?", (user_id,)).fetchone()
+    return row[0] if row else None
 
 
 def get_all_roles():
