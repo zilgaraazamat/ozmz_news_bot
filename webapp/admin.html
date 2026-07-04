@@ -158,9 +158,12 @@ function renderManageGames(games) {
     const rows = signups.length
       ? signups.map(s => {
           const label = s.player ? ` (${s.player})` : "";
+          const phoneDigits = s.phone ? s.phone.replace(/[^\d]/g, '') : '';
           const msgBtn = s.username
             ? `<a class="manage-msg-btn" href="https://t.me/${s.username}" target="_blank">💬 @${s.username}</a>`
-            : `<span class="manage-no-username">без username</span>`;
+            : (phoneDigits
+                ? `<a class="manage-msg-btn" href="https://t.me/+${phoneDigits}" target="_blank">💬 ${s.phone}</a>`
+                : `<span class="manage-no-username">нет контакта</span>`);
           if (s.status === "confirmed") {
             return `<div class="manage-row">
               <span class="manage-name">${s.name}${label}</span>

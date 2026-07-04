@@ -249,6 +249,8 @@ class Handler(BaseHTTPRequestHandler):
                     signups = get_signups(g["id"])
                     for s in signups:
                         s["username"] = get_username(s["user_id"])
+                        profile = get_profile(s["user_id"])
+                        s["phone"] = profile["phone"] if profile else None
                     g["signups"] = signups
                 self._json({"games": games})
         elif path == "/logo.jpg":
