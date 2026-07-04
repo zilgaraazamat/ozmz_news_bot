@@ -102,6 +102,16 @@ def init_db():
             PRIMARY KEY (game_id, slot_index)
         )""")
 
+        c.execute("""CREATE TABLE IF NOT EXISTS game_teams(
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            game_id    INTEGER,
+            user_id    TEXT,
+            name       TEXT,
+            player     TEXT,
+            team_index INTEGER,
+            is_guest   INTEGER DEFAULT 0
+        )""")
+
 
 def get_role(user_id):
     user_id = str(user_id)
@@ -390,87 +400,28 @@ def confirm_signup(game_id, user_id):
 
 # ── Слоты игры ────────────────────────────────────────────────────────────────
 
-def init_game_slots(game_id, num_players):
-    """Создаёт num_players пустых слотов при создании игры."""
-    if not num_players:
-        return
+def get_team_members(game_id):
     with _lock, _conn() as c:
-        for i in range(1, int(num_players) + 1):
-            c.execute("""INSERT OR IGNORE INTO game_slots(game_id, slot_index, status)
-                         VALUES(?, ?, 'free')""", (game_id, i))
-
-
-def set_game_num_players(game_id, num_players):
-    """Задать/обновить число слотов для уже созданной игры (без слотов) и создать сами слоты."""
-    with _lock, _conn() as c:
-        c.execute("UPDATE games SET num_players=? WHERE id=?", (num_players, game_id))
-    init_game_slots(game_id, num_players)
-
-
-def get_slots(game_id):
-    with _lock, _conn() as c:
-        rows = c.execute("""SELECT slot_index, user_id, name, player, status, claimed_at
-                             FROM game_slots WHERE game_id=? ORDER BY slot_index""",
+        rows = c.execute("""SELECT id, user_id, name, player, team_index, is_guest
+                             FROM game_teams WHERE game_id=? ORDER BY team_index, id""",
                           (game_id,)).fetchall()
-    return [{"slot_index": r[0], "user_id": r[1], "name": r[2], "player": r[3],
-             "status": r[4], "claimed_at": r[5]} for r in rows]
+    return [{"id": r[0], "user_id": r[1], "name": r[2], "player": r[3],
+             "team_index": r[4], "is_guest": bool(r[5])} for r in rows]
 
 
-def claim_slot(game_id, slot_index, user_id, name, player):
-    """Занять свободный слот. Один и тот же user_id может занимать сколько угодно
-    разных слотов — повторная регистрация не запрещена."""
-    user_id = str(user_id)
+def clear_game_teams(game_id):
     with _lock, _conn() as c:
-        row = c.execute("SELECT user_id FROM game_slots WHERE game_id=? AND slot_index=?",
-                         (game_id, slot_index)).fetchone()
-        if row is None:
-            return "not_found"
-        if row[0]:
-            return "taken"
-        c.execute("""UPDATE game_slots SET user_id=?, name=?, player=?, status='pending', claimed_at=datetime('now')
-                     WHERE game_id=? AND slot_index=?""",
-                  (user_id, name, player, game_id, slot_index))
-    return None
+        c.execute("DELETE FROM game_teams WHERE game_id=?", (game_id,))
 
 
-def release_slot(game_id, slot_index, user_id=None):
-    """user_id задан — самостоятельный выход (проверяем владение).
-    user_id=None — админ освобождает слот принудительно."""
+def add_team_member(game_id, user_id, name, player, team_index, is_guest):
     with _lock, _conn() as c:
-        if user_id is not None:
-            row = c.execute("SELECT user_id FROM game_slots WHERE game_id=? AND slot_index=?",
-                             (game_id, slot_index)).fetchone()
-            if not row or row[0] != str(user_id):
-                return "not_owner"
-        c.execute("""UPDATE game_slots SET user_id=NULL, name=NULL, player=NULL,
-                        status='free', claimed_at=NULL
-                     WHERE game_id=? AND slot_index=?""", (game_id, slot_index))
-    return None
+        c.execute("""INSERT INTO game_teams(game_id, user_id, name, player, team_index, is_guest)
+                     VALUES(?, ?, ?, ?, ?, ?)""",
+                  (game_id, str(user_id) if user_id else None, name, player, team_index, int(is_guest)))
 
 
-def confirm_slot(game_id, slot_index):
+def move_team_member(member_id, new_team_index):
     with _lock, _conn() as c:
-        c.execute("UPDATE game_slots SET status='confirmed' WHERE game_id=? AND slot_index=?",
-                  (game_id, slot_index))
+        c.execute("UPDATE game_teams SET team_index=? WHERE id=?", (new_team_index, member_id))
 
-
-def admin_move_slot(game_id, from_index, to_index):
-    """Админ перемещает занявшего слот человека в другой свободный слот."""
-    with _lock, _conn() as c:
-        src = c.execute("SELECT user_id, name, player, status FROM game_slots WHERE game_id=? AND slot_index=?",
-                         (game_id, from_index)).fetchone()
-        if not src or not src[0]:
-            return "empty_source"
-        dst = c.execute("SELECT user_id FROM game_slots WHERE game_id=? AND slot_index=?",
-                         (game_id, to_index)).fetchone()
-        if dst is None:
-            return "not_found"
-        if dst[0]:
-            return "taken"
-        c.execute("""UPDATE game_slots SET user_id=?, name=?, player=?, status=?, claimed_at=datetime('now')
-                     WHERE game_id=? AND slot_index=?""",
-                  (src[0], src[1], src[2], src[3], game_id, to_index))
-        c.execute("""UPDATE game_slots SET user_id=NULL, name=NULL, player=NULL,
-                        status='free', claimed_at=NULL
-                     WHERE game_id=? AND slot_index=?""", (game_id, from_index))
-    return None

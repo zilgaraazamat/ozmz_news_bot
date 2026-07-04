@@ -35,43 +35,68 @@ def split_teams(player_ids):
     return team_a, team_b
 
 
-def assign_game_teams(game, signups):
-    """confirmed signups (с учётом гостей) -> список команд.
-    Заполняем команду до players_per_team, излишек перетекает в следующую."""
+def auto_assign_teams(game, signups):
+    """confirmed signups (с гостями) -> список команд.
+
+    Приоритет — держать группу (регистрацию + гостей) целиком в одной команде.
+    Группа целиком кладётся туда, где помещается (best-fit — куда влезает
+    с наименьшим остатком места). Если группа целиком нигде не влезает —
+    раскидываем только лишних по остальным местам, начиная с самых свободных команд.
+
+    Возвращает список списков member-словарей:
+    {"user_id", "name", "player", "is_guest"} — индекс в списке teams и есть номер команды.
+    """
     num_teams = game.get("num_teams") or 2
-    per_team = game.get("players_per_team") or 10 ** 6
-    teams = [[] for _ in range(num_teams)]
+    per_team = game.get("players_per_team") or 10 ** 9
 
     confirmed = [s for s in signups if s["status"] == "confirmed"]
-    current = 0
-    for s in confirmed:
-        total_people = 1 + (s.get("guests_count") or 0)
-        for i in range(total_people):
-            while len(teams[current]) >= per_team and current < num_teams - 1:
-                current += 1
-            teams[current].append({
+    # сначала большие группы — так они с большей вероятностью попадут в одну команду целиком
+    groups = sorted(confirmed, key=lambda s: -(1 + (s.get("guests_count") or 0)))
+
+    teams = [[] for _ in range(num_teams)]
+    capacity = [per_team] * num_teams
+
+    for s in groups:
+        size = 1 + (s.get("guests_count") or 0)
+        members = [
+            {
+                "user_id": s["user_id"] if i == 0 else None,
                 "name": s["name"] if i == 0 else f"{s['name']} (гость {i})",
                 "player": s["player"] if i == 0 else None,
                 "is_guest": i > 0,
-            })
-    return teams
+            }
+            for i in range(size)
+        ]
 
+        # ищем команду, куда группа влезает ЦЕЛИКОМ, с наименьшим остатком после (best-fit)
+        best = None
+        for i in range(num_teams):
+            if capacity[i] >= size and (best is None or capacity[i] < capacity[best]):
+                best = i
 
-def teams_from_slots(game, slots):
-    """Слоты 1..per_team -> команда 1, следующие per_team -> команда 2, и т.д.
-    Перемещение слота админом = перемещение игрока между командами."""
-    per_team = game.get("players_per_team") or 10 ** 9
-    num_teams = game.get("num_teams") or 2
-    teams = [[] for _ in range(num_teams)]
+        if best is not None:
+            teams[best].extend(members)
+            capacity[best] -= size
+        else:
+            # группа целиком никуда не влезает — раскидываем по кусочкам,
+            # начиная с команды с наибольшим свободным местом
+            order = sorted(range(num_teams), key=lambda i: -capacity[i])
+            idx = 0
+            for i in order:
+                while capacity[i] > 0 and idx < len(members):
+                    teams[i].append(members[idx])
+                    capacity[i] -= 1
+                    idx += 1
+                if idx >= len(members):
+                    break
 
-    for s in slots:
-        if not s.get("user_id"):
-            continue
-        team_idx = min((s["slot_index"] - 1) // per_team, num_teams - 1)
-        teams[team_idx].append({
-            "name": s["name"], "player": s["player"],
-            "slot_index": s["slot_index"], "status": s["status"],
-        })
+            # если мест всё равно не хватило на всех (общий перебор игроков) —
+            # никого не теряем: остаток уходит в команду с наименьшим текущим составом
+            while idx < len(members):
+                smallest = min(range(num_teams), key=lambda i: len(teams[i]))
+                teams[smallest].append(members[idx])
+                capacity[smallest] -= 1
+                idx += 1
     return teams
 
 
