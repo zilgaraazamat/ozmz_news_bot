@@ -33,6 +33,8 @@ textarea{resize:vertical;min-height:70px}
 .manage-no-username{font-size:11px;color:#4a5a4d;white-space:nowrap}
 .manage-guests{font-size:11px;color:#e0b84a;font-weight:700}
 .manage-free{color:#4a5a4d;font-style:italic}
+.fix-slots-row{display:flex;gap:8px;margin-top:8px}
+.fix-slots-input{flex:1;padding:9px 12px;border-radius:8px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:14px}
 .manage-move-select{font-size:11px;padding:5px 6px;border-radius:6px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0}
 .manage-move-btn{padding:5px 8px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:6px;font-size:12px;cursor:pointer}
 .manage-kick-btn{padding:5px 9px;border:1px solid rgba(255,80,80,.35);background:transparent;color:#ff8080;border-radius:6px;font-size:12px;cursor:pointer}
@@ -78,8 +80,8 @@ textarea{resize:vertical;min-height:70px}
 
     <div class="row2">
       <div>
-        <label>Игроков всего</label>
-        <input id="f-num-players" type="number" min="1" placeholder="16">
+        <label>Игроков всего *</label>
+        <input id="f-num-players" type="number" min="1" placeholder="16" required>
       </div>
       <div>
         <label>Команд</label>
@@ -200,27 +202,56 @@ function renderManageGames(games) {
             </div>
           </div>`;
         }).join("")
-      : `<div class="manage-empty">Слоты не заданы для этой игры</div>`;
+      : `<div class="manage-empty">Для этой игры не заданы слоты</div>
+         <div class="fix-slots-row">
+           <input type="number" min="1" class="fix-slots-input" id="fix-slots-${g.id}" placeholder="Сколько игроков?">
+           <button class="manage-move-btn" onclick="fixNumPlayers(${g.id})">Создать слоты</button>
+         </div>`;
 
     return `<div class="manage-game">
       <div class="manage-title">📅 ${g.date} · 🕐 ${g.time} — ${g.location}</div>
       ${rows}
-      <button class="teams-btn" onclick="assignTeams(${g.id})">🎯 Показать команды по слотам</button>
+      ${slots.length ? `<button class="teams-btn" onclick="toggleTeams(${g.id})" id="teams-btn-${g.id}">🎯 Показать команды по слотам</button>` : ""}
       <div id="teams-result-${g.id}"></div>
     </div>`;
   }).join("");
 }
 
-async function assignTeams(gameId) {
+async function fixNumPlayers(gameId) {
+  const input = document.getElementById(`fix-slots-${gameId}`);
+  const numPlayers = parseInt(input.value, 10);
+  if (!numPlayers || numPlayers <= 0) { showError("Укажи корректное число игроков."); return; }
+  try {
+    const res = await fetch("/api/admin/set-num-players", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, game_id: gameId, num_players: numPlayers })
+    }).then(r => r.json());
+    if (res.ok) loadManageGames();
+    else showError(res.error || "Не удалось создать слоты");
+  } catch (e) {}
+}
+
+let expandedTeams = {};
+
+async function toggleTeams(gameId) {
+  const el = document.getElementById(`teams-result-${gameId}`);
+  const btn = document.getElementById(`teams-btn-${gameId}`);
+  if (expandedTeams[gameId]) {
+    el.innerHTML = "";
+    expandedTeams[gameId] = false;
+    btn.textContent = "🎯 Показать команды по слотам";
+    return;
+  }
   try {
     const r = await fetch(`/api/admin/assign-teams?user_id=${userId}&game_id=${gameId}`).then(r => r.json());
-    const el = document.getElementById(`teams-result-${gameId}`);
     if (!r.teams) { el.innerHTML = `<div class="manage-empty">Не удалось разбить</div>`; return; }
     el.innerHTML = r.teams.map((team, i) => `
       <div class="team-block">
         <div class="team-title">Команда ${i + 1} (${team.length})</div>
         ${team.map(p => `<div class="team-player">№${p.slot_index} ${p.name}${p.player ? ` — <i>${p.player}</i>` : ""}${p.status === "confirmed" ? " ✅" : ""}</div>`).join("") || '<div class="manage-empty">пусто</div>'}
       </div>`).join("");
+    expandedTeams[gameId] = true;
+    btn.textContent = "🔼 Скрыть команды";
   } catch (e) {}
 }
 
@@ -272,6 +303,10 @@ async function createGame() {
   };
   if (!payload.date || !payload.time || !payload.location) {
     showError("Заполни минимум дату, время и место.");
+    return;
+  }
+  if (!payload.num_players) {
+    showError("Укажи число игроков — без этого не будет слотов для записи.");
     return;
   }
 

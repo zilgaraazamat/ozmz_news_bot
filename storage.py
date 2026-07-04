@@ -400,6 +400,13 @@ def init_game_slots(game_id, num_players):
                          VALUES(?, ?, 'free')""", (game_id, i))
 
 
+def set_game_num_players(game_id, num_players):
+    """Задать/обновить число слотов для уже созданной игры (без слотов) и создать сами слоты."""
+    with _lock, _conn() as c:
+        c.execute("UPDATE games SET num_players=? WHERE id=?", (num_players, game_id))
+    init_game_slots(game_id, num_players)
+
+
 def get_slots(game_id):
     with _lock, _conn() as c:
         rows = c.execute("""SELECT slot_index, user_id, name, player, status, claimed_at

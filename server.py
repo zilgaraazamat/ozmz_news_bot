@@ -12,6 +12,7 @@ from storage import (
     signup_for_game, get_signups, get_my_signup, confirm_signup,
     get_username,
     init_game_slots, get_slots, claim_slot, release_slot, confirm_slot, admin_move_slot,
+    set_game_num_players,
 )
 from predict import get_stats as predict_stats, announce_result
 from battle import create_battle, join_battle, get_state, submit_answer, list_open_battles
@@ -143,11 +144,14 @@ class Handler(BaseHTTPRequestHandler):
                 game_date = (data.get("date") or "").strip()
                 game_time = (data.get("time") or "").strip()
                 location  = (data.get("location") or "").strip()
+                num_players = data.get("num_players") or None
                 if not game_date or not game_time or not location:
                     self._json({"ok": False, "error": "Заполни дату, время и место"})
                     return
+                if not num_players:
+                    self._json({"ok": False, "error": "Укажи число игроков — без этого не будет слотов для записи"})
+                    return
 
-                num_players      = data.get("num_players") or None
                 num_teams        = data.get("num_teams") or None
                 players_per_team = data.get("players_per_team") or None
                 price            = (data.get("price") or "").strip()
@@ -306,6 +310,24 @@ class Handler(BaseHTTPRequestHandler):
                     self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] admin/move-slot: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/admin/set-num-players":
+            try:
+                data = json.loads(body)
+                admin_id = str(data.get("user_id", ""))
+                if admin_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Нет прав администратора"})
+                    return
+                game_id = data.get("game_id")
+                num_players = int(data.get("num_players") or 0)
+                if num_players <= 0:
+                    self._json({"ok": False, "error": "Некорректное число"})
+                    return
+                set_game_num_players(game_id, num_players)
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] admin/set-num-players: {e}")
                 self.send_response(400); self.end_headers()
 
         else:
