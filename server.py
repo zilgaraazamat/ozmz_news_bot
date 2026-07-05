@@ -9,7 +9,7 @@ from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
     get_profile, set_nickname, get_role, set_role,
     create_game, get_all_games, get_active_games, get_game,
-    signup_for_game, get_signups, get_my_signup, confirm_signup,
+    signup_for_game, get_signups, get_my_signup, confirm_signup, cancel_signup,
     get_username,
     get_team_members, clear_game_teams, add_team_member, move_team_member,
 )
@@ -199,6 +199,20 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] games/signup: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/games/cancel-signup":
+            try:
+                data = json.loads(body)
+                user_id = str(data.get("user_id", ""))
+                game_id = data.get("game_id")
+                if not user_id or not game_id:
+                    self._json({"ok": False, "error": "bad_request"})
+                    return
+                cancel_signup(game_id, user_id)
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] games/cancel-signup: {e}")
                 self.send_response(400); self.end_headers()
 
         elif path == "/api/admin/confirm-signup":

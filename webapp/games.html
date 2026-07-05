@@ -43,6 +43,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .team-title{font-size:12px;font-weight:800;color:#7ed957;margin-bottom:6px}
 .team-player{font-size:12px;padding:3px 0}
 .teams-title{font-size:11px;color:#6b7c6e;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px}
+.filters{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
+.filter-chip{flex-shrink:0;padding:8px 14px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#9db3a3;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.filter-chip.active{background:rgba(126,217,87,.15);border-color:#7ed957;color:#7ed957}
+.btn-cancel{width:100%;padding:9px;margin-top:8px;border:1px solid rgba(255,80,80,.35);background:transparent;color:#ff8080;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 </style>
 </head>
 <body>
@@ -52,6 +56,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
     <p>Записывайся и приходи играть</p>
   </div>
   <div id="error-banner"></div>
+  <div class="filters" id="filters"></div>
   <div id="games-list"></div>
 </div>
 
@@ -71,6 +76,59 @@ if (window.Telegram && Telegram.WebApp) {
 
 function showError(msg) {
   document.getElementById("error-banner").innerHTML = `<div class="error-banner">⚠️ ${msg}</div>`;
+}
+
+const WEEKDAYS = ["вс","пн","вт","ср","чт","пт","сб"];
+const MONTHS = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+
+function parseGameDate(g) {
+  // ожидаем ISO "YYYY-MM-DD"; для старых игр с другим форматом — null (не участвуют в фильтрах)
+  if (!g.date || !/^\d{4}-\d{2}-\d{2}$/.test(g.date)) return null;
+  const [y, m, d] = g.date.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatDate(g) {
+  const dt = parseGameDate(g);
+  if (!dt) return g.date || "";
+  const today = new Date(); today.setHours(0,0,0,0);
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  const diffDays = Math.round((dt - today) / 86400000);
+  if (diffDays === 0) return `Сегодня, ${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
+  if (diffDays === 1) return `Завтра, ${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
+  return `${dt.getDate()} ${MONTHS[dt.getMonth()]}, ${WEEKDAYS[dt.getDay()]}`;
+}
+
+let currentFilter = "all";
+
+function matchesFilter(g) {
+  if (currentFilter === "all") return true;
+  const dt = parseGameDate(g);
+  if (!dt) return currentFilter === "all";
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diffDays = Math.round((dt - today) / 86400000);
+  if (currentFilter === "today") return diffDays === 0;
+  if (currentFilter === "tomorrow") return diffDays === 1;
+  if (currentFilter === "week") return diffDays >= 0 && diffDays <= 7;
+  return true;
+}
+
+function renderFilters() {
+  const filters = [
+    { id: "all", label: "Все ближайшие" },
+    { id: "today", label: "Сегодня" },
+    { id: "tomorrow", label: "Завтра" },
+    { id: "week", label: "На неделе" },
+  ];
+  document.getElementById("filters").innerHTML = filters.map(f => `
+    <div class="filter-chip ${currentFilter === f.id ? "active" : ""}" onclick="setFilter('${f.id}')">${f.label}</div>
+  `).join("");
+}
+
+function setFilter(id) {
+  currentFilter = id;
+  renderFilters();
+  renderGames(window.__lastGames || []);
 }
 
 function rosterHtml(signups) {
@@ -106,13 +164,16 @@ function totalPeople(signups, statusFilter) {
 }
 
 function renderGames(games) {
+  window.__lastGames = games || [];
   const el = document.getElementById("games-list");
-  if (!games || games.length === 0) {
-    el.innerHTML = `<div class="empty">Активных игр пока нет ⚽<br>Загляни позже!</div>`;
+  const filtered = (games || []).filter(matchesFilter);
+
+  if (filtered.length === 0) {
+    el.innerHTML = `<div class="empty">Игр пока нет ⚽<br>Загляни позже или смени фильтр!</div>`;
     return;
   }
 
-  el.innerHTML = games.map(g => {
+  el.innerHTML = filtered.map(g => {
     const confirmedCount = totalPeople(g.signups, "confirmed");
     const totalCount = totalPeople(g.signups, null);
 
@@ -120,7 +181,9 @@ function renderGames(games) {
     if (g.my_status === "confirmed") {
       actionHtml = `<div class="status-badge status-confirmed">✅ Ты записан и подтверждён</div>`;
     } else if (g.my_status === "pending") {
-      actionHtml = `<div class="status-badge status-pending">⏳ Ожидает подтверждения оплаты</div>`;
+      actionHtml = `
+        <div class="status-badge status-pending">⏳ Ожидает подтверждения оплаты</div>
+        <button class="btn-cancel" onclick="cancelSignup(${g.id})">Отменить запись</button>`;
     } else {
       actionHtml = `
         <label class="guests-label">Сколько вас всего придёт (с тобой)?</label>
@@ -131,7 +194,7 @@ function renderGames(games) {
     return `
       <div class="game-card">
         <div class="game-top">
-          <div class="game-when">📅 ${g.date} · 🕐 ${g.time}</div>
+          <div class="game-when">📅 ${formatDate(g)} · 🕐 ${g.time}</div>
           ${g.price ? `<div class="game-price">${g.price}</div>` : ""}
         </div>
         <div class="game-loc">📍 ${g.location}</div>
@@ -181,6 +244,25 @@ async function signup(gameId) {
   }
 }
 
+async function cancelSignup(gameId) {
+  if (!userId) return;
+  try {
+    const res = await fetch("/api/games/cancel-signup", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, game_id: gameId })
+    }).then(r => r.json());
+    if (res.ok) {
+      document.getElementById("error-banner").innerHTML = "";
+      loadGames();
+    } else {
+      showError(res.error || "Не удалось отменить запись.");
+    }
+  } catch (e) {
+    showError("Ошибка сети — попробуй ещё раз.");
+  }
+}
+
+renderFilters();
 loadGames();
 setInterval(loadGames, 4000);
 </script>

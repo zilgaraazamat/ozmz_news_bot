@@ -346,7 +346,31 @@ def get_all_games():
 
 
 def get_active_games():
-    return [g for g in get_all_games() if g["status"] == "active"]
+    """Только будущие активные игры, отсортированные по ближайшей дате/времени."""
+    import re
+    from datetime import datetime
+    try:
+        now_key = datetime.now().strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        now_key = ""
+
+    games = [g for g in get_all_games() if g["status"] == "active"]
+    iso_date_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+    def sort_key(g):
+        d = (g["date"] or "9999-99-99").strip()
+        t = (g["time"] or "99:99").strip()
+        return f"{d} {t}"
+
+    def is_upcoming(g):
+        d = (g["date"] or "").strip()
+        if not iso_date_re.match(d):
+            return True  # старый формат даты (не ISO) — не фильтруем, чтобы не потерять игру
+        return sort_key(g) >= now_key
+
+    upcoming = [g for g in games if is_upcoming(g)]
+    upcoming.sort(key=sort_key)
+    return upcoming
 
 
 def get_game(game_id):
@@ -389,6 +413,14 @@ def get_my_signup(game_id, user_id):
         row = c.execute("""SELECT status FROM game_signups WHERE game_id=? AND user_id=?""",
                          (game_id, user_id)).fetchone()
     return row[0] if row else None
+
+
+def cancel_signup(game_id, user_id):
+    """Игрок сам отменяет свою запись (пока не подтверждена админом)."""
+    user_id = str(user_id)
+    with _lock, _conn() as c:
+        c.execute("DELETE FROM game_signups WHERE game_id=? AND user_id=? AND status='pending'",
+                  (game_id, user_id))
 
 
 def confirm_signup(game_id, user_id):
