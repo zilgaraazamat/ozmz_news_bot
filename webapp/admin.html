@@ -49,6 +49,11 @@ textarea{resize:vertical;min-height:70px}
 .manage-confirm-btn{padding:6px 12px;border:none;border-radius:8px;background:#7ed957;color:#0e1a12;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .manage-confirmed-badge{font-size:12px;color:#7ed957;font-weight:700}
 .manage-empty{font-size:12px;color:#4a5a4d}
+.filters{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px}
+.filter-chip{flex-shrink:0;padding:8px 14px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#9db3a3;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.filter-chip.active{background:rgba(126,217,87,.15);border-color:#7ed957;color:#7ed957}
+.manage-game.past{opacity:.7}
+.past-badge{display:inline-block;font-size:10px;color:#6b7c6e;background:rgba(255,255,255,.06);padding:2px 8px;border-radius:6px;margin-left:8px;text-transform:uppercase;letter-spacing:.5px}
 .denied{text-align:center;padding:40px 10px}
 .denied .ic{font-size:40px;margin-bottom:12px}
 .hidden{display:none!important}
@@ -113,6 +118,7 @@ textarea{resize:vertical;min-height:70px}
 <div class="card hidden" id="games-wrap" style="margin-top:16px">
   <h1>📋 Записи на игры</h1>
   <div class="sub">Подтверждай после получения оплаты</div>
+  <div class="filters" id="games-filters"></div>
   <div id="games-manage-list"></div>
 </div>
 
@@ -159,18 +165,59 @@ async function checkAccess() {
 async function loadManageGames() {
   try {
     const r = await fetch(`/api/admin/games?user_id=${userId}`).then(r => r.json());
-    renderManageGames(r.games || []);
+    window.__allManageGames = r.games || [];
+    renderGamesFilters();
+    renderManageGames(filterManageGames(window.__allManageGames));
   } catch (e) {}
 }
 
-function renderManageGames(games) {
+function parseGameDate(g) {
+  if (!g.date || !/^\d{4}-\d{2}-\d{2}$/.test(g.date)) return null;
+  const [y, m, d] = g.date.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function isPastGame(g) {
+  const dt = parseGameDate(g);
+  if (!dt) return false; // не можем определить — считаем актуальной
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return dt < today;
+}
+
+let gamesFilter = "upcoming";
+
+function filterManageGames(games) {
   const active = games.filter(g => g.status === "active");
+  if (gamesFilter === "upcoming") return active.filter(g => !isPastGame(g));
+  if (gamesFilter === "past") return active.filter(g => isPastGame(g));
+  return active;
+}
+
+function renderGamesFilters() {
+  const filters = [
+    { id: "upcoming", label: "Ближайшие" },
+    { id: "past", label: "История" },
+    { id: "all", label: "Все" },
+  ];
+  document.getElementById("games-filters").innerHTML = filters.map(f => `
+    <div class="filter-chip ${gamesFilter === f.id ? "active" : ""}" onclick="setGamesFilter('${f.id}')">${f.label}</div>
+  `).join("");
+}
+
+function setGamesFilter(id) {
+  gamesFilter = id;
+  renderGamesFilters();
+  renderManageGames(filterManageGames(window.__allManageGames || []));
+}
+
+function renderManageGames(active) {
   const el = document.getElementById("games-manage-list");
   if (active.length === 0) {
-    el.innerHTML = `<div class="manage-empty">Активных игр нет</div>`;
+    el.innerHTML = `<div class="manage-empty">${gamesFilter === "past" ? "В истории пока пусто" : "Игр по этому фильтру нет"}</div>`;
     return;
   }
   el.innerHTML = active.map(g => {
+    const past = isPastGame(g);
     const signups = g.signups || [];
     const rows = signups.length
       ? signups.map(s => {
@@ -178,38 +225,37 @@ function renderManageGames(games) {
           const guests = s.guests_count > 0 ? ` <span class="manage-guests">+${s.guests_count} чел.</span>` : "";
           const paidClaim = (s.payment_claimed && s.status !== "confirmed") ? ` <span class="manage-paid-claim">💰 заявил об оплате</span>` : "";
           const phoneDigits = s.phone ? s.phone.replace(/[^\d]/g, '') : '';
-          const msgBtn = s.username
-            ? `<a class="manage-msg-btn" href="https://t.me/${s.username}" target="_blank">💬 @${s.username}</a>`
-            : (phoneDigits
-                ? `<a class="manage-msg-btn" href="https://t.me/+${phoneDigits}" target="_blank">💬 ${s.phone}</a>`
-                : `<span class="manage-no-username">нет контакта</span>`);
+          const msgBtn = past ? "" : (s.username
+                ? `<a class="manage-msg-btn" href="https://t.me/${s.username}" target="_blank">💬 @${s.username}</a>`
+                : (phoneDigits
+                    ? `<a class="manage-msg-btn" href="https://t.me/+${phoneDigits}" target="_blank">💬 ${s.phone}</a>`
+                    : `<span class="manage-no-username">нет контакта</span>`));
           if (s.status === "confirmed") {
             return `<div class="manage-row">
               <span class="manage-name">${s.name}${label}${guests}</span>
               <div class="manage-actions">${msgBtn}<span class="manage-confirmed-badge">✅</span></div>
             </div>`;
           }
+          const confirmBtn = past ? "" : `<button class="manage-confirm-btn" onclick="confirmPlayer(${g.id}, '${s.user_id}')">Подтвердить</button>`;
           return `<div class="manage-row">
             <span class="manage-name">${s.name}${label}${guests}${paidClaim}</span>
-            <div class="manage-actions">${msgBtn}
-              <button class="manage-confirm-btn" onclick="confirmPlayer(${g.id}, '${s.user_id}')">Подтвердить</button>
-            </div>
+            <div class="manage-actions">${msgBtn}${confirmBtn}</div>
           </div>`;
         }).join("")
       : `<div class="manage-empty">Записей ещё нет</div>`;
 
     const numTeams = g.num_teams || 2;
-    const teamsBlock = renderTeamsManage(g.id, g.teams || [], numTeams);
+    const teamsBlock = renderTeamsManage(g.id, g.teams || [], numTeams, past);
 
-    return `<div class="manage-game">
-      <div class="manage-title">📅 ${g.date} · 🕐 ${g.time} — ${g.location}</div>
+    return `<div class="manage-game ${past ? "past" : ""}">
+      <div class="manage-title">📅 ${g.date} · 🕐 ${g.time} — ${g.location}${past ? '<span class="past-badge">Прошла</span>' : ""}</div>
       ${rows}
-      ${teamsBlock ? `<div class="teams-caption">Составы команд (сформированы автоматически)</div>${teamsBlock}` : ""}
+      ${teamsBlock ? `<div class="teams-caption">Составы команд${past ? "" : " (сформированы автоматически)"}</div>${teamsBlock}` : ""}
     </div>`;
   }).join("");
 }
 
-function renderTeamsManage(gameId, teamMembers, numTeams) {
+function renderTeamsManage(gameId, teamMembers, numTeams, past) {
   if (!teamMembers.length) return "";
   const byTeam = {};
   for (let i = 0; i < numTeams; i++) byTeam[i] = [];
@@ -221,13 +267,13 @@ function renderTeamsManage(gameId, teamMembers, numTeams) {
       ${byTeam[i].map(m => `
         <div class="manage-row">
           <span class="manage-name">${m.name}${m.player ? ` — <i>${m.player}</i>` : ""}</span>
-          <div class="manage-actions">
+          ${past ? "" : `<div class="manage-actions">
             <select class="manage-move-select" id="team-move-${m.id}">
               ${Array.from({length: numTeams}, (_, ti) => ti).filter(ti => ti !== i)
                 .map(ti => `<option value="${ti}">→ Команда ${ti + 1}</option>`).join("")}
             </select>
             <button class="manage-move-btn" onclick="moveTeamMember(${gameId}, ${m.id})">↔</button>
-          </div>
+          </div>`}
         </div>`).join("") || '<div class="manage-empty">пусто</div>'}
     </div>`).join("");
 }

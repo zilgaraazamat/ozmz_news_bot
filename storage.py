@@ -309,6 +309,30 @@ def get_profile(user_id):
     return {"name": row[0], "nickname": row[1], "phone": row[2], "username": row[3]}
 
 
+def get_games_played_count(user_id):
+    """Считает игры, где статус записи — confirmed, а дата игры уже в прошлом.
+    Учитываются только игры с датой в формате ISO (YYYY-MM-DD) — так надёжно."""
+    import re
+    from datetime import datetime
+    user_id = str(user_id)
+    today = datetime.now().strftime("%Y-%m-%d")
+    iso_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+    with _lock, _conn() as c:
+        rows = c.execute("""
+            SELECT g.game_date FROM game_signups s
+            JOIN games g ON g.id = s.game_id
+            WHERE s.user_id=? AND s.status='confirmed'
+        """, (user_id,)).fetchall()
+
+    count = 0
+    for (d,) in rows:
+        d = (d or "").strip()
+        if iso_re.match(d) and d < today:
+            count += 1
+    return count
+
+
 def set_nickname(user_id, nickname):
     user_id = str(user_id)
     with _lock, _conn() as c:

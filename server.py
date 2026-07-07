@@ -7,7 +7,7 @@ from api import now_astana, tg_post
 from config import PORT, PLAYER_CATEGORIES, ADMIN_IDS, CHAT_ID
 from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
-    get_profile, set_nickname, get_role, set_role,
+    get_profile, set_nickname, get_role, set_role, get_games_played_count,
     create_game, get_all_games, get_active_games, get_game,
     signup_for_game, get_signups, get_my_signup, confirm_signup, cancel_signup, mark_payment_claimed,
     is_registered_for_game, add_chat_message, get_chat_messages,
@@ -390,10 +390,12 @@ class Handler(BaseHTTPRequestHandler):
             user_id = (q.get("user_id") or [""])[0]
             profile = get_profile(user_id)
             role = get_role(user_id)
+            games_played = get_games_played_count(user_id) if user_id else 0
             self._json({
                 "name": profile["name"] if profile else None,
                 "nickname": profile["nickname"] if profile else None,
                 "role": role,
+                "games_played": games_played,
             })
         elif path == "/":
             self._admin_html()
