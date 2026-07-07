@@ -422,6 +422,14 @@ def get_signups(game_id):
               "team_pref": r[4], "status": r[5], "created_at": r[6]} for r in rows]
 
 
+def change_team_pref(game_id, user_id, team_pref):
+    """Игрок сам меняет команду после регистрации (проверка мест — на уровне сервера)."""
+    user_id = str(user_id)
+    with _lock, _conn() as c:
+        c.execute("UPDATE game_signups SET team_pref=? WHERE game_id=? AND user_id=?",
+                  (team_pref, game_id, user_id))
+
+
 def get_my_signup(game_id, user_id):
     user_id = str(user_id)
     with _lock, _conn() as c:

@@ -9,7 +9,7 @@ from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
     get_profile, set_nickname, get_role, set_role,
     create_game, get_all_games, get_active_games, get_game,
-    signup_for_game, get_signups, get_my_signup, confirm_signup, cancel_signup,
+    signup_for_game, get_signups, get_my_signup, confirm_signup, cancel_signup, change_team_pref,
     is_registered_for_game, add_chat_message, get_chat_messages,
     get_username,
     get_team_members, clear_game_teams, add_team_member, move_team_member,
@@ -218,6 +218,40 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"  [WARN] games/cancel-signup: {e}")
                 self.send_response(400); self.end_headers()
 
+        elif path == "/api/games/change-team":
+            try:
+                data = json.loads(body)
+                user_id = str(data.get("user_id", ""))
+                game_id = data.get("game_id")
+                pref_raw = data.get("team_pref")
+                new_pref = int(pref_raw) if pref_raw is not None and pref_raw != "" else None
+                if not user_id or not game_id:
+                    self._json({"ok": False, "error": "bad_request"})
+                    return
+
+                game = get_game(game_id)
+                signups = get_signups(game_id)
+                mine = next((s for s in signups if s["user_id"] == user_id), None)
+                if not mine:
+                    self._json({"ok": False, "error": "Ты не записан на эту игру"})
+                    return
+
+                if new_pref is not None and game and game.get("players_per_team"):
+                    my_size = 1 + (mine.get("guests_count") or 0)
+                    occupied = sum(
+                        1 + (s.get("guests_count") or 0)
+                        for s in signups if s["user_id"] != user_id and s.get("team_pref") == new_pref
+                    )
+                    if occupied + my_size > int(game["players_per_team"]):
+                        self._json({"ok": False, "error": "В этой команде уже нет свободных мест"})
+                        return
+
+                change_team_pref(game_id, user_id, new_pref)
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] games/change-team: {e}")
+                self.send_response(400); self.end_headers()
+
         elif path == "/api/games/chat/send":
             try:
                 data = json.loads(body)
@@ -322,9 +356,18 @@ class Handler(BaseHTTPRequestHandler):
             user_id = (q.get("user_id") or [""])[0]
             games = get_active_games()
             for g in games:
-                g["signups"] = get_signups(g["id"])
+                signups = get_signups(g["id"])
+                g["signups"] = signups
                 g["my_status"] = get_my_signup(g["id"], user_id) if user_id else None
                 g["teams"] = get_team_members(g["id"])
+
+                num_teams = g.get("num_teams") or 0
+                per_team = g.get("players_per_team")
+                fill = []
+                for i in range(num_teams):
+                    occupied = sum(1 + (s.get("guests_count") or 0) for s in signups if s.get("team_pref") == i)
+                    fill.append({"index": i, "occupied": occupied, "capacity": per_team})
+                g["team_fill"] = fill
             self._json({"games": games})
         elif path == "/api/games/chat":
             user_id = (q.get("user_id") or [""])[0]
