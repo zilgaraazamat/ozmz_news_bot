@@ -82,12 +82,17 @@ def init_db():
             name         TEXT,
             player       TEXT,
             guests_count INTEGER DEFAULT 0,
+            team_pref    INTEGER,
             status       TEXT DEFAULT 'pending',
             created_at   TEXT,
             PRIMARY KEY (game_id, user_id)
         )""")
         try:
             c.execute("ALTER TABLE game_signups ADD COLUMN guests_count INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            c.execute("ALTER TABLE game_signups ADD COLUMN team_pref INTEGER")
         except sqlite3.OperationalError:
             pass
 
@@ -396,24 +401,25 @@ def get_game(game_id):
 
 # ── Записи на игры ────────────────────────────────────────────────────────────
 
-def signup_for_game(game_id, user_id, name, player, guests_count=0):
+def signup_for_game(game_id, user_id, name, player, guests_count=0, team_pref=None):
     user_id = str(user_id)
     guests_count = max(0, int(guests_count or 0))
     with _lock, _conn() as c:
-        c.execute("""INSERT INTO game_signups(game_id, user_id, name, player, guests_count, status, created_at)
-                     VALUES(?, ?, ?, ?, ?, 'pending', datetime('now'))
+        c.execute("""INSERT INTO game_signups(game_id, user_id, name, player, guests_count, team_pref, status, created_at)
+                     VALUES(?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
                      ON CONFLICT(game_id, user_id) DO UPDATE SET
-                        name=excluded.name, player=excluded.player, guests_count=excluded.guests_count""",
-                  (game_id, user_id, name, player, guests_count))
+                        name=excluded.name, player=excluded.player,
+                        guests_count=excluded.guests_count, team_pref=excluded.team_pref""",
+                  (game_id, user_id, name, player, guests_count, team_pref))
 
 
 def get_signups(game_id):
     with _lock, _conn() as c:
-        rows = c.execute("""SELECT user_id, name, player, guests_count, status, created_at
+        rows = c.execute("""SELECT user_id, name, player, guests_count, team_pref, status, created_at
                              FROM game_signups WHERE game_id=? ORDER BY created_at""",
                           (game_id,)).fetchall()
     return [{"user_id": r[0], "name": r[1], "player": r[2], "guests_count": r[3] or 0,
-              "status": r[4], "created_at": r[5]} for r in rows]
+              "team_pref": r[4], "status": r[5], "created_at": r[6]} for r in rows]
 
 
 def get_my_signup(game_id, user_id):

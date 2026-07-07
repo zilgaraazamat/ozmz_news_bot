@@ -183,6 +183,8 @@ class Handler(BaseHTTPRequestHandler):
                 user_id = str(data.get("user_id", ""))
                 game_id = data.get("game_id")
                 guests_count = int(data.get("guests_count") or 0)
+                team_pref_raw = data.get("team_pref")
+                team_pref = int(team_pref_raw) if team_pref_raw is not None and team_pref_raw != "" else None
                 if not user_id or not game_id:
                     self._json({"ok": False, "error": "bad_request"})
                     return
@@ -196,7 +198,7 @@ class Handler(BaseHTTPRequestHandler):
                         else (profile["name"] if profile else None)) or "Игрок"
                 player = role["player"] if role else None
 
-                signup_for_game(game_id, user_id, name, player, guests_count)
+                signup_for_game(game_id, user_id, name, player, guests_count, team_pref)
                 self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] games/signup: {e}")

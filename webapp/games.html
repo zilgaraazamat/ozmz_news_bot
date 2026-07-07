@@ -150,7 +150,8 @@ function rosterHtml(signups) {
     const cls = s.status === "confirmed" ? "confirmed" : "pending";
     const label = s.player ? ` (${s.player})` : "";
     const guests = s.guests_count > 0 ? ` +${s.guests_count}` : "";
-    return `<div class="roster-row"><span class="dot ${cls}"></span><span>${s.name}${label}${guests}</span></div>`;
+    const pref = (s.team_pref !== null && s.team_pref !== undefined) ? ` · хочет в Команду ${s.team_pref + 1}` : "";
+    return `<div class="roster-row"><span class="dot ${cls}"></span><span>${s.name}${label}${guests}${pref}</span></div>`;
   }).join("");
 }
 
@@ -196,9 +197,17 @@ function renderGames(games) {
         <div class="status-badge status-pending">⏳ Ожидает подтверждения оплаты</div>
         <button class="btn-cancel" onclick="cancelSignup(${g.id})">Отменить запись</button>`;
     } else {
+      const teamChoice = (g.num_teams && g.num_teams > 1)
+        ? `<label class="guests-label">В какой команде хочешь быть?</label>
+           <select class="guests-input" id="teampref-${g.id}">
+             <option value="">Без разницы</option>
+             ${Array.from({length: g.num_teams}, (_, i) => `<option value="${i}">Команда ${i + 1}</option>`).join("")}
+           </select>`
+        : "";
       actionHtml = `
         <label class="guests-label">Сколько вас всего придёт (с тобой)?</label>
         <input type="number" class="guests-input" id="guests-${g.id}" min="1" max="20" value="1">
+        ${teamChoice}
         <button class="btn" onclick="signup(${g.id})">Записаться</button>`;
     }
 
@@ -248,10 +257,13 @@ async function signup(gameId) {
   const totalPeopleCount = guestsInput ? parseInt(guestsInput.value, 10) || 1 : 1;
   const guestsCount = Math.max(0, totalPeopleCount - 1);
 
+  const teamPrefSelect = document.getElementById(`teampref-${gameId}`);
+  const teamPref = (teamPrefSelect && teamPrefSelect.value !== "") ? parseInt(teamPrefSelect.value, 10) : null;
+
   try {
     const res = await fetch("/api/games/signup", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, game_id: gameId, guests_count: guestsCount })
+      body: JSON.stringify({ user_id: userId, game_id: gameId, guests_count: guestsCount, team_pref: teamPref })
     }).then(r => r.json());
     if (!res.ok) {
       showError(res.error || "Не удалось записаться.");
