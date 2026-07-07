@@ -47,6 +47,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .filter-chip{flex-shrink:0;padding:8px 14px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#9db3a3;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .filter-chip.active{background:rgba(126,217,87,.15);border-color:#7ed957;color:#7ed957}
 .btn-cancel{width:100%;padding:9px;margin-top:8px;border:1px solid rgba(255,80,80,.35);background:transparent;color:#ff8080;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
+.btn-pay{display:block;width:100%;box-sizing:border-box;text-align:center;padding:12px;margin-top:10px;border-radius:10px;background:#7ed957;color:#0e1a12;font-weight:800;font-size:14px;text-decoration:none}
+.btn-paid{width:100%;padding:10px;margin-top:8px;border:1px solid rgba(126,217,87,.4);background:transparent;color:#7ed957;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+.paid-claim-note{text-align:center;font-size:12px;color:#7ed957;padding:10px;margin-top:10px;background:rgba(126,217,87,.08);border-radius:10px}
 .chat-toggle{width:100%;padding:10px;margin-top:10px;border:1px solid rgba(126,217,87,.3);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 .chat-box{margin-top:10px;background:rgba(255,255,255,.03);border-radius:12px;padding:10px 12px}
 .chat-messages{max-height:220px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
@@ -192,8 +195,21 @@ function renderGames(games) {
     if (g.my_status === "confirmed") {
       actionHtml = `<div class="status-badge status-confirmed">✅ Ты записан и подтверждён</div>`;
     } else if (g.my_status === "pending") {
+      const mySignup = (g.signups || []).find(s => s.user_id === userId);
+      const alreadyClaimed = mySignup && mySignup.payment_claimed;
+
+      let paymentBlock = "";
+      if (g.payment_link && !alreadyClaimed) {
+        paymentBlock = `
+          <a class="btn-pay" href="${g.payment_link}" target="_blank">💳 Оплатить</a>
+          <button class="btn-paid" onclick="claimPayment(${g.id})">✅ Я оплатил(а)</button>`;
+      } else if (alreadyClaimed) {
+        paymentBlock = `<div class="paid-claim-note">💰 Оплата отмечена — ждём подтверждения от админа</div>`;
+      }
+
       actionHtml = `
         <div class="status-badge status-pending">⏳ Ожидает подтверждения оплаты</div>
+        ${paymentBlock}
         <button class="btn-cancel" onclick="cancelSignup(${g.id})">Отменить запись</button>`;
     } else {
       actionHtml = `
@@ -324,6 +340,24 @@ async function sendChatMessage(gameId) {
     }).then(r => r.json());
     if (res.ok) pollChat(gameId);
     else showError(res.error || "Не удалось отправить сообщение.");
+  } catch (e) {
+    showError("Ошибка сети — попробуй ещё раз.");
+  }
+}
+
+async function claimPayment(gameId) {
+  if (!userId) return;
+  try {
+    const res = await fetch("/api/games/claim-payment", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, game_id: gameId })
+    }).then(r => r.json());
+    if (res.ok) {
+      document.getElementById("error-banner").innerHTML = "";
+      loadGames();
+    } else {
+      showError(res.error || "Не удалось отметить оплату.");
+    }
   } catch (e) {
     showError("Ошибка сети — попробуй ещё раз.");
   }

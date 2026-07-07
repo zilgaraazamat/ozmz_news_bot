@@ -71,22 +71,32 @@ def init_db():
             players_per_team INTEGER,
             price            TEXT,
             extra_info       TEXT,
+            payment_link     TEXT,
             created_by       TEXT,
             created_at       TEXT,
             status           TEXT DEFAULT 'active'
         )""")
+        try:
+            c.execute("ALTER TABLE games ADD COLUMN payment_link TEXT")
+        except sqlite3.OperationalError:
+            pass
 
         c.execute("""CREATE TABLE IF NOT EXISTS game_signups(
-            game_id      INTEGER,
-            user_id      TEXT,
-            name         TEXT,
-            player       TEXT,
-            guests_count INTEGER DEFAULT 0,
-            team_pref    INTEGER,
-            status       TEXT DEFAULT 'pending',
-            created_at   TEXT,
+            game_id         INTEGER,
+            user_id         TEXT,
+            name            TEXT,
+            player          TEXT,
+            guests_count    INTEGER DEFAULT 0,
+            team_pref       INTEGER,
+            payment_claimed INTEGER DEFAULT 0,
+            status          TEXT DEFAULT 'pending',
+            created_at      TEXT,
             PRIMARY KEY (game_id, user_id)
         )""")
+        try:
+            c.execute("ALTER TABLE game_signups ADD COLUMN payment_claimed INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
         try:
             c.execute("ALTER TABLE game_signups ADD COLUMN guests_count INTEGER DEFAULT 0")
         except sqlite3.OperationalError:
@@ -338,24 +348,25 @@ def get_all_roles():
 # ── Игры ──────────────────────────────────────────────────────────────────────
 
 def create_game(game_date, game_time, location, num_players, num_teams,
-                 players_per_team, price, extra_info, created_by):
+                 players_per_team, price, extra_info, created_by, payment_link=None):
     with _lock, _conn() as c:
         cur = c.execute("""INSERT INTO games(
                 game_date, game_time, location, num_players, num_teams,
-                players_per_team, price, extra_info, created_by, created_at, status
-            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'active')""",
+                players_per_team, price, extra_info, payment_link, created_by, created_at, status
+            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'active')""",
             (game_date, game_time, location, num_players, num_teams,
-             players_per_team, price, extra_info, str(created_by)))
+             players_per_team, price, extra_info, payment_link, str(created_by)))
         return cur.lastrowid
 
 
 def get_all_games():
     with _lock, _conn() as c:
         rows = c.execute("""SELECT id, game_date, game_time, location, num_players, num_teams,
-                                    players_per_team, price, extra_info, created_by, created_at, status
+                                    players_per_team, price, extra_info, payment_link,
+                                    created_by, created_at, status
                              FROM games ORDER BY id DESC""").fetchall()
     keys = ["id", "date", "time", "location", "num_players", "num_teams",
-            "players_per_team", "price", "extra_info", "created_by", "created_at", "status"]
+            "players_per_team", "price", "extra_info", "payment_link", "created_by", "created_at", "status"]
     return [dict(zip(keys, r)) for r in rows]
 
 
@@ -390,12 +401,13 @@ def get_active_games():
 def get_game(game_id):
     with _lock, _conn() as c:
         row = c.execute("""SELECT id, game_date, game_time, location, num_players, num_teams,
-                                   players_per_team, price, extra_info, created_by, created_at, status
+                                   players_per_team, price, extra_info, payment_link,
+                                   created_by, created_at, status
                             FROM games WHERE id=?""", (game_id,)).fetchone()
     if not row:
         return None
     keys = ["id", "date", "time", "location", "num_players", "num_teams",
-            "players_per_team", "price", "extra_info", "created_by", "created_at", "status"]
+            "players_per_team", "price", "extra_info", "payment_link", "created_by", "created_at", "status"]
     return dict(zip(keys, row))
 
 
@@ -415,11 +427,20 @@ def signup_for_game(game_id, user_id, name, player, guests_count=0, team_pref=No
 
 def get_signups(game_id):
     with _lock, _conn() as c:
-        rows = c.execute("""SELECT user_id, name, player, guests_count, team_pref, status, created_at
+        rows = c.execute("""SELECT user_id, name, player, guests_count, team_pref,
+                                    payment_claimed, status, created_at
                              FROM game_signups WHERE game_id=? ORDER BY created_at""",
                           (game_id,)).fetchall()
     return [{"user_id": r[0], "name": r[1], "player": r[2], "guests_count": r[3] or 0,
-              "team_pref": r[4], "status": r[5], "created_at": r[6]} for r in rows]
+              "team_pref": r[4], "payment_claimed": bool(r[5]), "status": r[6], "created_at": r[7]}
+             for r in rows]
+
+
+def mark_payment_claimed(game_id, user_id):
+    user_id = str(user_id)
+    with _lock, _conn() as c:
+        c.execute("UPDATE game_signups SET payment_claimed=1 WHERE game_id=? AND user_id=?",
+                  (game_id, user_id))
 
 
 def change_team_pref(game_id, user_id, team_pref):

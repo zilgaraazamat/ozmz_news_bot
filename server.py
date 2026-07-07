@@ -9,7 +9,7 @@ from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
     get_profile, set_nickname, get_role, set_role,
     create_game, get_all_games, get_active_games, get_game,
-    signup_for_game, get_signups, get_my_signup, confirm_signup, cancel_signup,
+    signup_for_game, get_signups, get_my_signup, confirm_signup, cancel_signup, mark_payment_claimed,
     is_registered_for_game, add_chat_message, get_chat_messages,
     get_username,
     get_team_members, clear_game_teams, add_team_member, move_team_member,
@@ -167,9 +167,10 @@ class Handler(BaseHTTPRequestHandler):
                 players_per_team = data.get("players_per_team") or None
                 price            = (data.get("price") or "").strip()
                 extra_info       = (data.get("extra_info") or "").strip()
+                payment_link     = (data.get("payment_link") or "").strip() or None
 
                 game_id = create_game(game_date, game_time, location, num_players, num_teams,
-                                       players_per_team, price, extra_info, user_id)
+                                       players_per_team, price, extra_info, user_id, payment_link)
 
                 lines = [
                     "⚽ <b>НОВАЯ ИГРА!</b>",
@@ -230,6 +231,41 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] games/cancel-signup: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/games/claim-payment":
+            try:
+                data = json.loads(body)
+                user_id = str(data.get("user_id", ""))
+                game_id = data.get("game_id")
+                if not user_id or not game_id:
+                    self._json({"ok": False, "error": "bad_request"})
+                    return
+
+                signups = get_signups(game_id)
+                mine = next((s for s in signups if s["user_id"] == user_id), None)
+                if not mine:
+                    self._json({"ok": False, "error": "Ты не записан на эту игру"})
+                    return
+
+                mark_payment_claimed(game_id, user_id)
+
+                game = get_game(game_id)
+                name = mine["name"]
+                total_people = 1 + (mine.get("guests_count") or 0)
+                when = f"{game['date']} {game['time']}" if game else ""
+                admin_text = (
+                    f"💰 <b>Заявка на оплату!</b>\n\n"
+                    f"👤 {name} ({total_people} чел.) отметил(а), что оплатил(а) за игру\n"
+                    f"📅 {when} | 📍 {game['location'] if game else ''}\n\n"
+                    f"Проверь перевод и подтверди в панели /admin"
+                )
+                for admin_id in ADMIN_IDS:
+                    tg_post(admin_id, "sendMessage", text=admin_text, parse_mode="HTML")
+
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] games/claim-payment: {e}")
                 self.send_response(400); self.end_headers()
 
         elif path == "/api/games/chat/send":
