@@ -38,7 +38,7 @@ textarea{resize:vertical;min-height:70px}
 .manage-move-select{font-size:11px;padding:5px 6px;border-radius:6px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0}
 .manage-move-btn{padding:5px 8px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:6px;font-size:12px;cursor:pointer}
 .manage-kick-btn{padding:5px 9px;border:1px solid rgba(255,80,80,.35);background:transparent;color:#ff8080;border-radius:6px;font-size:12px;cursor:pointer}
-.teams-btn{width:100%;padding:9px;margin-top:12px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}
+.teams-caption{margin-top:12px;font-size:11px;color:#6b7c6e;text-transform:uppercase;letter-spacing:.5px}
 .team-block{background:rgba(255,255,255,.04);border-radius:10px;padding:10px 12px;margin-top:10px}
 .team-title{font-size:12px;font-weight:800;color:#7ed957;margin-bottom:6px}
 .team-player{font-size:12px;padding:3px 0}
@@ -197,8 +197,7 @@ function renderManageGames(games) {
     return `<div class="manage-game">
       <div class="manage-title">📅 ${g.date} · 🕐 ${g.time} — ${g.location}</div>
       ${rows}
-      <button class="teams-btn" onclick="autoAssign(${g.id})">🔀 Авто-распределить по командам</button>
-      <div id="teams-manage-${g.id}">${teamsBlock}</div>
+      ${teamsBlock ? `<div class="teams-caption">Составы команд (сформированы автоматически)</div>${teamsBlock}` : ""}
     </div>`;
   }).join("");
 }
@@ -224,17 +223,6 @@ function renderTeamsManage(gameId, teamMembers, numTeams) {
           </div>
         </div>`).join("") || '<div class="manage-empty">пусто</div>'}
     </div>`).join("");
-}
-
-async function autoAssign(gameId) {
-  try {
-    const res = await fetch("/api/admin/auto-assign-teams", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, game_id: gameId })
-    }).then(r => r.json());
-    if (res.ok) loadManageGames();
-    else showError(res.error || "Не удалось распределить");
-  } catch (e) {}
 }
 
 async function moveTeamMember(gameId, memberId) {

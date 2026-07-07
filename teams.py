@@ -78,13 +78,12 @@ def _place_best_fit(members, teams, capacity, num_teams):
 
 
 def auto_assign_teams(game, signups):
-    """confirmed signups (с гостями и выбором команды) -> список команд.
+    """Все регистрации (с гостями) -> список команд, автоматически, сразу при записи.
 
-    Приоритет 1 — уважить выбор игрока (team_pref): если человек/группа
-    указали, в какой команде хотят быть, стараемся положить их туда целиком.
-    Приоритет 2 — для тех, кто не выбрал команду, действует прежняя логика
-    best-fit (группа целиком туда, где помещается с наименьшим остатком).
-    Никто не теряется, даже если мест физически не хватает на всех.
+    Группа (тот, кто регистрировался + его гости) держится вместе и кладётся
+    целиком туда, где помещается с наименьшим остатком места (best-fit).
+    Если группа целиком нигде не влезает — раскидываем только лишних по
+    остальным местам. Никто не теряется, даже если мест физически не хватает.
 
     Возвращает список списков member-словарей:
     {"user_id", "name", "player", "is_guest"} — индекс в списке teams и есть номер команды.
@@ -92,42 +91,13 @@ def auto_assign_teams(game, signups):
     num_teams = game.get("num_teams") or 2
     per_team = game.get("players_per_team") or 10 ** 9
 
-    confirmed = [s for s in signups if s["status"] == "confirmed"]
-    confirmed.sort(key=lambda s: -(1 + (s.get("guests_count") or 0)))
+    groups = sorted(signups, key=lambda s: -(1 + (s.get("guests_count") or 0)))
 
     teams = [[] for _ in range(num_teams)]
     capacity = [per_team] * num_teams
-    leftovers = []  # куски групп с предпочтением, не поместившиеся в желаемую команду
-    no_pref = []
 
-    # 1) сначала — те, кто выбрал конкретную команду
-    for s in confirmed:
-        pref = s.get("team_pref")
-        if pref is None or not (0 <= pref < num_teams):
-            no_pref.append(s)
-            continue
-        members = _build_members(s)
-        size = len(members)
-        if capacity[pref] >= size:
-            teams[pref].extend(members)
-            capacity[pref] -= size
-        else:
-            # берём в желаемую команду сколько влезает, остаток — не теряем, доразместим ниже
-            idx = 0
-            while capacity[pref] > 0 and idx < size:
-                teams[pref].append(members[idx])
-                capacity[pref] -= 1
-                idx += 1
-            if idx < size:
-                leftovers.extend(members[idx:])
-
-    # 2) те, кто не указал команду — обычный best-fit по оставшимся местам
-    for s in no_pref:
+    for s in groups:
         _place_best_fit(_build_members(s), teams, capacity, num_teams)
-
-    # 3) остатки тех, кто не поместился в желаемую команду — доразмещаем, никого не теряя
-    if leftovers:
-        _place_best_fit(leftovers, teams, capacity, num_teams)
 
     return teams
 

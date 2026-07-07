@@ -47,8 +47,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .filter-chip{flex-shrink:0;padding:8px 14px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#9db3a3;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .filter-chip.active{background:rgba(126,217,87,.15);border-color:#7ed957;color:#7ed957}
 .btn-cancel{width:100%;padding:9px;margin-top:8px;border:1px solid rgba(255,80,80,.35);background:transparent;color:#ff8080;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
-.switch-team-block{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.08)}
-.btn-switch{width:100%;padding:9px;margin-top:6px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 .chat-toggle{width:100%;padding:10px;margin-top:10px;border:1px solid rgba(126,217,87,.3);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 .chat-box{margin-top:10px;background:rgba(255,255,255,.03);border-radius:12px;padding:10px 12px}
 .chat-messages{max-height:220px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
@@ -144,26 +142,6 @@ function setFilter(id) {
   renderGames(window.__lastGames || []);
 }
 
-function myTeamPref(g) {
-  const mine = (g.signups || []).find(s => s.user_id === userId);
-  return mine && mine.team_pref !== null && mine.team_pref !== undefined ? mine.team_pref : null;
-}
-
-function teamOptions(g, currentPref) {
-  const fill = g.team_fill || [];
-  let html = `<option value="">Без разницы</option>`;
-  for (let i = 0; i < (g.num_teams || 0); i++) {
-    const f = fill.find(x => x.index === i);
-    const occupied = f ? f.occupied : 0;
-    const capacity = f ? f.capacity : null;
-    const isMine = currentPref === i;
-    const full = capacity && !isMine && occupied >= capacity;
-    const countLabel = capacity ? ` (${occupied}/${capacity})` : "";
-    html += `<option value="${i}" ${full ? "disabled" : ""}>${full ? "🔒 " : ""}Команда ${i + 1}${countLabel}${full ? " — нет мест" : ""}</option>`;
-  }
-  return html;
-}
-
 function rosterHtml(signups) {
   if (!signups || signups.length === 0) {
     return `<div class="roster-empty">Пока никто не записался</div>`;
@@ -172,8 +150,7 @@ function rosterHtml(signups) {
     const cls = s.status === "confirmed" ? "confirmed" : "pending";
     const label = s.player ? ` (${s.player})` : "";
     const guests = s.guests_count > 0 ? ` +${s.guests_count}` : "";
-    const pref = (s.team_pref !== null && s.team_pref !== undefined) ? ` · хочет в Команду ${s.team_pref + 1}` : "";
-    return `<div class="roster-row"><span class="dot ${cls}"></span><span>${s.name}${label}${guests}${pref}</span></div>`;
+    return `<div class="roster-row"><span class="dot ${cls}"></span><span>${s.name}${label}${guests}</span></div>`;
   }).join("");
 }
 
@@ -210,33 +187,18 @@ function renderGames(games) {
   el.innerHTML = filtered.map(g => {
     const confirmedCount = totalPeople(g.signups, "confirmed");
     const totalCount = totalPeople(g.signups, null);
-    const myPref = myTeamPref(g);
 
     let actionHtml;
-    if (g.my_status === "confirmed" || g.my_status === "pending") {
-      const statusLine = g.my_status === "confirmed"
-        ? `<div class="status-badge status-confirmed">✅ Ты записан и подтверждён</div>`
-        : `<div class="status-badge status-pending">⏳ Ожидает подтверждения оплаты</div>
-           <button class="btn-cancel" onclick="cancelSignup(${g.id})">Отменить запись</button>`;
-
-      const switchBlock = (g.num_teams && g.num_teams > 1)
-        ? `<div class="switch-team-block">
-             <label class="guests-label">${myPref !== null ? `Сейчас: Команда ${myPref + 1}. ` : ""}Сменить команду:</label>
-             <select class="guests-input" id="switch-teampref-${g.id}">${teamOptions(g, myPref)}</select>
-             <button class="btn-switch" onclick="changeTeam(${g.id})">Сменить</button>
-           </div>`
-        : "";
-
-      actionHtml = statusLine + switchBlock;
+    if (g.my_status === "confirmed") {
+      actionHtml = `<div class="status-badge status-confirmed">✅ Ты записан и подтверждён</div>`;
+    } else if (g.my_status === "pending") {
+      actionHtml = `
+        <div class="status-badge status-pending">⏳ Ожидает подтверждения оплаты</div>
+        <button class="btn-cancel" onclick="cancelSignup(${g.id})">Отменить запись</button>`;
     } else {
-      const teamChoice = (g.num_teams && g.num_teams > 1)
-        ? `<label class="guests-label">В какой команде хочешь быть?</label>
-           <select class="guests-input" id="teampref-${g.id}">${teamOptions(g, null)}</select>`
-        : "";
       actionHtml = `
         <label class="guests-label">Сколько вас всего придёт (с тобой)?</label>
         <input type="number" class="guests-input" id="guests-${g.id}" min="1" max="20" value="1">
-        ${teamChoice}
         <button class="btn" onclick="signup(${g.id})">Записаться</button>`;
     }
 
@@ -286,13 +248,10 @@ async function signup(gameId) {
   const totalPeopleCount = guestsInput ? parseInt(guestsInput.value, 10) || 1 : 1;
   const guestsCount = Math.max(0, totalPeopleCount - 1);
 
-  const teamPrefSelect = document.getElementById(`teampref-${gameId}`);
-  const teamPref = (teamPrefSelect && teamPrefSelect.value !== "") ? parseInt(teamPrefSelect.value, 10) : null;
-
   try {
     const res = await fetch("/api/games/signup", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, game_id: gameId, guests_count: guestsCount, team_pref: teamPref })
+      body: JSON.stringify({ user_id: userId, game_id: gameId, guests_count: guestsCount })
     }).then(r => r.json());
     if (!res.ok) {
       showError(res.error || "Не удалось записаться.");
@@ -365,26 +324,6 @@ async function sendChatMessage(gameId) {
     }).then(r => r.json());
     if (res.ok) pollChat(gameId);
     else showError(res.error || "Не удалось отправить сообщение.");
-  } catch (e) {
-    showError("Ошибка сети — попробуй ещё раз.");
-  }
-}
-
-async function changeTeam(gameId) {
-  const select = document.getElementById(`switch-teampref-${gameId}`);
-  const val = select.value;
-  const teamPref = val === "" ? null : parseInt(val, 10);
-  try {
-    const res = await fetch("/api/games/change-team", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, game_id: gameId, team_pref: teamPref })
-    }).then(r => r.json());
-    if (!res.ok) {
-      showError(res.error || "Не удалось сменить команду.");
-    } else {
-      document.getElementById("error-banner").innerHTML = "";
-      loadGames();
-    }
   } catch (e) {
     showError("Ошибка сети — попробуй ещё раз.");
   }

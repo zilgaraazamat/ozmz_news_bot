@@ -9,7 +9,7 @@ from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
     get_profile, set_nickname, get_role, set_role,
     create_game, get_all_games, get_active_games, get_game,
-    signup_for_game, get_signups, get_my_signup, confirm_signup, cancel_signup, change_team_pref,
+    signup_for_game, get_signups, get_my_signup, confirm_signup, cancel_signup,
     is_registered_for_game, add_chat_message, get_chat_messages,
     get_username,
     get_team_members, clear_game_teams, add_team_member, move_team_member,
@@ -26,6 +26,20 @@ def _display_name(user_id):
     if profile and profile.get("name"):
         return profile["name"]
     return "Игрок"
+
+
+def _recompute_teams(game_id):
+    """Автоматически пересчитывает и сохраняет распределение по командам
+    сразу при любой записи/отмене — без ручного запуска админом."""
+    game = get_game(game_id)
+    if not game:
+        return
+    signups = get_signups(game_id)
+    teams = auto_assign_teams(game, signups)
+    clear_game_teams(game_id)
+    for team_idx, members in enumerate(teams):
+        for m in members:
+            add_team_member(game_id, m["user_id"], m["name"], m["player"], team_idx, m["is_guest"])
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -183,8 +197,6 @@ class Handler(BaseHTTPRequestHandler):
                 user_id = str(data.get("user_id", ""))
                 game_id = data.get("game_id")
                 guests_count = int(data.get("guests_count") or 0)
-                team_pref_raw = data.get("team_pref")
-                team_pref = int(team_pref_raw) if team_pref_raw is not None and team_pref_raw != "" else None
                 if not user_id or not game_id:
                     self._json({"ok": False, "error": "bad_request"})
                     return
@@ -198,7 +210,8 @@ class Handler(BaseHTTPRequestHandler):
                         else (profile["name"] if profile else None)) or "Игрок"
                 player = role["player"] if role else None
 
-                signup_for_game(game_id, user_id, name, player, guests_count, team_pref)
+                signup_for_game(game_id, user_id, name, player, guests_count)
+                _recompute_teams(game_id)
                 self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] games/signup: {e}")
@@ -213,43 +226,10 @@ class Handler(BaseHTTPRequestHandler):
                     self._json({"ok": False, "error": "bad_request"})
                     return
                 cancel_signup(game_id, user_id)
+                _recompute_teams(game_id)
                 self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] games/cancel-signup: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/games/change-team":
-            try:
-                data = json.loads(body)
-                user_id = str(data.get("user_id", ""))
-                game_id = data.get("game_id")
-                pref_raw = data.get("team_pref")
-                new_pref = int(pref_raw) if pref_raw is not None and pref_raw != "" else None
-                if not user_id or not game_id:
-                    self._json({"ok": False, "error": "bad_request"})
-                    return
-
-                game = get_game(game_id)
-                signups = get_signups(game_id)
-                mine = next((s for s in signups if s["user_id"] == user_id), None)
-                if not mine:
-                    self._json({"ok": False, "error": "Ты не записан на эту игру"})
-                    return
-
-                if new_pref is not None and game and game.get("players_per_team"):
-                    my_size = 1 + (mine.get("guests_count") or 0)
-                    occupied = sum(
-                        1 + (s.get("guests_count") or 0)
-                        for s in signups if s["user_id"] != user_id and s.get("team_pref") == new_pref
-                    )
-                    if occupied + my_size > int(game["players_per_team"]):
-                        self._json({"ok": False, "error": "В этой команде уже нет свободных мест"})
-                        return
-
-                change_team_pref(game_id, user_id, new_pref)
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] games/change-team: {e}")
                 self.send_response(400); self.end_headers()
 
         elif path == "/api/games/chat/send":
@@ -288,31 +268,6 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] confirm-signup: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/auto-assign-teams":
-            try:
-                data = json.loads(body)
-                admin_id = str(data.get("user_id", ""))
-                if admin_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-                game_id = data.get("game_id")
-                game = get_game(game_id)
-                if not game:
-                    self._json({"ok": False, "error": "Игра не найдена"})
-                    return
-                signups = get_signups(game_id)
-                teams = auto_assign_teams(game, signups)
-
-                clear_game_teams(game_id)
-                for team_idx, members in enumerate(teams):
-                    for m in members:
-                        add_team_member(game_id, m["user_id"], m["name"], m["player"], team_idx, m["is_guest"])
-
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] auto-assign-teams: {e}")
                 self.send_response(400); self.end_headers()
 
         elif path == "/api/admin/move-team-member":
@@ -356,18 +311,9 @@ class Handler(BaseHTTPRequestHandler):
             user_id = (q.get("user_id") or [""])[0]
             games = get_active_games()
             for g in games:
-                signups = get_signups(g["id"])
-                g["signups"] = signups
+                g["signups"] = get_signups(g["id"])
                 g["my_status"] = get_my_signup(g["id"], user_id) if user_id else None
                 g["teams"] = get_team_members(g["id"])
-
-                num_teams = g.get("num_teams") or 0
-                per_team = g.get("players_per_team")
-                fill = []
-                for i in range(num_teams):
-                    occupied = sum(1 + (s.get("guests_count") or 0) for s in signups if s.get("team_pref") == i)
-                    fill.append({"index": i, "occupied": occupied, "capacity": per_team})
-                g["team_fill"] = fill
             self._json({"games": games})
         elif path == "/api/games/chat":
             user_id = (q.get("user_id") or [""])[0]
