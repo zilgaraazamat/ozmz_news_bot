@@ -10,6 +10,7 @@ from storage import (
     get_profile, set_nickname, get_role, set_role,
     create_game, get_all_games, get_active_games, get_game,
     signup_for_game, get_signups, get_my_signup, confirm_signup, cancel_signup,
+    is_registered_for_game, add_chat_message, get_chat_messages,
     get_username,
     get_team_members, clear_game_teams, add_team_member, move_team_member,
 )
@@ -215,6 +216,29 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"  [WARN] games/cancel-signup: {e}")
                 self.send_response(400); self.end_headers()
 
+        elif path == "/api/games/chat/send":
+            try:
+                data = json.loads(body)
+                user_id = str(data.get("user_id", ""))
+                game_id = data.get("game_id")
+                text = (data.get("text") or "").strip()
+                if not user_id or not game_id or not text:
+                    self._json({"ok": False, "error": "bad_request"})
+                    return
+                if not is_registered_for_game(game_id, user_id) and user_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Чат доступен только записавшимся на игру"})
+                    return
+
+                profile = get_profile(user_id)
+                name = (profile["nickname"] if profile and profile.get("nickname")
+                        else (profile["name"] if profile else None)) or "Игрок"
+
+                add_chat_message(game_id, user_id, name, text)
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] games/chat/send: {e}")
+                self.send_response(400); self.end_headers()
+
         elif path == "/api/admin/confirm-signup":
             try:
                 data = json.loads(body)
@@ -300,6 +324,14 @@ class Handler(BaseHTTPRequestHandler):
                 g["my_status"] = get_my_signup(g["id"], user_id) if user_id else None
                 g["teams"] = get_team_members(g["id"])
             self._json({"games": games})
+        elif path == "/api/games/chat":
+            user_id = (q.get("user_id") or [""])[0]
+            game_id = (q.get("game_id") or [""])[0]
+            since_id = int((q.get("since_id") or ["0"])[0] or 0)
+            if not is_registered_for_game(game_id, user_id) and user_id not in ADMIN_IDS:
+                self._json({"error": "forbidden"})
+            else:
+                self._json({"messages": get_chat_messages(game_id, since_id)})
         elif path == "/api/admin/games":
             user_id = (q.get("user_id") or [""])[0]
             if user_id not in ADMIN_IDS:
