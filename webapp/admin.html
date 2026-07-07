@@ -15,7 +15,10 @@ h1{font-size:19px;font-weight:900;text-align:center;margin-bottom:4px}
 label{font-size:12px;color:#6b7c6e;display:block;margin-bottom:6px;margin-top:12px}
 .hint{font-size:11px;color:#4a5a4d;margin-top:4px}
 label:first-of-type{margin-top:0}
-input,textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:16px;font-family:inherit;color-scheme:dark}
+input,textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:16px;font-family:inherit;color-scheme:dark;min-height:46px;box-sizing:border-box}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(1) brightness(1.6);cursor:pointer;opacity:.9}
+.row2 input{min-width:0}
 input:focus,textarea:focus{outline:none;border-color:#7ed957}
 textarea{resize:vertical;min-height:70px}
 .row2{display:flex;gap:10px}
@@ -54,6 +57,11 @@ textarea{resize:vertical;min-height:70px}
 .filter-chip.active{background:rgba(126,217,87,.15);border-color:#7ed957;color:#7ed957}
 .manage-game.past{opacity:.7}
 .past-badge{display:inline-block;font-size:10px;color:#6b7c6e;background:rgba(255,255,255,.06);padding:2px 8px;border-radius:6px;margin-left:8px;text-transform:uppercase;letter-spacing:.5px}
+.cancelled-badge{color:#ff8080;background:rgba(255,80,80,.12)}
+.game-actions-row{display:flex;gap:8px;margin-top:12px}
+.manage-cancel-btn{flex:1;padding:9px;border:1px solid rgba(255,160,80,.35);background:transparent;color:#ffa050;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}
+.manage-delete-btn{flex:1;padding:9px;border:1px solid rgba(255,80,80,.35);background:transparent;color:#ff8080;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;margin-top:12px}
+.game-actions-row .manage-delete-btn{margin-top:0}
 .denied{text-align:center;padding:40px 10px}
 .denied .ic{font-size:40px;margin-bottom:12px}
 .hidden{display:none!important}
@@ -187,16 +195,18 @@ function isPastGame(g) {
 let gamesFilter = "upcoming";
 
 function filterManageGames(games) {
+  if (gamesFilter === "cancelled") return games.filter(g => g.status === "cancelled");
   const active = games.filter(g => g.status === "active");
   if (gamesFilter === "upcoming") return active.filter(g => !isPastGame(g));
   if (gamesFilter === "past") return active.filter(g => isPastGame(g));
-  return active;
+  return games; // "all" — вообще все, включая отменённые
 }
 
 function renderGamesFilters() {
   const filters = [
     { id: "upcoming", label: "Ближайшие" },
     { id: "past", label: "История" },
+    { id: "cancelled", label: "Отменённые" },
     { id: "all", label: "Все" },
   ];
   document.getElementById("games-filters").innerHTML = filters.map(f => `
@@ -246,13 +256,46 @@ function renderManageGames(active) {
 
     const numTeams = g.num_teams || 2;
     const teamsBlock = renderTeamsManage(g.id, g.teams || [], numTeams, past);
+    const cancelled = g.status === "cancelled";
+
+    const gameActions = cancelled
+      ? `<button class="manage-delete-btn" onclick="deleteGame(${g.id})">🗑 Удалить игру</button>`
+      : `<div class="game-actions-row">
+           <button class="manage-cancel-btn" onclick="cancelGame(${g.id})">❌ Отменить игру</button>
+           <button class="manage-delete-btn" onclick="deleteGame(${g.id})">🗑 Удалить</button>
+         </div>`;
 
     return `<div class="manage-game ${past ? "past" : ""}">
-      <div class="manage-title">📅 ${g.date} · 🕐 ${g.time} — ${g.location}${past ? '<span class="past-badge">Прошла</span>' : ""}</div>
+      <div class="manage-title">📅 ${g.date} · 🕐 ${g.time} — ${g.location}${past ? '<span class="past-badge">Прошла</span>' : ""}${cancelled ? '<span class="past-badge cancelled-badge">Отменена</span>' : ""}</div>
       ${rows}
       ${teamsBlock ? `<div class="teams-caption">Составы команд${past ? "" : " (сформированы автоматически)"}</div>${teamsBlock}` : ""}
+      ${gameActions}
     </div>`;
   }).join("");
+}
+
+async function cancelGame(gameId) {
+  if (!confirm("Отменить игру? Всем участникам ничего не отправляется автоматически, но в группу уйдёт сообщение об отмене.")) return;
+  try {
+    const res = await fetch("/api/admin/cancel-game", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, game_id: gameId })
+    }).then(r => r.json());
+    if (res.ok) loadManageGames();
+    else showError(res.error || "Не удалось отменить игру");
+  } catch (e) {}
+}
+
+async function deleteGame(gameId) {
+  if (!confirm("Удалить игру полностью? Это действие необратимо — пропадут все записи и составы команд.")) return;
+  try {
+    const res = await fetch("/api/admin/delete-game", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, game_id: gameId })
+    }).then(r => r.json());
+    if (res.ok) loadManageGames();
+    else showError(res.error || "Не удалось удалить игру");
+  } catch (e) {}
 }
 
 function renderTeamsManage(gameId, teamMembers, numTeams, past) {

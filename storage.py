@@ -394,6 +394,22 @@ def get_all_games():
     return [dict(zip(keys, r)) for r in rows]
 
 
+def cancel_game(game_id):
+    """Помечает игру отменённой — исчезает из активных списков, но остаётся в истории."""
+    with _lock, _conn() as c:
+        c.execute("UPDATE games SET status='cancelled' WHERE id=?", (game_id,))
+
+
+def delete_game(game_id):
+    """Полностью удаляет игру и все связанные записи (регистрации, команды, чат, слоты)."""
+    with _lock, _conn() as c:
+        c.execute("DELETE FROM games WHERE id=?", (game_id,))
+        c.execute("DELETE FROM game_signups WHERE game_id=?", (game_id,))
+        c.execute("DELETE FROM game_teams WHERE game_id=?", (game_id,))
+        c.execute("DELETE FROM game_chat WHERE game_id=?", (game_id,))
+        c.execute("DELETE FROM game_slots WHERE game_id=?", (game_id,))
+
+
 def get_active_games():
     """Только будущие активные игры, отсортированные по ближайшей дате/времени."""
     import re
