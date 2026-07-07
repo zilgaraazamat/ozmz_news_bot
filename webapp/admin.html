@@ -16,8 +16,6 @@ label{font-size:12px;color:#6b7c6e;display:block;margin-bottom:6px;margin-top:12
 .hint{font-size:11px;color:#4a5a4d;margin-top:4px}
 label:first-of-type{margin-top:0}
 input,textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:16px;font-family:inherit;color-scheme:dark;min-height:46px;box-sizing:border-box}
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(1) brightness(1.6);cursor:pointer;opacity:.9}
 .row2 input{min-width:0}
 input:focus,textarea:focus{outline:none;border-color:#7ed957}
 textarea{resize:vertical;min-height:70px}
@@ -85,10 +83,11 @@ textarea{resize:vertical;min-height:70px}
     <div id="error-banner"></div>
 
     <label>Дата</label>
-    <input id="f-date" type="date">
+    <input id="f-date" placeholder="напр. 2026-08-01 (год-месяц-день)">
+    <div class="hint">Именно в таком формате — иначе игра не попадёт в сортировку "ближайшие"</div>
 
     <label>Время</label>
-    <input id="f-time" type="time">
+    <input id="f-time" placeholder="напр. 20:00">
 
     <label>Место</label>
     <input id="f-location" placeholder="напр. Арена Central Park">
