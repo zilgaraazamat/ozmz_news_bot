@@ -143,6 +143,24 @@ textarea{resize:vertical;min-height:70px}
   <div id="games-manage-list"></div>
 </div>
 
+<div class="card hidden" id="announce-wrap" style="margin-top:16px">
+  <h1>📢 Создать анонс</h1>
+  <div class="sub">Уйдёт в группу и появится на главной странице приложения</div>
+  <div id="announce-error"></div>
+
+  <label>Заголовок</label>
+  <input id="an-title" placeholder="напр. Важное объявление">
+
+  <label>Текст</label>
+  <textarea id="an-text" placeholder="Текст анонса..."></textarea>
+
+  <button class="btn" id="announce-submit-btn" onclick="createAnnouncement()">Опубликовать</button>
+  <div class="saved" id="announce-saved-msg">✅ Анонс опубликован</div>
+
+  <div class="fs-title" style="margin-top:20px">Опубликованные</div>
+  <div id="announce-list"></div>
+</div>
+
 <script>
 let userId = new URLSearchParams(location.search).get("uid");
 
@@ -193,7 +211,9 @@ async function checkAccess() {
     if (r.is_admin) {
       document.getElementById("form-wrap").classList.remove("hidden");
       document.getElementById("games-wrap").classList.remove("hidden");
+      document.getElementById("announce-wrap").classList.remove("hidden");
       loadManageGames();
+      loadAnnouncements();
     } else {
       document.getElementById("denied").classList.remove("hidden");
     }
@@ -429,6 +449,72 @@ async function createGame() {
     showError("Ошибка сети — попробуй ещё раз.");
   }
   btn.removeAttribute("disabled");
+}
+
+async function createAnnouncement() {
+  document.getElementById("announce-error").innerHTML = "";
+  const title = document.getElementById("an-title").value.trim();
+  const text = document.getElementById("an-text").value.trim();
+  if (!title || !text) {
+    document.getElementById("announce-error").innerHTML =
+      `<div class="error-banner">⚠️ Заполни заголовок и текст</div>`;
+    return;
+  }
+
+  const btn = document.getElementById("announce-submit-btn");
+  btn.setAttribute("disabled", "true");
+  try {
+    const res = await fetch("/api/admin/create-announcement", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, title, text })
+    }).then(r => r.json());
+
+    if (!res.ok) {
+      document.getElementById("announce-error").innerHTML =
+        `<div class="error-banner">⚠️ ${res.error || "Не удалось опубликовать"}</div>`;
+    } else {
+      document.getElementById("an-title").value = "";
+      document.getElementById("an-text").value = "";
+      const saved = document.getElementById("announce-saved-msg");
+      saved.classList.add("show");
+      setTimeout(() => saved.classList.remove("show"), 2200);
+      loadAnnouncements();
+    }
+  } catch (e) {
+    document.getElementById("announce-error").innerHTML =
+      `<div class="error-banner">⚠️ Ошибка сети</div>`;
+  }
+  btn.removeAttribute("disabled");
+}
+
+async function loadAnnouncements() {
+  try {
+    const r = await fetch(`/api/admin/announcements?user_id=${userId}`).then(r => r.json());
+    const items = r.announcements || [];
+    const el = document.getElementById("announce-list");
+    if (items.length === 0) {
+      el.innerHTML = `<div class="manage-empty">Анонсов ещё нет</div>`;
+      return;
+    }
+    el.innerHTML = items.map(a => `
+      <div class="manage-row">
+        <span class="manage-name">${a.title}</span>
+        <div class="manage-actions">
+          <button class="manage-delete-btn" style="margin-top:0" onclick="deleteAnnouncement(${a.id})">🗑</button>
+        </div>
+      </div>`).join("");
+  } catch (e) {}
+}
+
+async function deleteAnnouncement(id) {
+  if (!confirm("Удалить анонс?")) return;
+  try {
+    const res = await fetch("/api/admin/delete-announcement", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, id })
+    }).then(r => r.json());
+    if (res.ok) loadAnnouncements();
+  } catch (e) {}
 }
 
 checkAccess();

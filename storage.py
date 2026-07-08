@@ -152,6 +152,15 @@ def init_db():
             created_at TEXT
         )""")
 
+        c.execute("""CREATE TABLE IF NOT EXISTS announcements(
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            title      TEXT,
+            text       TEXT,
+            created_by TEXT,
+            created_at TEXT,
+            status     TEXT DEFAULT 'active'
+        )""")
+
 
 def get_role(user_id):
     user_id = str(user_id)
@@ -583,4 +592,33 @@ def get_chat_messages(game_id, since_id=0):
                              FROM game_chat WHERE game_id=? AND id > ? ORDER BY id""",
                           (game_id, since_id or 0)).fetchall()
     return [{"id": r[0], "user_id": r[1], "name": r[2], "text": r[3], "created_at": r[4]} for r in rows]
+
+
+# ── Анонсы/новости от админа ──────────────────────────────────────────────────
+
+def create_announcement(title, text, created_by):
+    with _lock, _conn() as c:
+        cur = c.execute("""INSERT INTO announcements(title, text, created_by, created_at, status)
+                           VALUES(?, ?, ?, datetime('now'), 'active')""",
+                        (title, text, str(created_by)))
+        return cur.lastrowid
+
+
+def get_active_announcements(limit=10):
+    with _lock, _conn() as c:
+        rows = c.execute("""SELECT id, title, text, created_at FROM announcements
+                             WHERE status='active' ORDER BY id DESC LIMIT ?""", (limit,)).fetchall()
+    return [{"id": r[0], "title": r[1], "text": r[2], "created_at": r[3]} for r in rows]
+
+
+def get_all_announcements():
+    with _lock, _conn() as c:
+        rows = c.execute("""SELECT id, title, text, created_at, status FROM announcements
+                             ORDER BY id DESC""").fetchall()
+    return [{"id": r[0], "title": r[1], "text": r[2], "created_at": r[3], "status": r[4]} for r in rows]
+
+
+def delete_announcement(announcement_id):
+    with _lock, _conn() as c:
+        c.execute("DELETE FROM announcements WHERE id=?", (announcement_id,))
 

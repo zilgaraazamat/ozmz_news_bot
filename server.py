@@ -13,6 +13,7 @@ from storage import (
     is_registered_for_game, add_chat_message, get_chat_messages,
     get_username,
     get_team_members, clear_game_teams, add_team_member, move_team_member,
+    create_announcement, get_active_announcements, get_all_announcements, delete_announcement,
 )
 from predict import get_stats as predict_stats, announce_result
 from battle import create_battle, join_battle, get_state, submit_answer, list_open_battles
@@ -433,6 +434,42 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"  [WARN] delete-game: {e}")
                 self.send_response(400); self.end_headers()
 
+        elif path == "/api/admin/create-announcement":
+            try:
+                data = json.loads(body)
+                admin_id = str(data.get("user_id", ""))
+                if admin_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Нет прав администратора"})
+                    return
+                title = (data.get("title") or "").strip()
+                text = (data.get("text") or "").strip()
+                if not title or not text:
+                    self._json({"ok": False, "error": "Заполни заголовок и текст"})
+                    return
+
+                create_announcement(title, text, admin_id)
+
+                group_text = f"📢 <b>{title}</b>\n\n{text}"
+                tg_post(CHAT_ID, "sendMessage", text=group_text, parse_mode="HTML")
+
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] create-announcement: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/admin/delete-announcement":
+            try:
+                data = json.loads(body)
+                admin_id = str(data.get("user_id", ""))
+                if admin_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Нет прав администратора"})
+                    return
+                delete_announcement(data.get("id"))
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] delete-announcement: {e}")
+                self.send_response(400); self.end_headers()
+
         else:
             self.send_response(404); self.end_headers()
 
@@ -457,6 +494,14 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/is-admin":
             user_id = (q.get("user_id") or [""])[0]
             self._json({"is_admin": user_id in ADMIN_IDS})
+        elif path == "/api/announcements":
+            self._json({"announcements": get_active_announcements(10)})
+        elif path == "/api/admin/announcements":
+            user_id = (q.get("user_id") or [""])[0]
+            if user_id not in ADMIN_IDS:
+                self._json({"error": "forbidden"})
+            else:
+                self._json({"announcements": get_all_announcements()})
         elif path == "/api/games":
             user_id = (q.get("user_id") or [""])[0]
             games = get_active_games()

@@ -15,9 +15,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .head p{font-size:13px;color:#6b7c6e;margin-top:4px}
 .hidden{display:none!important}
 .empty{text-align:center;color:#6b7c6e;font-size:14px;padding:40px 10px}
-.game-card{background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:18px;padding:18px;margin-bottom:16px}
-.game-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
-.game-when{font-size:16px;font-weight:800}
+.game-card{background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:20px;padding:16px;margin-bottom:16px;position:relative;overflow:hidden}
+.game-card::before{content:"";position:absolute;left:76px;top:14px;bottom:14px;width:1px;background:repeating-linear-gradient(to bottom,rgba(126,217,87,.3) 0 6px,transparent 6px 12px)}
+.ticket-head{display:flex;gap:16px;align-items:center;margin-bottom:12px}
+.date-badge{flex-shrink:0;width:60px;height:60px;border-radius:14px;background:linear-gradient(145deg,#7ed957,#5fc23e);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#0e1a12;box-shadow:0 4px 14px rgba(126,217,87,.25)}
+.date-badge .db-day{font-size:22px;font-weight:900;line-height:1}
+.date-badge .db-month{font-size:9px;font-weight:800;letter-spacing:.5px;margin-top:2px;text-transform:uppercase}
+.ticket-info{flex:1;min-width:0}
+.ti-time{font-size:15px;font-weight:800;margin-bottom:3px}
+.ti-loc{font-size:13px;color:#9db3a3}
 .price-badge{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(126,217,87,.16),rgba(126,217,87,.05));border:1px solid rgba(126,217,87,.3);border-radius:12px;padding:10px 14px;margin-bottom:10px}
 .price-badge .pb-icon{font-size:18px}
 .price-badge .pb-value{font-size:15px;font-weight:800;color:#7ed957}
@@ -145,6 +151,14 @@ function formatDate(g) {
   if (diffDays === 0) return `Сегодня, ${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
   if (diffDays === 1) return `Завтра, ${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
   return `${dt.getDate()} ${MONTHS[dt.getMonth()]}, ${WEEKDAYS[dt.getDay()]}`;
+}
+
+function dateBadgeHtml(g) {
+  const dt = parseGameDate(g);
+  if (!dt) {
+    return `<div class="date-badge"><div class="db-day">?</div><div class="db-month">дата</div></div>`;
+  }
+  return `<div class="date-badge"><div class="db-day">${dt.getDate()}</div><div class="db-month">${MONTHS[dt.getMonth()]}</div></div>`;
 }
 
 let currentFilter = "all";
@@ -301,10 +315,13 @@ function renderGames(games) {
 
     return `
       <div class="game-card">
-        <div class="game-top">
-          <div class="game-when">📅 ${formatDate(g)} · 🕐 ${g.time}</div>
+        <div class="ticket-head">
+          ${dateBadgeHtml(g)}
+          <div class="ticket-info">
+            <div class="ti-time">🕐 ${g.time}</div>
+            <div class="ti-loc">📍 ${g.location}</div>
+          </div>
         </div>
-        <div class="game-loc">📍 ${g.location}</div>
         ${g.extra_info ? `<div class="game-extra">ℹ️ ${g.extra_info}</div>` : ""}
         ${g.price ? `
         <div class="price-badge">

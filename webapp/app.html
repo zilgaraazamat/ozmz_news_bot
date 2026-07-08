@@ -39,6 +39,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .menu-arrow{margin-left:auto;color:#7ed957;font-size:17px;flex-shrink:0}
 .footer{text-align:center;margin-top:16px;font-size:11px;color:#4a5a4d}
 
+/* ── новости ── */
+.news-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px;-webkit-overflow-scrolling:touch}
+.news-scroll::-webkit-scrollbar{display:none}
+.news-card{flex-shrink:0;width:250px;background:linear-gradient(150deg,rgba(126,217,87,.12),#1e3024 55%);border:1px solid rgba(126,217,87,.22);border-radius:16px;padding:14px}
+.news-card .nc-badge{display:inline-block;font-size:9px;font-weight:800;color:#7ed957;background:rgba(126,217,87,.15);padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.news-card .nc-title{font-size:14px;font-weight:800;margin-bottom:5px;line-height:1.3}
+.news-card .nc-text{font-size:12px;color:#b9c9bd;line-height:1.45;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.news-card .nc-date{font-size:10px;color:#5a6b5e;margin-top:8px}
+
 /* ── профиль ── */
 .card{width:100%;background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:22px;padding:22px 18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .avatar{width:72px;height:72px;border-radius:50%;background:rgba(126,217,87,.12);border:2px solid #7ed957;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 14px}
@@ -90,6 +99,8 @@ input:focus{outline:none;border-color:#7ed957}
       <h1>OZMZ Football Astana</h1>
       <p>Выбери, что хочешь сделать</p>
     </div>
+
+    <div id="news-feed"></div>
 
     <div class="menu-card" onclick="go('/battle')">
       <div class="menu-icon c-amber">⚔️</div>
@@ -190,6 +201,32 @@ function go(path) {
     if (r.is_admin) document.getElementById("admin-card").classList.remove("hidden");
   } catch (e) {}
 })();
+
+function formatNewsDate(iso) {
+  if (!iso) return "";
+  const [datePart] = iso.split(" ");
+  const [y, m, d] = (datePart || "").split("-");
+  const months = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+  if (!y || !m || !d) return "";
+  return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1] || ""}`;
+}
+
+async function loadNews() {
+  try {
+    const r = await fetch("/api/announcements").then(r => r.json());
+    const items = r.announcements || [];
+    const feed = document.getElementById("news-feed");
+    if (items.length === 0) { feed.innerHTML = ""; return; }
+    feed.innerHTML = `<div class="news-scroll">${items.map(a => `
+      <div class="news-card">
+        <div class="nc-badge">📢 Анонс</div>
+        <div class="nc-title">${a.title}</div>
+        <div class="nc-text">${a.text}</div>
+        <div class="nc-date">${formatNewsDate(a.created_at)}</div>
+      </div>`).join("")}</div>`;
+  } catch (e) {}
+}
+loadNews();
 
 function showMenu() {
   document.getElementById("screen-profile").classList.add("hidden");
