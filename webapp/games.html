@@ -43,22 +43,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .team-title{font-size:12px;font-weight:800;color:#7ed957;margin-bottom:6px}
 .team-player{font-size:12px;padding:3px 0}
 .teams-title{font-size:11px;color:#6b7c6e;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px}
-.entry-block{background:rgba(255,255,255,.03);border-radius:12px;padding:12px;margin-top:10px}
-.entry-title{font-size:12px;font-weight:700;margin-bottom:8px}
+.entry-row{display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(255,255,255,.03);border-radius:10px;padding:8px 10px;margin-top:6px}
+.entry-label{font-size:12px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.entry-icons{display:flex;gap:6px;flex-shrink:0}
+.icon-btn{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;text-decoration:none;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#f5f5f0;flex-shrink:0}
+.icon-btn-pay{border-color:rgba(126,217,87,.4);background:rgba(126,217,87,.12)}
+.icon-btn-confirm{border-color:rgba(126,217,87,.4);color:#7ed957}
+.icon-btn-danger{border-color:rgba(255,80,80,.35);color:#ff8080}
 .secondary-row{display:flex;gap:8px;margin-top:10px}
 .secondary-btn{flex:1;padding:9px;border:1px solid rgba(126,217,87,.3);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 .add-toggle-btn{width:100%;padding:10px;margin-top:10px;border:1px dashed rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
-.add-more-block{margin-top:8px}
-.btn-switch{width:100%;padding:9px;margin-top:6px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
+.add-more-inline{display:flex;gap:8px;margin-top:8px}
+.guests-input-inline{width:70px;flex-shrink:0;padding:10px 12px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:16px;text-align:center}
+.guests-input-inline:focus{outline:none;border-color:#7ed957}
+.btn-switch-inline{flex:1;padding:9px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 .teams-body{margin-top:8px}
 .filters{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
 .filter-chip{flex-shrink:0;padding:8px 14px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#9db3a3;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .filter-chip.active{background:rgba(126,217,87,.15);border-color:#7ed957;color:#7ed957}
-.btn-cancel{width:100%;padding:9px;margin-top:8px;border:1px solid rgba(255,80,80,.35);background:transparent;color:#ff8080;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
-.btn-switch{width:100%;padding:9px;margin-top:6px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
-.btn-pay{display:block;width:100%;box-sizing:border-box;text-align:center;padding:12px;margin-top:10px;border-radius:10px;background:#7ed957;color:#0e1a12;font-weight:800;font-size:14px;text-decoration:none}
-.btn-paid{width:100%;padding:10px;margin-top:8px;border:1px solid rgba(126,217,87,.4);background:transparent;color:#7ed957;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
-.paid-claim-note{text-align:center;font-size:12px;color:#7ed957;padding:10px;margin-top:10px;background:rgba(126,217,87,.08);border-radius:10px}
 .chat-box{margin-top:10px;background:rgba(255,255,255,.03);border-radius:12px;padding:10px 12px}
 .chat-messages{max-height:220px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
 .chat-msg{font-size:12px;line-height:1.4}
@@ -208,31 +210,42 @@ function totalPeople(signups, statusFilter) {
 
 function myEntryActionsHtml(gameId, s, paymentLink) {
   const count = entryPeopleCount(s);
-  const label = s.is_addition ? `➕ Доп. игроки ×${count}` : `Основная запись (${count} чел.)`;
+  const label = s.is_addition ? `➕ Доп. ×${count}` : `Основная (${count} чел.)`;
 
   if (s.status === "confirmed") {
     return `
-      <div class="entry-block">
-        <div class="entry-title">✅ ${label} — подтверждено</div>
-        <button class="btn-cancel" onclick="cancelEntry(${gameId}, ${s.id}, true)">🚫 Отказаться</button>
+      <div class="entry-row">
+        <span class="entry-label">✅ ${label}</span>
+        <div class="entry-icons">
+          <button class="icon-btn icon-btn-danger" onclick="cancelEntry(${gameId}, ${s.id}, true)" title="Отказаться">✖</button>
+        </div>
       </div>`;
   }
 
   const alreadyClaimed = s.payment_claimed;
-  let paymentBlock = "";
-  if (paymentLink && !alreadyClaimed) {
-    paymentBlock = `
-      <a class="btn-pay" href="${paymentLink}" target="_blank">💳 Оплатить</a>
-      <button class="btn-paid" onclick="claimPayment(${gameId}, ${s.id})">✅ Я оплатил(а)</button>`;
-  } else if (alreadyClaimed) {
-    paymentBlock = `<div class="paid-claim-note">💰 Оплата отмечена — ждём подтверждения</div>`;
+
+  if (alreadyClaimed) {
+    return `
+      <div class="entry-row">
+        <span class="entry-label">💰 ${label} — ждём подтверждения</span>
+        <div class="entry-icons">
+          <button class="icon-btn icon-btn-danger" onclick="cancelEntry(${gameId}, ${s.id}, true)" title="Отменить">✖</button>
+        </div>
+      </div>`;
   }
 
+  const payIcon = paymentLink
+    ? `<a class="icon-btn icon-btn-pay" href="${paymentLink}" target="_blank" title="Оплатить">💳</a>
+       <button class="icon-btn icon-btn-confirm" onclick="claimPayment(${gameId}, ${s.id})" title="Я оплатил(а)">✅</button>`
+    : "";
+
   return `
-    <div class="entry-block">
-      <div class="entry-title">⏳ ${label} — ожидает подтверждения</div>
-      ${paymentBlock}
-      <button class="btn-cancel" onclick="cancelEntry(${gameId}, ${s.id}, ${alreadyClaimed ? "true" : "false"})">Отменить</button>
+    <div class="entry-row">
+      <span class="entry-label">⏳ ${label}</span>
+      <div class="entry-icons">
+        ${payIcon}
+        <button class="icon-btn icon-btn-danger" onclick="cancelEntry(${gameId}, ${s.id}, false)" title="Отменить">✖</button>
+      </div>
     </div>`;
 }
 
@@ -262,11 +275,10 @@ function renderGames(games) {
     } else {
       const addExpanded = !!addFormExpanded[g.id];
       addFormHtml = `
-        <button class="add-toggle-btn" onclick="toggleAddForm(${g.id})">➕ Добавить ещё игроков ${addExpanded ? "▲" : "▼"}</button>
-        <div class="add-more-block ${addExpanded ? "" : "hidden"}" id="add-form-${g.id}">
-          <label class="guests-label">Сколько человек добавить?</label>
-          <input type="number" class="guests-input" id="addmore-${g.id}" min="1" max="20" value="1">
-          <button class="btn-switch" onclick="addMorePeople(${g.id})">Добавить</button>
+        <button class="add-toggle-btn" onclick="toggleAddForm(${g.id})">➕ Добавить игроков ${addExpanded ? "▲" : "▼"}</button>
+        <div class="add-more-inline ${addExpanded ? "" : "hidden"}" id="add-form-${g.id}">
+          <input type="number" class="guests-input-inline" id="addmore-${g.id}" min="1" max="20" value="1">
+          <button class="btn-switch-inline" onclick="addMorePeople(${g.id})">Добавить</button>
         </div>`;
     }
 
@@ -483,29 +495,15 @@ async function sendChatMessage(gameId) {
   }
 }
 
-async function claimPayment(gameId) {
-  if (!userId) return;
-  try {
-    const res = await fetch("/api/games/claim-payment", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, game_id: gameId })
-    }).then(r => r.json());
-    if (res.ok) {
-      document.getElementById("error-banner").innerHTML = "";
-      loadGames();
-    } else {
-      showError(res.error || "Не удалось отметить оплату.");
-    }
-  } catch (e) {
-    showError("Ошибка сети — попробуй ещё раз.");
-  }
-}
-
 renderFilters();
 loadGames();
 setInterval(() => {
   const anyChatOpen = Object.values(openChats).some(v => v);
-  if (!anyChatOpen) loadGames();
+  const anyAddFormOpen = Object.values(addFormExpanded).some(v => v);
+  const gamesListEl = document.getElementById("games-list");
+  const typingNow = gamesListEl && gamesListEl.contains(document.activeElement)
+    && (document.activeElement.tagName === "INPUT");
+  if (!anyChatOpen && !anyAddFormOpen && !typingNow) loadGames();
 }, 4000);
 </script>
 </body>
