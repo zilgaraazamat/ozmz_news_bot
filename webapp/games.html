@@ -2,13 +2,13 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>Игры — OZMZ</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{height:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0e1a12;color:#f5f5f0;min-height:100%;padding:24px 16px 60px;-webkit-hyphens:none;hyphens:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
+body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0e1a12;color:#f5f5f0;min-height:100%;padding:24px 16px calc(96px + env(safe-area-inset-bottom));-webkit-hyphens:none;hyphens:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .wrap{width:100%;max-width:440px;margin:0 auto}
 .head{text-align:center;margin-bottom:20px}
 .head h1{font-size:20px;font-weight:900}
@@ -70,6 +70,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .filters{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
 .filter-chip{flex-shrink:0;padding:8px 14px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#9db3a3;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .filter-chip.active{background:rgba(126,217,87,.15);border-color:#7ed957;color:#7ed957}
+
+/* ── нижняя навигация: тот же компонент, что и на главной ── */
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(20,32,24,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid rgba(126,217,87,.15);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
+.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:56px;cursor:pointer;color:#5a6b5e;transition:color .15s;-webkit-tap-highlight-color:transparent}
+.bn-item .bn-icon{font-size:20px;line-height:1}
+.bn-item .bn-label{font-size:10px;font-weight:700}
+.bn-item.active{color:#7ed957}
+.bn-item:active{opacity:.7}
 .chat-box{margin-top:10px;background:rgba(255,255,255,.03);border-radius:12px;padding:10px 12px}
 .chat-messages{max-height:220px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
 .chat-msg{font-size:12px;line-height:1.4}
@@ -93,11 +101,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
   <div id="games-list"></div>
 </div>
 
+<nav class="bottom-nav">
+  <div class="bn-item" data-tab="home" onclick="bnGo('home')">
+    <div class="bn-icon">🏠</div>
+    <div class="bn-label">Home</div>
+  </div>
+  <div class="bn-item active" data-tab="games" onclick="bnGo('games')">
+    <div class="bn-icon">⚽</div>
+    <div class="bn-label">Игры</div>
+  </div>
+  <div class="bn-item" data-tab="profile" onclick="bnGo('profile')">
+    <div class="bn-icon">👤</div>
+    <div class="bn-label">Профиль</div>
+  </div>
+</nav>
+
 <script>
 let userId = new URLSearchParams(location.search).get("uid");
 
 function goBackToMenu() {
   location.href = "/app" + (userId ? ("?uid=" + userId) : "");
+}
+
+function bnGo(tab) {
+  if (tab === "games") return; // уже здесь
+  if (tab === "home") { goBackToMenu(); return; }
+  if (tab === "profile") {
+    location.href = "/app?tab=profile" + (userId ? ("&uid=" + userId) : "");
+  }
 }
 
 if (window.Telegram && Telegram.WebApp) {

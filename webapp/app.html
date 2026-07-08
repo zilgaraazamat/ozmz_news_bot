@@ -2,13 +2,13 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>OZMZ Football</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{height:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0e1a12;color:#f5f5f0;min-height:100%;padding:24px 16px 60px;-webkit-hyphens:none;hyphens:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
+body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0e1a12;color:#f5f5f0;min-height:100%;padding:24px 16px calc(96px + env(safe-area-inset-bottom));-webkit-hyphens:none;hyphens:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .wrap{width:100%;max-width:400px;margin:0 auto;position:relative}
 .hidden{display:none!important}
 .profile-fab{position:absolute;top:-4px;right:0;width:46px;height:46px;border-radius:50%;background:#1e3024;border:2px solid #7ed957;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.45);z-index:5;transition:transform .15s}
@@ -53,6 +53,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .mc-desc{font-size:12px;color:#9db3a3;line-height:1.4;margin-top:9px;position:relative;z-index:1}
 
 .footer{text-align:center;margin-top:16px;font-size:11px;color:#4a5a4d}
+
+/* ── нижняя навигация: фиксирована, одна и та же на всех экранах ── */
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(20,32,24,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid rgba(126,217,87,.15);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
+.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:56px;cursor:pointer;color:#5a6b5e;transition:color .15s;-webkit-tap-highlight-color:transparent}
+.bn-item .bn-icon{font-size:20px;line-height:1}
+.bn-item .bn-label{font-size:10px;font-weight:700}
+.bn-item.active{color:#7ed957}
+.bn-item:active{opacity:.7}
 
 /* ── новости ── */
 .section-label{font-size:12px;font-weight:800;color:#d7e6da;margin:4px 0 10px;text-transform:uppercase;letter-spacing:.5px;opacity:.85}
@@ -192,6 +200,21 @@ input:focus{outline:none;border-color:#7ed957}
 
 </div>
 
+<nav class="bottom-nav">
+  <div class="bn-item" data-tab="home" onclick="bnGo('home')">
+    <div class="bn-icon">🏠</div>
+    <div class="bn-label">Home</div>
+  </div>
+  <div class="bn-item" data-tab="games" onclick="bnGo('games')">
+    <div class="bn-icon">⚽</div>
+    <div class="bn-label">Игры</div>
+  </div>
+  <div class="bn-item" data-tab="profile" onclick="bnGo('profile')">
+    <div class="bn-icon">👤</div>
+    <div class="bn-label">Профиль</div>
+  </div>
+</nav>
+
 <script>
 let userId = new URLSearchParams(location.search).get("uid");
 
@@ -246,10 +269,23 @@ async function loadNews() {
 }
 loadNews();
 
+function setActiveTab(tab) {
+  document.querySelectorAll(".bn-item").forEach(el => {
+    el.classList.toggle("active", el.dataset.tab === tab);
+  });
+}
+
+function bnGo(tab) {
+  if (tab === "home") showMenu();
+  else if (tab === "profile") showProfile();
+  else if (tab === "games") go("/games");
+}
+
 function showMenu() {
   document.getElementById("screen-profile").classList.add("hidden");
   document.getElementById("screen-menu").classList.remove("hidden");
   document.getElementById("profile-fab").classList.remove("hidden");
+  setActiveTab("home");
   if (window.Telegram && Telegram.WebApp) Telegram.WebApp.BackButton.hide();
 }
 
@@ -257,11 +293,19 @@ function showProfile() {
   document.getElementById("screen-menu").classList.add("hidden");
   document.getElementById("screen-profile").classList.remove("hidden");
   document.getElementById("profile-fab").classList.add("hidden");
+  setActiveTab("profile");
   if (window.Telegram && Telegram.WebApp) {
     Telegram.WebApp.BackButton.show();
     Telegram.WebApp.BackButton.onClick(showMenu);
   }
   loadProfile();
+}
+
+// если пришли с другой страницы через вкладку "Профиль" нижней навигации
+if (new URLSearchParams(location.search).get("tab") === "profile") {
+  showProfile();
+} else {
+  setActiveTab("home");
 }
 
 function showError(msg) {
