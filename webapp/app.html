@@ -53,7 +53,10 @@ input:focus{outline:none;border-color:#7ed957}
 .saved.show{opacity:1}
 .no-role{text-align:center;font-size:13px;color:#6b7c6e;padding:12px;background:rgba(255,255,255,.03);border-radius:10px;margin-bottom:18px}
 .error-banner{background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.35);color:#ff8080;font-size:12px;padding:10px 12px;border-radius:10px;margin-bottom:16px;line-height:1.4}
-.nick-display{background:#0e1a12;border:1px solid rgba(126,217,87,.25);border-radius:10px;padding:12px 14px;font-size:15px;font-weight:700;margin-bottom:12px}
+.nick-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.nick-display{flex:1;min-width:0;background:#0e1a12;border:1px solid rgba(126,217,87,.25);border-radius:10px;padding:12px 14px;font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nick-edit-btn{flex-shrink:0;width:42px;height:42px;border-radius:10px;background:#0e1a12;border:1px solid rgba(126,217,87,.25);color:#7ed957;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.nick-edit-btn:active{background:rgba(126,217,87,.12)}
 .btn-outline{background:transparent;border:1px solid rgba(126,217,87,.4);color:#7ed957}
 .cta-card{background:linear-gradient(135deg,rgba(126,217,87,.14),rgba(126,217,87,.04));border:1px solid rgba(126,217,87,.3);border-radius:14px;padding:16px;margin-bottom:18px;text-align:center;cursor:pointer;transition:transform .15s}
 .cta-card:active{transform:scale(.97)}
@@ -120,8 +123,10 @@ input:focus{outline:none;border-color:#7ed957}
       <!-- режим просмотра -->
       <div id="view-mode">
         <label>Твой ник</label>
-        <div class="nick-display" id="nick-display">—</div>
-        <button class="btn btn-outline" onclick="enterEditMode()">✏️ Редактировать ник</button>
+        <div class="nick-row">
+          <div class="nick-display" id="nick-display">—</div>
+          <button class="nick-edit-btn" onclick="enterEditMode()" title="Редактировать ник">✏️</button>
+        </div>
       </div>
 
       <!-- режим редактирования -->

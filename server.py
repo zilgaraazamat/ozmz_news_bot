@@ -209,6 +209,20 @@ class Handler(BaseHTTPRequestHandler):
                     self._json({"ok": False, "error": "Укажи хотя бы одного человека"})
                     return
 
+                game = get_game(game_id)
+                new_people = guests_count if is_addition else 1 + guests_count
+                if game and game.get("num_players"):
+                    existing = get_signups(game_id)
+                    current_total = sum(
+                        (s["guests_count"] if s.get("is_addition") else 1 + (s.get("guests_count") or 0))
+                        for s in existing
+                    )
+                    limit = int(game["num_players"])
+                    if current_total + new_people > limit:
+                        free = max(0, limit - current_total)
+                        self._json({"ok": False, "error": f"На игру заявлено {limit} мест, свободно: {free}"})
+                        return
+
                 profile = get_profile(user_id)
                 role = get_role(user_id)
                 name = (profile["nickname"] if profile and profile.get("nickname")
