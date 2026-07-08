@@ -48,22 +48,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;color:#f5f5f0
 
 /* ── экран результата ── */
 #screen-result{position:fixed;inset:0;overflow-y:auto;background:#0e1a12;-webkit-overflow-scrolling:touch;z-index:10}
-.result-wrap{max-width:440px;margin:0 auto;padding:16px 16px 40px}
-.result-photo-wrap{width:100%;aspect-ratio:1/1;max-height:280px;border-radius:20px;overflow:hidden;margin-bottom:16px;position:relative;background:#1e3024}
-.result-photo-wrap img{width:100%;height:100%;object-fit:cover}
-.result-name{font-size:22px;font-weight:900;text-align:center;margin-bottom:4px}
-.result-conf{text-align:center;font-size:12px;color:#6b7c6e;margin-bottom:20px}
+.result-wrap{max-width:420px;margin:0 auto;padding:8px 16px 40px}
+.result-photo-circle{width:190px;height:190px;border-radius:50%;overflow:hidden;margin:0 auto 18px;position:relative;background:#0e1a12;border:3px solid rgba(126,217,87,.5);box-shadow:0 0 40px rgba(126,217,87,.25)}
+.result-photo-circle img{width:100%;height:100%;object-fit:cover}
+.result-name{font-size:21px;font-weight:900;text-align:center;margin-bottom:6px;padding:0 8px}
+.result-conf{text-align:center;font-size:12px;font-weight:700;color:#7ed957;margin-bottom:20px}
 .result-conf.low{color:#e0b84a}
-.info-card{background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:16px;padding:16px;margin-bottom:12px}
-.info-card .ic-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.info-card .ic{font-size:18px}
-.info-card .ic-title{font-size:12px;font-weight:800;color:#7ed957;text-transform:uppercase;letter-spacing:.5px}
-.info-card .ic-body{font-size:14px;line-height:1.5;color:#f5f5f0}
-.tournament-chip{display:inline-block;background:rgba(126,217,87,.12);color:#7ed957;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;margin:2px 4px 2px 0}
-.not-found-box{text-align:center;padding:30px 20px}
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.quick-item{background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:14px;padding:12px}
+.qi-label{font-size:11px;color:#6b7c6e;font-weight:700;margin-bottom:4px}
+.qi-value{font-size:14px;font-weight:800}
+.info-line{font-size:13px;color:#d7e6da;line-height:1.5;padding:9px 2px}
+.fun-fact-card{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(135deg,rgba(126,217,87,.14),rgba(126,217,87,.04));border:1px solid rgba(126,217,87,.3);border-radius:16px;padding:16px;margin:14px 0 8px}
+.fun-fact-card .ff-icon{font-size:22px;flex-shrink:0}
+.fun-fact-card .ff-text{font-size:14px;line-height:1.5;font-weight:600}
+.not-found-box{text-align:center;padding:20px 20px}
 .not-found-box .ic{font-size:44px;margin-bottom:14px}
 .not-found-box p{font-size:14px;color:#9db3a3;line-height:1.5}
-.btn-scan-again{width:100%;padding:15px;border:none;border-radius:14px;background:#7ed957;color:#0e1a12;font-weight:800;font-size:15px;cursor:pointer;margin-top:8px}
+.btn-scan-again{width:100%;padding:15px;border:none;border-radius:14px;background:#7ed957;color:#0e1a12;font-weight:800;font-size:15px;cursor:pointer;margin-top:10px}
 .result-topbar{position:sticky;top:0;padding:14px 16px;background:linear-gradient(180deg,#0e1a12 60%,transparent);z-index:2}
 .back-chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#9db3a3;cursor:pointer}
 </style>
@@ -252,7 +254,7 @@ async function detectBallInRing() {
         const withinCenter = cx > ringPx.left - marginX && cx < ringPx.right + marginX
                            && cy > ringPx.top - marginY && cy < ringPx.bottom + marginY;
         cvInfo.score = best.score;
-        if (withinCenter && best.score > 0.2) {
+        if (withinCenter && best.score > 0.3) {
           cvInfo.found = true;
           lastDebug = { mode: "cv", score: best.score.toFixed(2), variance: heuristic.variance, motion: heuristic.motion };
           return { inRing: true, score: best.score, mode: "cv" };
@@ -320,7 +322,7 @@ function heuristicStability(ringPx) {
     const n = frame.length / 4;
     const mean = sum / n;
     const variance = sumSq / n - mean * mean;
-    const hasContent = variance > 120;
+    const hasContent = variance > 260;
 
     let motionScore = 0;
     if (lastFrameData) {
@@ -332,7 +334,7 @@ function heuristicStability(ringPx) {
     }
     lastFrameData = frame;
 
-    const isStable = motionScore < 14;
+    const isStable = motionScore < 10;
     return {
       inRing: hasContent && isStable, score: hasContent ? 0.5 : 0, mode: "heuristic",
       variance: Math.round(variance), motion: Math.round(motionScore),
@@ -344,7 +346,7 @@ function heuristicStability(ringPx) {
 
 /* ── 3. AutoCapture ──────────────────────────────────────────────── */
 
-const STABLE_FRAMES_NEEDED = 10;
+const STABLE_FRAMES_NEEDED = 14;
 const TICK_MS = 90;
 let stableFrames = 0;
 let detectionTimer = null;
@@ -401,8 +403,8 @@ async function detectionTick() {
 
 function doCapture() {
   const ringPx = getRingPixelRect();
-  const padding = 1.25; // небольшой запас вокруг кольца, чтобы мяч не обрезался по краю
-  const cropSize = Math.min(ringPx.size * padding, video.videoWidth, video.videoHeight);
+  // без запаса — снимок должен содержать ровно то, что видно внутри кольца
+  const cropSize = Math.min(ringPx.size, video.videoWidth, video.videoHeight);
   const cx = (ringPx.left + ringPx.right) / 2;
   const cy = (ringPx.top + ringPx.bottom) / 2;
 
@@ -414,8 +416,20 @@ function doCapture() {
   captureCanvas.width = cropSize;
   captureCanvas.height = cropSize;
   const ctx = captureCanvas.getContext("2d");
+
+  // заливаем фон под тон приложения — после circle-clip всё вне круга станет этим цветом
+  ctx.fillStyle = "#0e1a12";
+  ctx.fillRect(0, 0, cropSize, cropSize);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cropSize / 2, cropSize / 2, cropSize / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
   ctx.drawImage(video, sx, sy, cropSize, cropSize, 0, 0, cropSize, cropSize);
-  const dataUrl = captureCanvas.toDataURL("image/jpeg", 0.9);
+  ctx.restore();
+
+  const dataUrl = captureCanvas.toDataURL("image/jpeg", 0.92);
 
   const flash = document.getElementById("flash");
   flash.classList.add("on");
@@ -460,10 +474,10 @@ function showResultScreen(dataUrl, result) {
 
   if (!result || !result.found) {
     wrap.innerHTML = `
-      <div class="result-photo-wrap"><img src="${dataUrl}"></div>
+      <div class="result-photo-circle"><img src="${dataUrl}"></div>
       <div class="not-found-box">
         <div class="ic">🔍</div>
-        <p>Не удалось определить модель мяча.<br>Попробуйте сфотографировать его при лучшем освещении.</p>
+        <p>Не удалось определить модель мяча.<br>Попробуй сфотографировать при лучшем освещении.</p>
         <button class="btn-scan-again" onclick="resetScanner()">Попробовать снова</button>
       </div>`;
     document.getElementById("screen-result").classList.remove("hidden");
@@ -473,50 +487,35 @@ function showResultScreen(dataUrl, result) {
   const conf = result.confidence;
   const isLow = conf !== null && conf !== undefined && conf < 75;
   const nameLine = isLow
-    ? `Похож на ${result.name || result.model || "мяч"} (уверенность ${conf}%)`
+    ? `Похож на ${result.name || result.model || "мяч"}`
     : (result.name || result.model || "Мяч распознан");
 
   const tournaments = Array.isArray(result.tournaments) ? result.tournaments : [];
 
+  const quickGrid = (result.model || result.year) ? `
+    <div class="quick-grid">
+      ${result.model ? `<div class="quick-item"><div class="qi-label">⚽ Модель</div><div class="qi-value">${result.model}</div></div>` : ""}
+      ${result.year ? `<div class="quick-item"><div class="qi-label">📅 Год</div><div class="qi-value">${result.year}</div></div>` : ""}
+    </div>` : "";
+
+  const infoLines = [
+    result.usage ? `<div class="info-line">🏆 ${result.usage}</div>` : "",
+    tournaments.length ? `<div class="info-line">🌍 ${tournaments.join(", ")}</div>` : "",
+    result.design ? `<div class="info-line">🎨 ${result.design}</div>` : "",
+  ].join("");
+
   wrap.innerHTML = `
-    <div class="result-photo-wrap"><img src="${dataUrl}"></div>
+    <div class="result-photo-circle"><img src="${dataUrl}"></div>
     <div class="result-name">${nameLine}</div>
-    ${conf !== null && conf !== undefined ? `<div class="result-conf ${isLow ? "low" : ""}">Уверенность распознавания: ${conf}%</div>` : ""}
+    ${conf !== null && conf !== undefined ? `<div class="result-conf ${isLow ? "low" : ""}">${isLow ? "⚠️ " : "✅ "}уверенность ${conf}%</div>` : ""}
 
-    ${result.model ? `
-    <div class="info-card">
-      <div class="ic-row"><span class="ic">⚽</span><span class="ic-title">Модель</span></div>
-      <div class="ic-body">${result.model}</div>
-    </div>` : ""}
-
-    ${result.year ? `
-    <div class="info-card">
-      <div class="ic-row"><span class="ic">📅</span><span class="ic-title">Год выпуска</span></div>
-      <div class="ic-body">${result.year}</div>
-    </div>` : ""}
-
-    ${result.usage ? `
-    <div class="info-card">
-      <div class="ic-row"><span class="ic">🏆</span><span class="ic-title">Где использовался</span></div>
-      <div class="ic-body">${result.usage}</div>
-    </div>` : ""}
-
-    ${tournaments.length ? `
-    <div class="info-card">
-      <div class="ic-row"><span class="ic">🌍</span><span class="ic-title">Турниры</span></div>
-      <div class="ic-body">${tournaments.map(t => `<span class="tournament-chip">${t}</span>`).join("")}</div>
-    </div>` : ""}
+    ${quickGrid}
+    ${infoLines}
 
     ${result.fun_fact ? `
-    <div class="info-card">
-      <div class="ic-row"><span class="ic">⭐</span><span class="ic-title">Интересный факт</span></div>
-      <div class="ic-body">${result.fun_fact}</div>
-    </div>` : ""}
-
-    ${result.design ? `
-    <div class="info-card">
-      <div class="ic-row"><span class="ic">🎨</span><span class="ic-title">Особенности дизайна</span></div>
-      <div class="ic-body">${result.design}</div>
+    <div class="fun-fact-card">
+      <div class="ff-icon">⭐</div>
+      <div class="ff-text">${result.fun_fact}</div>
     </div>` : ""}
 
     <button class="btn-scan-again" onclick="resetScanner()">📷 Сканировать ещё</button>
