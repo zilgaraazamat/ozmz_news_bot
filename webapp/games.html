@@ -45,18 +45,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .teams-title{font-size:11px;color:#6b7c6e;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px}
 .entry-block{background:rgba(255,255,255,.03);border-radius:12px;padding:12px;margin-top:10px}
 .entry-title{font-size:12px;font-weight:700;margin-bottom:8px}
-.teams-toggle{width:100%;padding:10px;margin-top:10px;border:1px solid rgba(126,217,87,.3);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
+.secondary-row{display:flex;gap:8px;margin-top:10px}
+.secondary-btn{flex:1;padding:9px;border:1px solid rgba(126,217,87,.3);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
+.add-toggle-btn{width:100%;padding:10px;margin-top:10px;border:1px dashed rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
+.add-more-block{margin-top:8px}
+.btn-switch{width:100%;padding:9px;margin-top:6px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 .teams-body{margin-top:8px}
 .filters{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
 .filter-chip{flex-shrink:0;padding:8px 14px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#9db3a3;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .filter-chip.active{background:rgba(126,217,87,.15);border-color:#7ed957;color:#7ed957}
 .btn-cancel{width:100%;padding:9px;margin-top:8px;border:1px solid rgba(255,80,80,.35);background:transparent;color:#ff8080;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
-.add-more-block{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.08)}
 .btn-switch{width:100%;padding:9px;margin-top:6px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 .btn-pay{display:block;width:100%;box-sizing:border-box;text-align:center;padding:12px;margin-top:10px;border-radius:10px;background:#7ed957;color:#0e1a12;font-weight:800;font-size:14px;text-decoration:none}
 .btn-paid{width:100%;padding:10px;margin-top:8px;border:1px solid rgba(126,217,87,.4);background:transparent;color:#7ed957;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
 .paid-claim-note{text-align:center;font-size:12px;color:#7ed957;padding:10px;margin-top:10px;background:rgba(126,217,87,.08);border-radius:10px}
-.chat-toggle{width:100%;padding:10px;margin-top:10px;border:1px solid rgba(126,217,87,.3);background:transparent;color:#7ed957;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 .chat-box{margin-top:10px;background:rgba(255,255,255,.03);border-radius:12px;padding:10px 12px}
 .chat-messages{max-height:220px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
 .chat-msg{font-size:12px;line-height:1.4}
@@ -193,26 +195,6 @@ function entryPeopleCount(s) {
 
 let teamsExpanded = {};
 
-function teamsHtml(gameId, teams) {
-  if (!teams || teams.length === 0) return "";
-  const byTeam = {};
-  teams.forEach(m => {
-    (byTeam[m.team_index] = byTeam[m.team_index] || []).push(m);
-  });
-  const indices = Object.keys(byTeam).map(Number).sort((a, b) => a - b);
-  const expanded = !!teamsExpanded[gameId];
-  const body = indices.map(i => `
-    <div class="team-block">
-      <div class="team-title">Команда ${i + 1} (${byTeam[i].length})</div>
-      ${byTeam[i].map(p => `<div class="team-player">${p.name}${p.player ? ` — <i>${p.player}</i>` : ""}</div>`).join("")}
-    </div>`).join("");
-  return `
-    <button class="teams-toggle" onclick="toggleTeamsDisplay(${gameId})">
-      🏆 Составы команд ${expanded ? "▲" : "▼"}
-    </button>
-    <div class="teams-body ${expanded ? "" : "hidden"}" id="teams-body-${gameId}">${body}</div>`;
-}
-
 function toggleTeamsDisplay(gameId) {
   teamsExpanded[gameId] = !teamsExpanded[gameId];
   renderGames(window.__lastGames || []);
@@ -271,15 +253,36 @@ function renderGames(games) {
 
     const myEntriesHtml = mySignups.map(s => myEntryActionsHtml(g.id, s, g.payment_link)).join("");
 
-    const addFormHtml = mySignups.length === 0
-      ? `<label class="guests-label">Сколько вас всего придёт (с тобой)?</label>
-         <input type="number" class="guests-input" id="guests-${g.id}" min="1" max="20" value="1">
-         <button class="btn" onclick="signup(${g.id})">Записаться</button>`
-      : `<div class="add-more-block">
-           <label class="guests-label">Хочешь привести ещё людей?</label>
-           <input type="number" class="guests-input" id="addmore-${g.id}" min="1" max="20" value="1">
-           <button class="btn-switch" onclick="addMorePeople(${g.id})">➕ Добавить ещё игроков</button>
-         </div>`;
+    let addFormHtml;
+    if (mySignups.length === 0) {
+      addFormHtml = `
+        <label class="guests-label">Сколько вас всего придёт (с тобой)?</label>
+        <input type="number" class="guests-input" id="guests-${g.id}" min="1" max="20" value="1">
+        <button class="btn" onclick="signup(${g.id})">Записаться</button>`;
+    } else {
+      const addExpanded = !!addFormExpanded[g.id];
+      addFormHtml = `
+        <button class="add-toggle-btn" onclick="toggleAddForm(${g.id})">➕ Добавить ещё игроков ${addExpanded ? "▲" : "▼"}</button>
+        <div class="add-more-block ${addExpanded ? "" : "hidden"}" id="add-form-${g.id}">
+          <label class="guests-label">Сколько человек добавить?</label>
+          <input type="number" class="guests-input" id="addmore-${g.id}" min="1" max="20" value="1">
+          <button class="btn-switch" onclick="addMorePeople(${g.id})">Добавить</button>
+        </div>`;
+    }
+
+    const secondaryRow = mySignups.length ? `
+      <div class="secondary-row">
+        <button class="secondary-btn" onclick="toggleTeamsDisplay(${g.id})">🏆 Команды</button>
+        <button class="secondary-btn" onclick="toggleChat(${g.id})" id="chat-toggle-${g.id}">💬 Чат</button>
+      </div>
+      <div class="teams-body ${teamsExpanded[g.id] ? "" : "hidden"}" id="teams-body-wrap-${g.id}">${teamsExpanded[g.id] ? teamsInnerHtml(g.teams) : ""}</div>
+      <div class="chat-box hidden" id="chat-box-${g.id}">
+        <div class="chat-messages" id="chat-messages-${g.id}"></div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chat-input-${g.id}" placeholder="Написать..." maxlength="500">
+          <button class="chat-send-btn" onclick="sendChatMessage(${g.id})">➤</button>
+        </div>
+      </div>` : "";
 
     return `
       <div class="game-card">
@@ -296,18 +299,28 @@ function renderGames(games) {
         </div>
         ${myEntriesHtml}
         ${addFormHtml}
-        ${teamsHtml(g.id, g.teams)}
-        ${mySignups.length ? `
-          <button class="chat-toggle" onclick="toggleChat(${g.id})" id="chat-toggle-${g.id}">💬 Чат участников</button>
-          <div class="chat-box hidden" id="chat-box-${g.id}">
-            <div class="chat-messages" id="chat-messages-${g.id}"></div>
-            <div class="chat-input-row">
-              <input class="chat-input" id="chat-input-${g.id}" placeholder="Написать..." maxlength="500">
-              <button class="chat-send-btn" onclick="sendChatMessage(${g.id})">➤</button>
-            </div>
-          </div>` : ""}
+        ${secondaryRow}
       </div>`;
   }).join("");
+}
+
+let addFormExpanded = {};
+
+function toggleAddForm(gameId) {
+  addFormExpanded[gameId] = !addFormExpanded[gameId];
+  renderGames(window.__lastGames || []);
+}
+
+function teamsInnerHtml(teams) {
+  if (!teams || teams.length === 0) return `<div class="roster-empty">Пока не сформированы</div>`;
+  const byTeam = {};
+  teams.forEach(m => (byTeam[m.team_index] = byTeam[m.team_index] || []).push(m));
+  const indices = Object.keys(byTeam).map(Number).sort((a, b) => a - b);
+  return indices.map(i => `
+    <div class="team-block">
+      <div class="team-title">Команда ${i + 1} (${byTeam[i].length})</div>
+      ${byTeam[i].map(p => `<div class="team-player">${p.name}${p.player ? ` — <i>${p.player}</i>` : ""}</div>`).join("")}
+    </div>`).join("");
 }
 
 async function loadGames() {
@@ -442,12 +455,12 @@ function toggleChat(gameId) {
   if (openChats[gameId]) {
     box.classList.add("hidden");
     openChats[gameId] = false;
-    btn.textContent = "💬 Чат участников";
+    btn.textContent = "💬 Чат";
     clearInterval(chatPollTimers[gameId]);
   } else {
     box.classList.remove("hidden");
     openChats[gameId] = true;
-    btn.textContent = "🔼 Скрыть чат";
+    btn.textContent = "🔼 Скрыть";
     pollChat(gameId);
     chatPollTimers[gameId] = setInterval(() => pollChat(gameId), 3000);
   }
