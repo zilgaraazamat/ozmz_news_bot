@@ -238,34 +238,38 @@ function loadScript(src) {
 /* Возвращает {inRing: bool, score: number} — есть ли мяч внутри круга сейчас */
 async function detectBallInRing() {
   const ringPx = getRingPixelRect();
-  const heuristic = heuristicStability(ringPx);
-  let cvInfo = { tried: false, found: false, score: 0 };
+  const heuristic = heuristicStability(ringPx); // используется только для отладочного вывода
 
-  if (cocoModel) {
-    cvInfo.tried = true;
-    try {
-      const preds = await cocoModel.detect(video);
-      const balls = preds.filter(p => p.class === "sports ball");
-      if (balls.length > 0) {
-        const best = balls.reduce((a, b) => (a.score > b.score ? a : b));
-        const [bx, by, bw, bh] = best.bbox;
-        const cx = bx + bw / 2, cy = by + bh / 2;
-        const marginX = ringPx.size * 0.35, marginY = ringPx.size * 0.35;
-        const withinCenter = cx > ringPx.left - marginX && cx < ringPx.right + marginX
-                           && cy > ringPx.top - marginY && cy < ringPx.bottom + marginY;
-        cvInfo.score = best.score;
-        if (withinCenter && best.score > 0.3) {
-          cvInfo.found = true;
-          lastDebug = { mode: "cv", score: best.score.toFixed(2), variance: heuristic.variance, motion: heuristic.motion };
-          return { inRing: true, score: best.score, mode: "cv" };
-        }
-      }
-    } catch (e) { /* модель споткнулась на этом кадре — не страшно, есть эвристика */ }
+  if (!cocoModel) {
+    lastDebug = {
+      mode: modelFailed ? "модель недоступна" : "модель загружается...",
+      score: 0, variance: heuristic.variance, motion: heuristic.motion,
+    };
+    return { inRing: false, score: 0, mode: "loading" };
   }
 
-  lastDebug = { mode: cvInfo.tried ? "cv-miss+heur" : "heuristic", score: cvInfo.score.toFixed(2),
-                variance: heuristic.variance, motion: heuristic.motion };
-  return heuristic;
+  try {
+    const preds = await cocoModel.detect(video);
+    const balls = preds.filter(p => p.class === "sports ball");
+    if (balls.length === 0) {
+      lastDebug = { mode: "мяч не виден", score: 0, variance: heuristic.variance, motion: heuristic.motion };
+      return { inRing: false, score: 0, mode: "cv" };
+    }
+
+    const best = balls.reduce((a, b) => (a.score > b.score ? a : b));
+    const [bx, by, bw, bh] = best.bbox;
+    const cx = bx + bw / 2, cy = by + bh / 2;
+    const marginX = ringPx.size * 0.3, marginY = ringPx.size * 0.3;
+    const withinCenter = cx > ringPx.left - marginX && cx < ringPx.right + marginX
+                       && cy > ringPx.top - marginY && cy < ringPx.bottom + marginY;
+    const found = withinCenter && best.score > 0.4;
+
+    lastDebug = { mode: "cv", score: best.score.toFixed(2), variance: heuristic.variance, motion: heuristic.motion };
+    return { inRing: found, score: best.score, mode: "cv" };
+  } catch (e) {
+    lastDebug = { mode: "ошибка cv", score: 0, variance: heuristic.variance, motion: heuristic.motion };
+    return { inRing: false, score: 0, mode: "cv" };
+  }
 }
 
 function getVideoDisplayGeometry() {

@@ -15,17 +15,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .profile-fab:active{transform:scale(.92)}
 
 /* ── меню ── */
-.head{text-align:center;margin-bottom:22px;padding-top:8px}
-.logo{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #7ed957;margin-bottom:12px;box-shadow:0 0 24px rgba(126,217,87,.35)}
-.head h1{font-size:20px;font-weight:900}
-.head p{font-size:13px;color:#6b7c6e;margin-top:4px}
-.menu-card{display:flex;align-items:center;gap:14px;background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:18px;padding:16px;margin-bottom:12px;cursor:pointer;transition:transform .15s,border-color .15s}
+.head{text-align:center;margin-bottom:20px;padding-top:4px}
+.logo{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #7ed957;margin-bottom:10px;box-shadow:0 0 24px rgba(126,217,87,.35)}
+.head h1{font-size:19px;font-weight:900}
+.head p{font-size:12px;color:#6b7c6e;margin-top:3px}
+.menu-card{display:flex;align-items:center;gap:14px;background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;transition:transform .12s,border-color .12s;opacity:0;animation:card-in .35s ease forwards}
+.menu-card:nth-of-type(1){animation-delay:.02s}
+.menu-card:nth-of-type(2){animation-delay:.06s}
+.menu-card:nth-of-type(3){animation-delay:.1s}
+.menu-card:nth-of-type(4){animation-delay:.14s}
+.menu-card:nth-of-type(5){animation-delay:.18s}
+@keyframes card-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .menu-card:active{transform:scale(.97);border-color:#7ed957}
-.menu-icon{width:48px;height:48px;border-radius:12px;background:rgba(126,217,87,.12);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
-.menu-text h2{font-size:15px;font-weight:800;margin-bottom:2px}
-.menu-text p{font-size:12px;color:#6b7c6e;line-height:1.4}
-.menu-arrow{margin-left:auto;color:#7ed957;font-size:18px}
-.footer{text-align:center;margin-top:18px;font-size:11px;color:#4a5a4d}
+.menu-icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0}
+.menu-icon.c-green{background:rgba(126,217,87,.14)}
+.menu-icon.c-blue{background:rgba(94,180,255,.14)}
+.menu-icon.c-amber{background:rgba(224,184,74,.14)}
+.menu-icon.c-purple{background:rgba(180,140,255,.14)}
+.menu-icon.c-gray{background:rgba(200,200,200,.12)}
+.menu-text{min-width:0}
+.menu-text h2{font-size:14px;font-weight:800;margin-bottom:2px}
+.menu-text p{font-size:11px;color:#6b7c6e;line-height:1.35}
+.menu-arrow{margin-left:auto;color:#7ed957;font-size:17px;flex-shrink:0}
+.footer{text-align:center;margin-top:16px;font-size:11px;color:#4a5a4d}
 
 /* ── профиль ── */
 .card{width:100%;background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:22px;padding:22px 18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
@@ -80,7 +92,7 @@ input:focus{outline:none;border-color:#7ed957}
     </div>
 
     <div class="menu-card" onclick="go('/battle')">
-      <div class="menu-icon">⚔️</div>
+      <div class="menu-icon c-amber">⚔️</div>
       <div class="menu-text">
         <h2>Батл с другом</h2>
         <p>Проверьте знание футбола 1×1</p>
@@ -89,7 +101,7 @@ input:focus{outline:none;border-color:#7ed957}
     </div>
 
     <div class="menu-card" onclick="go('/games')">
-      <div class="menu-icon">⚽</div>
+      <div class="menu-icon c-green">⚽</div>
       <div class="menu-text">
         <h2>Игры</h2>
         <p>Записывайся на ближайшие игры</p>
@@ -98,7 +110,7 @@ input:focus{outline:none;border-color:#7ed957}
     </div>
 
     <div class="menu-card" onclick="go('/scanner')">
-      <div class="menu-icon">📷</div>
+      <div class="menu-icon c-blue">📷</div>
       <div class="menu-text">
         <h2>Сканер мячей</h2>
         <p>Наведи камеру и узнай модель мяча</p>
@@ -107,7 +119,7 @@ input:focus{outline:none;border-color:#7ed957}
     </div>
 
     <div class="menu-card hidden" id="admin-card" onclick="go('/admin')">
-      <div class="menu-icon">⚙️</div>
+      <div class="menu-icon c-purple">⚙️</div>
       <div class="menu-text">
         <h2>Создать игру</h2>
         <p>Только для админов</p>

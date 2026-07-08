@@ -18,7 +18,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .game-card{background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:18px;padding:18px;margin-bottom:16px}
 .game-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
 .game-when{font-size:16px;font-weight:800}
-.game-price{font-size:13px;font-weight:700;color:#7ed957;background:rgba(126,217,87,.12);padding:4px 10px;border-radius:8px;white-space:nowrap}
+.price-badge{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(126,217,87,.16),rgba(126,217,87,.05));border:1px solid rgba(126,217,87,.3);border-radius:12px;padding:10px 14px;margin-bottom:10px}
+.price-badge .pb-icon{font-size:18px}
+.price-badge .pb-value{font-size:15px;font-weight:800;color:#7ed957}
+.price-badge .pb-note{margin-left:auto;font-size:11px;color:#9db3a3}
 .game-loc{font-size:13px;color:#9db3a3;margin-bottom:6px}
 .game-extra{font-size:12px;color:#6b7c6e;margin-bottom:10px;line-height:1.4}
 .game-count{font-size:12px;color:#6b7c6e;margin-bottom:12px}
@@ -300,10 +303,15 @@ function renderGames(games) {
       <div class="game-card">
         <div class="game-top">
           <div class="game-when">📅 ${formatDate(g)} · 🕐 ${g.time}</div>
-          ${g.price ? `<div class="game-price">${g.price}</div>` : ""}
         </div>
         <div class="game-loc">📍 ${g.location}</div>
         ${g.extra_info ? `<div class="game-extra">ℹ️ ${g.extra_info}</div>` : ""}
+        ${g.price ? `
+        <div class="price-badge">
+          <span class="pb-icon">💰</span>
+          <span class="pb-value">${g.price}</span>
+          ${g.payment_link ? `<span class="pb-note">оплата по ссылке</span>` : ""}
+        </div>` : ""}
         <div class="game-count">👥 ${confirmedCount}/${g.num_players || "?"} подтверждено${totalCount > confirmedCount ? `, ещё ${totalCount - confirmedCount} ожидает` : ""}</div>
         <div class="roster">
           <div class="roster-title">Записались</div>
@@ -335,9 +343,14 @@ function teamsInnerHtml(teams) {
     </div>`).join("");
 }
 
+let lastGamesHash = "";
+
 async function loadGames() {
   try {
     const r = await fetch(`/api/games?user_id=${userId || ""}`).then(r => r.json());
+    const hash = JSON.stringify(r.games);
+    if (hash === lastGamesHash) return; // ничего не изменилось — не дёргаем DOM зря
+    lastGamesHash = hash;
     renderGames(r.games);
   } catch (e) {
     showError("Не удалось загрузить игры. Попробуй ещё раз.");

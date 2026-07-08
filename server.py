@@ -536,6 +536,15 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", content_type)
             if content_type.startswith("text/html"):
                 self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+            else:
+                self.send_header("Cache-Control", "public, max-age=86400")
+
+            if content_type.startswith("text/") and "gzip" in self.headers.get("Accept-Encoding", ""):
+                import gzip
+                data = gzip.compress(data, compresslevel=6)
+                self.send_header("Content-Encoding", "gzip")
+
+            self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
         except FileNotFoundError:

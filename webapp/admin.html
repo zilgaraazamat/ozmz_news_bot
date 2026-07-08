@@ -13,6 +13,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 h1{font-size:19px;font-weight:900;text-align:center;margin-bottom:4px}
 .sub{text-align:center;font-size:13px;color:#6b7c6e;margin-bottom:20px}
 label{font-size:12px;color:#6b7c6e;display:block;margin-bottom:6px;margin-top:12px}
+.form-section{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:14px;margin-top:14px}
+.form-section label:first-of-type{margin-top:0}
+.fs-title{font-size:12px;font-weight:800;color:#7ed957;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .hint{font-size:11px;color:#4a5a4d;margin-top:4px}
 label:first-of-type{margin-top:0}
 input,textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:16px;font-family:inherit;color-scheme:dark;min-height:46px;box-sizing:border-box}
@@ -83,39 +86,49 @@ textarea{resize:vertical;min-height:70px}
 
     <div id="error-banner"></div>
 
-    <label>Дата</label>
-    <input id="f-date" placeholder="напр. 2026-08-01 (год-месяц-день)">
-    <div class="hint">Именно в таком формате — иначе игра не попадёт в сортировку "ближайшие"</div>
+    <div class="form-section">
+      <div class="fs-title">📅 Когда и где</div>
+      <label>Дата</label>
+      <input id="f-date" placeholder="напр. 2026-08-01 (год-месяц-день)">
+      <div class="hint">Именно в таком формате — иначе игра не попадёт в сортировку "ближайшие"</div>
 
-    <label>Время</label>
-    <input id="f-time" placeholder="напр. 20:00">
+      <label>Время</label>
+      <input id="f-time" placeholder="напр. 20:00">
 
-    <label>Место</label>
-    <input id="f-location" placeholder="напр. Арена Central Park">
-
-    <div class="row2">
-      <div>
-        <label>Игроков всего</label>
-        <input id="f-num-players" type="number" min="1" placeholder="16">
-      </div>
-      <div>
-        <label>Команд</label>
-        <input id="f-num-teams" type="number" min="1" placeholder="2">
-      </div>
+      <label>Место</label>
+      <input id="f-location" placeholder="напр. Арена Central Park">
     </div>
 
-    <label>Игроков в команде</label>
-    <input id="f-players-per-team" type="number" min="1" placeholder="8">
+    <div class="form-section">
+      <div class="fs-title">👥 Состав игры</div>
+      <div class="row2">
+        <div>
+          <label>Игроков всего</label>
+          <input id="f-num-players" type="number" min="1" placeholder="16">
+        </div>
+        <div>
+          <label>Команд</label>
+          <input id="f-num-teams" type="number" min="1" placeholder="2">
+        </div>
+      </div>
+      <label>Игроков в команде</label>
+      <input id="f-players-per-team" type="number" min="1" placeholder="8">
+    </div>
 
-    <label>Цена</label>
-    <input id="f-price" placeholder="напр. 2000 тг с человека">
+    <div class="form-section">
+      <div class="fs-title">💰 Оплата</div>
+      <label>Цена</label>
+      <input id="f-price" placeholder="напр. 2000 тг с человека">
 
-    <label>Ссылка на оплату</label>
-    <input id="f-payment-link" placeholder="напр. Kaspi-перевод или другая ссылка" value="https://pay.kaspi.kz/pay/ybsrtfje">
-    <div class="hint">Покажется игроку кнопкой «Оплатить» при регистрации. Можно изменить под конкретную игру</div>
+      <label>Ссылка на оплату</label>
+      <input id="f-payment-link" placeholder="напр. Kaspi-перевод или другая ссылка" value="https://pay.kaspi.kz/pay/ybsrtfje">
+      <div class="hint">Покажется игроку кнопкой «Оплатить» при регистрации. Можно изменить под конкретную игру</div>
+    </div>
 
-    <label>Доп. информация</label>
-    <textarea id="f-extra" placeholder="форма, парковка, что взять с собой..."></textarea>
+    <div class="form-section">
+      <div class="fs-title">ℹ️ Доп. информация</div>
+      <textarea id="f-extra" placeholder="форма, парковка, что взять с собой..."></textarea>
+    </div>
 
     <button class="btn" id="submit-btn" onclick="createGame()">Создать и опубликовать</button>
     <div class="saved" id="saved-msg">✅ Игра создана и опубликована</div>
