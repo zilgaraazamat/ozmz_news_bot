@@ -18,7 +18,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;color:#f5f5f0
 .cam-title{font-size:14px;font-weight:800;text-shadow:0 1px 4px rgba(0,0,0,.6)}
 .cam-hint{position:absolute;top:64px;left:0;right:0;text-align:center;font-size:12px;color:#e8f5ea;z-index:5;padding:0 24px;text-shadow:0 1px 4px rgba(0,0,0,.6)}
 .cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:4}
-.scan-ring{width:min(62vw,280px);height:min(62vw,280px);border-radius:50%;border:3px solid rgba(126,217,87,.55);position:relative;transition:border-color .25s,box-shadow .25s}
+.scan-ring{width:min(82vw,360px);height:min(82vw,360px);border-radius:50%;border:3px solid rgba(126,217,87,.55);position:relative;transition:border-color .25s,box-shadow .25s}
 .scan-ring.locked{border-color:#7ed957;box-shadow:0 0 0 6px rgba(126,217,87,.18),0 0 30px rgba(126,217,87,.5)}
 .scan-ring::before{content:"";position:absolute;inset:-10px;border-radius:50%;border:1px solid rgba(126,217,87,.25);animation:pulse-ring 2.2s ease-in-out infinite}
 @keyframes pulse-ring{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.06);opacity:.15}}
@@ -250,15 +250,30 @@ async function detectBallInRing() {
   return heuristicStability(ringPx);
 }
 
+function getVideoDisplayGeometry() {
+  const containerW = window.innerWidth;
+  const containerH = window.innerHeight;
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (!vw || !vh) return null;
+  // object-fit:cover — видео масштабируется по БОЛЬШЕЙ стороне и центрируется,
+  // обрезанные края нужно учитывать, иначе координаты круга съедут
+  const scale = Math.max(containerW / vw, containerH / vh);
+  const offsetX = (containerW - vw * scale) / 2;
+  const offsetY = (containerH - vh * scale) / 2;
+  return { scale, offsetX, offsetY };
+}
+
 function getRingPixelRect() {
   const ring = document.getElementById("scan-ring");
   const r = ring.getBoundingClientRect();
-  const scaleX = video.videoWidth / window.innerWidth;
-  const scaleY = video.videoHeight / window.innerHeight;
+  const geo = getVideoDisplayGeometry();
+  if (!geo) return { left: 0, right: 0, top: 0, bottom: 0, size: 0 };
+  const toVideoX = x => (x - geo.offsetX) / geo.scale;
+  const toVideoY = y => (y - geo.offsetY) / geo.scale;
   return {
-    left: r.left * scaleX, right: r.right * scaleX,
-    top: r.top * scaleY, bottom: r.bottom * scaleY,
-    size: r.width * scaleX,
+    left: toVideoX(r.left), right: toVideoX(r.right),
+    top: toVideoY(r.top), bottom: toVideoY(r.bottom),
+    size: r.width / geo.scale,
   };
 }
 
@@ -294,7 +309,7 @@ function heuristicStability(ringPx) {
     }
     lastFrameData = frame;
 
-    const isStable = motionScore < 8;
+    const isStable = motionScore < 14;
     return { inRing: hasContent && isStable, score: hasContent ? 0.5 : 0, mode: "heuristic" };
   } catch (e) {
     return { inRing: false, score: 0, mode: "heuristic" };
