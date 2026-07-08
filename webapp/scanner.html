@@ -353,12 +353,22 @@ async function detectionTick() {
 }
 
 function doCapture() {
-  const w = video.videoWidth, h = video.videoHeight;
-  captureCanvas.width = w;
-  captureCanvas.height = h;
+  const ringPx = getRingPixelRect();
+  const padding = 1.25; // небольшой запас вокруг кольца, чтобы мяч не обрезался по краю
+  const cropSize = Math.min(ringPx.size * padding, video.videoWidth, video.videoHeight);
+  const cx = (ringPx.left + ringPx.right) / 2;
+  const cy = (ringPx.top + ringPx.bottom) / 2;
+
+  let sx = cx - cropSize / 2;
+  let sy = cy - cropSize / 2;
+  sx = Math.max(0, Math.min(sx, video.videoWidth - cropSize));
+  sy = Math.max(0, Math.min(sy, video.videoHeight - cropSize));
+
+  captureCanvas.width = cropSize;
+  captureCanvas.height = cropSize;
   const ctx = captureCanvas.getContext("2d");
-  ctx.drawImage(video, 0, 0, w, h);
-  const dataUrl = captureCanvas.toDataURL("image/jpeg", 0.85);
+  ctx.drawImage(video, sx, sy, cropSize, cropSize, 0, 0, cropSize, cropSize);
+  const dataUrl = captureCanvas.toDataURL("image/jpeg", 0.9);
 
   const flash = document.getElementById("flash");
   flash.classList.add("on");
