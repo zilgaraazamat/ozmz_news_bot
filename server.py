@@ -9,7 +9,7 @@ from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
     get_profile, set_nickname, get_role, set_role, get_games_played_count,
     create_game, get_all_games, get_active_games, get_game, cancel_game, delete_game,
-    signup_for_game, get_signups, get_my_signup, confirm_signup, cancel_signup, mark_payment_claimed,
+    signup_for_game, get_signups, get_my_signup, get_my_signups, confirm_signup, cancel_signup, mark_payment_claimed,
     is_registered_for_game, add_chat_message, get_chat_messages,
     get_username,
     get_team_members, clear_game_teams, add_team_member, move_team_member,
@@ -198,11 +198,15 @@ class Handler(BaseHTTPRequestHandler):
                 user_id = str(data.get("user_id", ""))
                 game_id = data.get("game_id")
                 guests_count = int(data.get("guests_count") or 0)
+                is_addition = bool(data.get("is_addition"))
                 if not user_id or not game_id:
                     self._json({"ok": False, "error": "bad_request"})
                     return
                 if guests_count < 0 or guests_count > 20:
                     self._json({"ok": False, "error": "Некорректное число людей"})
+                    return
+                if is_addition and guests_count < 1:
+                    self._json({"ok": False, "error": "Укажи хотя бы одного человека"})
                     return
 
                 profile = get_profile(user_id)
@@ -211,7 +215,7 @@ class Handler(BaseHTTPRequestHandler):
                         else (profile["name"] if profile else None)) or "Игрок"
                 player = role["player"] if role else None
 
-                signup_for_game(game_id, user_id, name, player, guests_count)
+                signup_for_game(game_id, user_id, name, player, guests_count, None, is_addition)
                 _recompute_teams(game_id)
                 self._json({"ok": True})
             except Exception as e:
@@ -222,11 +226,12 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 data = json.loads(body)
                 user_id = str(data.get("user_id", ""))
+                entry_id = data.get("entry_id")
                 game_id = data.get("game_id")
-                if not user_id or not game_id:
+                if not user_id or not entry_id or not game_id:
                     self._json({"ok": False, "error": "bad_request"})
                     return
-                cancel_signup(game_id, user_id)
+                cancel_signup(entry_id, user_id)
                 _recompute_teams(game_id)
                 self._json({"ok": True})
             except Exception as e:
@@ -238,21 +243,22 @@ class Handler(BaseHTTPRequestHandler):
                 data = json.loads(body)
                 user_id = str(data.get("user_id", ""))
                 game_id = data.get("game_id")
-                if not user_id or not game_id:
+                entry_id = data.get("entry_id")
+                if not user_id or not game_id or not entry_id:
                     self._json({"ok": False, "error": "bad_request"})
                     return
 
                 signups = get_signups(game_id)
-                mine = next((s for s in signups if s["user_id"] == user_id), None)
+                mine = next((s for s in signups if s["id"] == entry_id and s["user_id"] == user_id), None)
                 if not mine:
-                    self._json({"ok": False, "error": "Ты не записан на эту игру"})
+                    self._json({"ok": False, "error": "Запись не найдена"})
                     return
 
-                mark_payment_claimed(game_id, user_id)
+                mark_payment_claimed(entry_id)
 
                 game = get_game(game_id)
                 name = mine["name"]
-                total_people = 1 + (mine.get("guests_count") or 0)
+                total_people = mine["guests_count"] if mine.get("is_addition") else 1 + (mine.get("guests_count") or 0)
                 when = f"{game['date']} {game['time']}" if game else ""
                 admin_text = (
                     f"💰 <b>Заявка на оплату!</b>\n\n"
@@ -298,9 +304,8 @@ class Handler(BaseHTTPRequestHandler):
                 if admin_id not in ADMIN_IDS:
                     self._json({"ok": False, "error": "Нет прав администратора"})
                     return
-                game_id = data.get("game_id")
-                player_user_id = str(data.get("player_user_id", ""))
-                confirm_signup(game_id, player_user_id)
+                entry_id = data.get("entry_id")
+                confirm_signup(entry_id)
                 self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] confirm-signup: {e}")
@@ -391,6 +396,7 @@ class Handler(BaseHTTPRequestHandler):
             for g in games:
                 g["signups"] = get_signups(g["id"])
                 g["my_status"] = get_my_signup(g["id"], user_id) if user_id else None
+                g["my_signups"] = get_my_signups(g["id"], user_id) if user_id else []
                 g["teams"] = get_team_members(g["id"])
             self._json({"games": games})
         elif path == "/api/games/chat":

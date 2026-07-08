@@ -36,6 +36,15 @@ def split_teams(player_ids):
 
 
 def _build_members(s):
+    if s.get("is_addition"):
+        # это партия "добавить ещё игроков" к уже существующей записи — сам регистрант
+        # уже учтён в основной партии, здесь все — новые люди, без дублирования "себя"
+        n = max(1, int(s.get("guests_count") or 1))
+        return [
+            {"user_id": None, "name": f"{s['name']} (доп. игрок {i + 1})", "player": None, "is_guest": True}
+            for i in range(n)
+        ]
+
     size = 1 + (s.get("guests_count") or 0)
     return [
         {

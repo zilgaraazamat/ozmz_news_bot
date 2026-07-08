@@ -82,27 +82,43 @@ def init_db():
             pass
 
         c.execute("""CREATE TABLE IF NOT EXISTS game_signups(
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
             game_id         INTEGER,
             user_id         TEXT,
             name            TEXT,
             player          TEXT,
             guests_count    INTEGER DEFAULT 0,
+            is_addition     INTEGER DEFAULT 0,
             team_pref       INTEGER,
             payment_claimed INTEGER DEFAULT 0,
             status          TEXT DEFAULT 'pending',
-            created_at      TEXT,
-            PRIMARY KEY (game_id, user_id)
+            created_at      TEXT
         )""")
+        # миграция со старой схемы (составной PRIMARY KEY без surrogate id — max одна запись на игрока)
+        cols = [r[1] for r in c.execute("PRAGMA table_info(game_signups)").fetchall()]
+        if "id" not in cols:
+            c.execute("ALTER TABLE game_signups RENAME TO game_signups_old")
+            c.execute("""CREATE TABLE game_signups(
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                game_id         INTEGER,
+                user_id         TEXT,
+                name            TEXT,
+                player          TEXT,
+                guests_count    INTEGER DEFAULT 0,
+                is_addition     INTEGER DEFAULT 0,
+                team_pref       INTEGER,
+                payment_claimed INTEGER DEFAULT 0,
+                status          TEXT DEFAULT 'pending',
+                created_at      TEXT
+            )""")
+            old_cols = [r[1] for r in c.execute("PRAGMA table_info(game_signups_old)").fetchall()]
+            common = [col for col in ["game_id", "user_id", "name", "player", "guests_count",
+                                       "team_pref", "payment_claimed", "status", "created_at"] if col in old_cols]
+            c.execute(f"""INSERT INTO game_signups({', '.join(common)})
+                          SELECT {', '.join(common)} FROM game_signups_old""")
+            c.execute("DROP TABLE game_signups_old")
         try:
-            c.execute("ALTER TABLE game_signups ADD COLUMN payment_claimed INTEGER DEFAULT 0")
-        except sqlite3.OperationalError:
-            pass
-        try:
-            c.execute("ALTER TABLE game_signups ADD COLUMN guests_count INTEGER DEFAULT 0")
-        except sqlite3.OperationalError:
-            pass
-        try:
-            c.execute("ALTER TABLE game_signups ADD COLUMN team_pref INTEGER")
+            c.execute("ALTER TABLE game_signups ADD COLUMN is_addition INTEGER DEFAULT 0")
         except sqlite3.OperationalError:
             pass
 
@@ -320,13 +336,13 @@ def get_games_played_count(user_id):
 
     with _lock, _conn() as c:
         rows = c.execute("""
-            SELECT g.game_date FROM game_signups s
+            SELECT DISTINCT g.id, g.game_date FROM game_signups s
             JOIN games g ON g.id = s.game_id
             WHERE s.user_id=? AND s.status='confirmed'
         """, (user_id,)).fetchall()
 
     count = 0
-    for (d,) in rows:
+    for (_gid, d) in rows:
         d = (d or "").strip()
         if iso_re.match(d) and d < today:
             count += 1
@@ -453,65 +469,67 @@ def get_game(game_id):
 
 # ── Записи на игры ────────────────────────────────────────────────────────────
 
-def signup_for_game(game_id, user_id, name, player, guests_count=0, team_pref=None):
+def signup_for_game(game_id, user_id, name, player, guests_count=0, team_pref=None, is_addition=False):
+    """Каждый вызов создаёт НОВУЮ партию регистрации — можно регистрироваться
+    повторно на одну и ту же игру, и каждая партия проходит оплату/подтверждение отдельно."""
     user_id = str(user_id)
     guests_count = max(0, int(guests_count or 0))
     with _lock, _conn() as c:
-        c.execute("""INSERT INTO game_signups(game_id, user_id, name, player, guests_count, team_pref, status, created_at)
-                     VALUES(?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
-                     ON CONFLICT(game_id, user_id) DO UPDATE SET
-                        name=excluded.name, player=excluded.player,
-                        guests_count=excluded.guests_count, team_pref=excluded.team_pref""",
-                  (game_id, user_id, name, player, guests_count, team_pref))
+        c.execute("""INSERT INTO game_signups(game_id, user_id, name, player, guests_count,
+                        is_addition, team_pref, payment_claimed, status, created_at)
+                     VALUES(?, ?, ?, ?, ?, ?, ?, 0, 'pending', datetime('now'))""",
+                  (game_id, user_id, name, player, guests_count, int(is_addition), team_pref))
 
 
 def get_signups(game_id):
     with _lock, _conn() as c:
-        rows = c.execute("""SELECT user_id, name, player, guests_count, team_pref,
+        rows = c.execute("""SELECT id, user_id, name, player, guests_count, is_addition, team_pref,
                                     payment_claimed, status, created_at
                              FROM game_signups WHERE game_id=? ORDER BY created_at""",
                           (game_id,)).fetchall()
-    return [{"user_id": r[0], "name": r[1], "player": r[2], "guests_count": r[3] or 0,
-              "team_pref": r[4], "payment_claimed": bool(r[5]), "status": r[6], "created_at": r[7]}
-             for r in rows]
+    return [{"id": r[0], "user_id": r[1], "name": r[2], "player": r[3], "guests_count": r[4] or 0,
+              "is_addition": bool(r[5]), "team_pref": r[6], "payment_claimed": bool(r[7]),
+              "status": r[8], "created_at": r[9]} for r in rows]
 
 
-def mark_payment_claimed(game_id, user_id):
+def get_my_signups(game_id, user_id):
+    """Все партии регистрации конкретного игрока на эту игру (может быть несколько)."""
     user_id = str(user_id)
     with _lock, _conn() as c:
-        c.execute("UPDATE game_signups SET payment_claimed=1 WHERE game_id=? AND user_id=?",
-                  (game_id, user_id))
+        rows = c.execute("""SELECT id, guests_count, is_addition, payment_claimed, status, created_at
+                             FROM game_signups WHERE game_id=? AND user_id=? ORDER BY created_at""",
+                          (game_id, user_id)).fetchall()
+    return [{"id": r[0], "guests_count": r[1] or 0, "is_addition": bool(r[2]),
+             "payment_claimed": bool(r[3]), "status": r[4], "created_at": r[5]} for r in rows]
 
 
-def change_team_pref(game_id, user_id, team_pref):
-    """Игрок сам меняет команду после регистрации (проверка мест — на уровне сервера)."""
-    user_id = str(user_id)
+def mark_payment_claimed(entry_id):
     with _lock, _conn() as c:
-        c.execute("UPDATE game_signups SET team_pref=? WHERE game_id=? AND user_id=?",
-                  (team_pref, game_id, user_id))
+        c.execute("UPDATE game_signups SET payment_claimed=1 WHERE id=?", (entry_id,))
 
 
 def get_my_signup(game_id, user_id):
+    """Обратная совместимость: агрегированный статус (confirmed, если есть хоть одна
+    подтверждённая партия; иначе pending, если есть хоть одна; иначе None)."""
+    my = get_my_signups(game_id, user_id)
+    if any(s["status"] == "confirmed" for s in my):
+        return "confirmed"
+    if my:
+        return "pending"
+    return None
+
+
+def cancel_signup(entry_id, user_id):
+    """Игрок сам отменяет конкретную партию — можно и после подтверждения
+    (предупреждение о невозврате денег — на фронте). Проверяем владение."""
     user_id = str(user_id)
     with _lock, _conn() as c:
-        row = c.execute("""SELECT status FROM game_signups WHERE game_id=? AND user_id=?""",
-                         (game_id, user_id)).fetchone()
-    return row[0] if row else None
+        c.execute("DELETE FROM game_signups WHERE id=? AND user_id=?", (entry_id, user_id))
 
 
-def cancel_signup(game_id, user_id):
-    """Игрок сам отменяет запись — можно и после подтверждения (предупреждение о невозврате денег — на фронте)."""
-    user_id = str(user_id)
+def confirm_signup(entry_id):
     with _lock, _conn() as c:
-        c.execute("DELETE FROM game_signups WHERE game_id=? AND user_id=?",
-                  (game_id, user_id))
-
-
-def confirm_signup(game_id, user_id):
-    user_id = str(user_id)
-    with _lock, _conn() as c:
-        c.execute("UPDATE game_signups SET status='confirmed' WHERE game_id=? AND user_id=?",
-                  (game_id, user_id))
+        c.execute("UPDATE game_signups SET status='confirmed' WHERE id=?", (entry_id,))
 
 
 # ── Слоты игры ────────────────────────────────────────────────────────────────

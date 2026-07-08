@@ -42,6 +42,7 @@ textarea{resize:vertical;min-height:70px}
 .manage-move-btn{padding:5px 8px;border:1px solid rgba(126,217,87,.35);background:transparent;color:#7ed957;border-radius:6px;font-size:12px;cursor:pointer}
 .manage-kick-btn{padding:5px 9px;border:1px solid rgba(255,80,80,.35);background:transparent;color:#ff8080;border-radius:6px;font-size:12px;cursor:pointer}
 .teams-caption{margin-top:12px;font-size:11px;color:#6b7c6e;text-transform:uppercase;letter-spacing:.5px}
+.teams-toggle-btn{width:100%;padding:9px;border:1px solid rgba(126,217,87,.3);background:transparent;color:#7ed957;border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.5px}
 .team-block{background:rgba(255,255,255,.04);border-radius:10px;padding:10px 12px;margin-top:10px}
 .team-title{font-size:12px;font-weight:800;color:#7ed957;margin-bottom:6px}
 .team-player{font-size:12px;padding:3px 0}
@@ -140,8 +141,28 @@ if (window.Telegram && Telegram.WebApp) {
     if (tgUser && tgUser.id) userId = String(tgUser.id);
   }
   Telegram.WebApp.BackButton.show();
-  Telegram.WebApp.BackButton.onClick(() => { location.href = "/app" + (userId ? ("?uid=" + userId) : ""); });
+  Telegram.WebApp.BackButton.onClick(goBackToMenu);
 }
+
+function goBackToMenu() {
+  location.href = "/app" + (userId ? ("?uid=" + userId) : "");
+}
+
+(function () {
+  let startX = null, startY = null;
+  document.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    if (t.clientX < 24) { startX = t.clientX; startY = t.clientY; }
+  }, { passive: true });
+  document.addEventListener("touchend", e => {
+    if (startX === null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = Math.abs(t.clientY - startY);
+    if (dx > 70 && dy < 60) goBackToMenu();
+    startX = null;
+  }, { passive: true });
+})();
 
 function showError(msg) {
   document.getElementById("error-banner").innerHTML = `<div class="error-banner">⚠️ ${msg}</div>`;
@@ -231,7 +252,9 @@ function renderManageGames(active) {
     const rows = signups.length
       ? signups.map(s => {
           const label = s.player ? ` (${s.player})` : "";
-          const guests = s.guests_count > 0 ? ` <span class="manage-guests">+${s.guests_count} чел.</span>` : "";
+          const guests = s.is_addition
+            ? ` <span class="manage-guests">➕ доп. игроки ×${s.guests_count}</span>`
+            : (s.guests_count > 0 ? ` <span class="manage-guests">+${s.guests_count} чел.</span>` : "");
           const paidClaim = (s.payment_claimed && s.status !== "confirmed") ? ` <span class="manage-paid-claim">💰 заявил об оплате</span>` : "";
           const phoneDigits = s.phone ? s.phone.replace(/[^\d]/g, '') : '';
           const msgBtn = past ? "" : (s.username
@@ -245,7 +268,7 @@ function renderManageGames(active) {
               <div class="manage-actions">${msgBtn}<span class="manage-confirmed-badge">✅</span></div>
             </div>`;
           }
-          const confirmBtn = past ? "" : `<button class="manage-confirm-btn" onclick="confirmPlayer(${g.id}, '${s.user_id}')">Подтвердить</button>`;
+          const confirmBtn = past ? "" : `<button class="manage-confirm-btn" onclick="confirmPlayer(${g.id}, ${s.id})">Подтвердить</button>`;
           return `<div class="manage-row">
             <span class="manage-name">${s.name}${label}${guests}${paidClaim}</span>
             <div class="manage-actions">${msgBtn}${confirmBtn}</div>
@@ -254,7 +277,9 @@ function renderManageGames(active) {
       : `<div class="manage-empty">Записей ещё нет</div>`;
 
     const numTeams = g.num_teams || 2;
-    const teamsBlock = renderTeamsManage(g.id, g.teams || [], numTeams, past);
+    const hasTeams = (g.teams || []).length > 0;
+    const teamsExpandedHere = !!adminTeamsExpanded[g.id];
+    const teamsBlock = teamsExpandedHere ? renderTeamsManage(g.id, g.teams || [], numTeams, past) : "";
     const cancelled = g.status === "cancelled";
 
     const gameActions = cancelled
@@ -267,10 +292,17 @@ function renderManageGames(active) {
     return `<div class="manage-game ${past ? "past" : ""}">
       <div class="manage-title">📅 ${g.date} · 🕐 ${g.time} — ${g.location}${past ? '<span class="past-badge">Прошла</span>' : ""}${cancelled ? '<span class="past-badge cancelled-badge">Отменена</span>' : ""}</div>
       ${rows}
-      ${teamsBlock ? `<div class="teams-caption">Составы команд${past ? "" : " (сформированы автоматически)"}</div>${teamsBlock}` : ""}
+      ${hasTeams ? `<button class="teams-caption teams-toggle-btn" onclick="toggleAdminTeams(${g.id})">🏆 Составы команд ${teamsExpandedHere ? "▲" : "▼"}</button>${teamsBlock}` : ""}
       ${gameActions}
     </div>`;
   }).join("");
+}
+
+let adminTeamsExpanded = {};
+
+function toggleAdminTeams(gameId) {
+  adminTeamsExpanded[gameId] = !adminTeamsExpanded[gameId];
+  renderManageGames(filterManageGames(window.__allManageGames || []));
 }
 
 async function cancelGame(gameId) {
@@ -333,11 +365,11 @@ async function moveTeamMember(gameId, memberId) {
   } catch (e) {}
 }
 
-async function confirmPlayer(gameId, playerUserId) {
+async function confirmPlayer(gameId, entryId) {
   try {
     const res = await fetch("/api/admin/confirm-signup", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, game_id: gameId, player_user_id: playerUserId })
+      body: JSON.stringify({ user_id: userId, game_id: gameId, entry_id: entryId })
     }).then(r => r.json());
     if (res.ok) loadManageGames();
   } catch (e) {}

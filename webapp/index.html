@@ -141,15 +141,31 @@ function getUid() {
   const tgUser = tw && tw.initDataUnsafe && tw.initDataUnsafe.user;
   return (tgUser && tgUser.id) ? String(tgUser.id) : null;
 }
+function goBackToMenu() {
+  const uid = getUid();
+  location.href = "/app" + (uid ? ("?uid=" + uid) : "");
+}
 if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
   Telegram.WebApp.BackButton.show();
-  Telegram.WebApp.BackButton.onClick(() => {
-    const uid = getUid();
-    location.href = "/app" + (uid ? ("?uid=" + uid) : "");
-  });
+  Telegram.WebApp.BackButton.onClick(goBackToMenu);
 }
+(function () {
+  let startX = null, startY = null;
+  document.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    if (t.clientX < 24) { startX = t.clientX; startY = t.clientY; }
+  }, { passive: true });
+  document.addEventListener("touchend", e => {
+    if (startX === null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = Math.abs(t.clientY - startY);
+    if (dx > 70 && dy < 60) goBackToMenu();
+    startX = null;
+  }, { passive: true });
+})();
 const QS=[
   {q:"Как ты ведёшь себя на поле?",o:["Я лидер, всё через меня","Пашу в обороне — надёжность прежде всего","Творю магию в атаке","Дирижирую из центра"]},
   {q:"Твой стиль игры?",o:["Скорость и дриблинг","Сила и напор","Точность и техника","Умная позиция"]},

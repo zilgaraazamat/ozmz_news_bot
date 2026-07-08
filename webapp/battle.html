@@ -132,8 +132,28 @@ if (window.Telegram && Telegram.WebApp) {
     if (tgUser && tgUser.id) userId = String(tgUser.id);
   }
   Telegram.WebApp.BackButton.show();
-  Telegram.WebApp.BackButton.onClick(() => { location.href = "/app" + (userId ? ("?uid=" + userId) : ""); });
+  Telegram.WebApp.BackButton.onClick(goBackToMenu);
 }
+
+function goBackToMenu() {
+  location.href = "/app" + (userId ? ("?uid=" + userId) : "");
+}
+
+(function () {
+  let startX = null, startY = null;
+  document.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    if (t.clientX < 24) { startX = t.clientX; startY = t.clientY; }
+  }, { passive: true });
+  document.addEventListener("touchend", e => {
+    if (startX === null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = Math.abs(t.clientY - startY);
+    if (dx > 70 && dy < 60) goBackToMenu();
+    startX = null;
+  }, { passive: true });
+})();
 
 function showError(msg) {
   document.getElementById("error-banner").innerHTML = `<div class="error-banner">⚠️ ${msg}</div>`;
