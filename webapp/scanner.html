@@ -26,6 +26,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;color:#f5f5f0
 .progress-ring circle{fill:none;stroke:#7ed957;stroke-width:4;stroke-linecap:round;stroke-dasharray:754;stroke-dashoffset:754;transition:stroke-dashoffset .08s linear}
 .cam-status{position:absolute;bottom:100px;left:0;right:0;text-align:center;z-index:5}
 .cam-status-text{display:inline-block;padding:8px 18px;border-radius:20px;background:rgba(14,26,18,.75);font-size:13px;font-weight:700;color:#e8f5ea;backdrop-filter:blur(6px)}
+.cam-manual-hint{margin-top:8px;font-size:11px;color:rgba(232,245,234,.65);text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.cam-debug{position:absolute;bottom:8px;left:8px;right:8px;font-family:monospace;font-size:9px;color:#7ed957;background:rgba(0,0,0,.55);padding:6px 8px;border-radius:8px;z-index:6;white-space:pre-wrap;pointer-events:none}
 .cam-status-text.found{color:#7ed957}
 .flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20}
 .flash.on{animation:flash-anim .35s ease-out}
@@ -88,7 +90,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;color:#f5f5f0
 
   <div class="cam-status">
     <div class="cam-status-text" id="cam-status-text">Ищу мяч...</div>
+    <div class="cam-manual-hint">Не срабатывает? Коснись экрана, чтобы сфотографировать вручную</div>
   </div>
+
+  <div class="cam-debug" id="cam-debug"></div>
 
   <div class="cam-error hidden" id="cam-error">
     <div class="ic">📷</div>
@@ -199,6 +204,7 @@ function stopCamera() {
    "стабильность кадра" (детект движения), чтобы автозахват всё равно работал. */
 
 let cocoModel = null;
+let lastDebug = {};
 let modelLoading = false;
 let modelFailed = false;
 
@@ -230,24 +236,34 @@ function loadScript(src) {
 /* Возвращает {inRing: bool, score: number} — есть ли мяч внутри круга сейчас */
 async function detectBallInRing() {
   const ringPx = getRingPixelRect();
+  const heuristic = heuristicStability(ringPx);
+  let cvInfo = { tried: false, found: false, score: 0 };
 
   if (cocoModel) {
+    cvInfo.tried = true;
     try {
       const preds = await cocoModel.detect(video);
       const balls = preds.filter(p => p.class === "sports ball");
-      if (balls.length === 0) return { inRing: false, score: 0, mode: "cv" };
-
-      const best = balls.reduce((a, b) => (a.score > b.score ? a : b));
-      const [bx, by, bw, bh] = best.bbox;
-      const cx = bx + bw / 2, cy = by + bh / 2;
-      const withinCenter = cx > ringPx.left && cx < ringPx.right && cy > ringPx.top && cy < ringPx.bottom;
-      const sizeOk = bw > ringPx.size * 0.55 && bw < ringPx.size * 1.6;
-      return { inRing: withinCenter && sizeOk && best.score > 0.45, score: best.score, mode: "cv" };
-    } catch (e) {
-      return heuristicStability(ringPx);
-    }
+      if (balls.length > 0) {
+        const best = balls.reduce((a, b) => (a.score > b.score ? a : b));
+        const [bx, by, bw, bh] = best.bbox;
+        const cx = bx + bw / 2, cy = by + bh / 2;
+        const marginX = ringPx.size * 0.35, marginY = ringPx.size * 0.35;
+        const withinCenter = cx > ringPx.left - marginX && cx < ringPx.right + marginX
+                           && cy > ringPx.top - marginY && cy < ringPx.bottom + marginY;
+        cvInfo.score = best.score;
+        if (withinCenter && best.score > 0.2) {
+          cvInfo.found = true;
+          lastDebug = { mode: "cv", score: best.score.toFixed(2), variance: heuristic.variance, motion: heuristic.motion };
+          return { inRing: true, score: best.score, mode: "cv" };
+        }
+      }
+    } catch (e) { /* модель споткнулась на этом кадре — не страшно, есть эвристика */ }
   }
-  return heuristicStability(ringPx);
+
+  lastDebug = { mode: cvInfo.tried ? "cv-miss+heur" : "heuristic", score: cvInfo.score.toFixed(2),
+                variance: heuristic.variance, motion: heuristic.motion };
+  return heuristic;
 }
 
 function getVideoDisplayGeometry() {
@@ -286,7 +302,14 @@ function heuristicStability(ringPx) {
   c.width = size; c.height = size;
   const ctx = c.getContext("2d");
   try {
-    ctx.drawImage(video, ringPx.left, ringPx.top, ringPx.size, ringPx.size, 0, 0, size, size);
+    const sx = Math.max(0, ringPx.left);
+    const sy = Math.max(0, ringPx.top);
+    const sw = Math.min(ringPx.size, video.videoWidth - sx);
+    const sh = Math.min(ringPx.size, video.videoHeight - sy);
+    if (sw <= 0 || sh <= 0 || !isFinite(sw) || !isFinite(sh)) {
+      return { inRing: false, score: 0, mode: "heuristic", variance: 0, motion: 0 };
+    }
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, size, size);
     const frame = ctx.getImageData(0, 0, size, size).data;
 
     let sum = 0, sumSq = 0;
@@ -297,7 +320,7 @@ function heuristicStability(ringPx) {
     const n = frame.length / 4;
     const mean = sum / n;
     const variance = sumSq / n - mean * mean;
-    const hasContent = variance > 200;
+    const hasContent = variance > 120;
 
     let motionScore = 0;
     if (lastFrameData) {
@@ -310,9 +333,12 @@ function heuristicStability(ringPx) {
     lastFrameData = frame;
 
     const isStable = motionScore < 14;
-    return { inRing: hasContent && isStable, score: hasContent ? 0.5 : 0, mode: "heuristic" };
+    return {
+      inRing: hasContent && isStable, score: hasContent ? 0.5 : 0, mode: "heuristic",
+      variance: Math.round(variance), motion: Math.round(motionScore),
+    };
   } catch (e) {
-    return { inRing: false, score: 0, mode: "heuristic" };
+    return { inRing: false, score: 0, mode: "heuristic", variance: 0, motion: 0 };
   }
 }
 
@@ -340,6 +366,12 @@ async function detectionTick() {
   const statusEl = document.getElementById("cam-status-text");
   const hintEl = document.getElementById("cam-hint");
   const progressCircle = document.getElementById("progress-circle");
+
+  document.getElementById("cam-debug").textContent =
+    `модель: ${cocoModel ? "загружена" : (modelFailed ? "не загрузилась" : "грузится...")}\n` +
+    `режим: ${lastDebug.mode || "-"} | score: ${lastDebug.score || 0}\n` +
+    `variance: ${lastDebug.variance || 0} | motion: ${lastDebug.motion || 0}\n` +
+    `стабильных кадров: ${stableFrames}/${STABLE_FRAMES_NEEDED}`;
 
   if (result.inRing) {
     stableFrames++;
@@ -501,6 +533,16 @@ function resetScanner() {
   lastFrameData = null;
   initCamera();
 }
+
+/* Ручной снимок по тапу — подстраховка, если авто-детекция не сработала.
+   Не конфликтует со свайпом-назад (у него своя зона у левого края). */
+document.getElementById("screen-camera").addEventListener("click", (e) => {
+  if (captured || video.readyState < 2) return;
+  if (e.clientX < 24) return; // зона свайпа-назад
+  captured = true;
+  if (detectionTimer) clearInterval(detectionTimer);
+  doCapture();
+});
 
 /* ── старт ───────────────────────────────────────────────────────── */
 initCamera();
