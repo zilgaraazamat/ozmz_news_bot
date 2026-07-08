@@ -19,30 +19,46 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .logo{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #7ed957;margin-bottom:10px;box-shadow:0 0 24px rgba(126,217,87,.35)}
 .head h1{font-size:19px;font-weight:900}
 .head p{font-size:12px;color:#6b7c6e;margin-top:3px}
-.menu-card{display:flex;align-items:center;gap:14px;background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;transition:transform .12s,border-color .12s;opacity:0;animation:card-in .35s ease forwards}
+
+.menu-card{position:relative;overflow:hidden;background:#1e3024;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:16px;margin-bottom:12px;cursor:pointer;transition:transform .12s;opacity:0;animation:card-in .35s ease forwards;box-shadow:0 8px 22px rgba(0,0,0,.32)}
 .menu-card:nth-of-type(1){animation-delay:.02s}
 .menu-card:nth-of-type(2){animation-delay:.06s}
 .menu-card:nth-of-type(3){animation-delay:.1s}
 .menu-card:nth-of-type(4){animation-delay:.14s}
 .menu-card:nth-of-type(5){animation-delay:.18s}
 @keyframes card-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.menu-card:active{transform:scale(.97);border-color:#7ed957}
-.menu-icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0}
-.menu-icon.c-green{background:rgba(126,217,87,.14)}
-.menu-icon.c-blue{background:rgba(94,180,255,.14)}
-.menu-icon.c-amber{background:rgba(224,184,74,.14)}
-.menu-icon.c-purple{background:rgba(180,140,255,.14)}
-.menu-icon.c-gray{background:rgba(200,200,200,.12)}
-.menu-text{min-width:0}
-.menu-text h2{font-size:14px;font-weight:800;margin-bottom:2px}
-.menu-text p{font-size:11px;color:#6b7c6e;line-height:1.35}
-.menu-arrow{margin-left:auto;color:#7ed957;font-size:17px;flex-shrink:0}
+.menu-card:active{transform:scale(.97)}
+.menu-card::after{content:"";position:absolute;right:-24px;top:-24px;width:110px;height:110px;border-radius:50%;pointer-events:none;opacity:.5}
+.menu-card.mc-amber{background:linear-gradient(135deg,rgba(224,184,74,.14),#1e3024 62%)}
+.menu-card.mc-amber::after{background:radial-gradient(circle,rgba(224,184,74,.35),transparent 70%)}
+.menu-card.mc-blue{background:linear-gradient(135deg,rgba(94,180,255,.14),#1e3024 62%)}
+.menu-card.mc-blue::after{background:radial-gradient(circle,rgba(94,180,255,.35),transparent 70%)}
+.menu-card.mc-green{background:linear-gradient(135deg,rgba(126,217,87,.14),#1e3024 62%)}
+.menu-card.mc-green::after{background:radial-gradient(circle,rgba(126,217,87,.35),transparent 70%)}
+.menu-card.mc-purple{background:linear-gradient(135deg,rgba(180,140,255,.14),#1e3024 62%)}
+.menu-card.mc-purple::after{background:radial-gradient(circle,rgba(180,140,255,.35),transparent 70%)}
+
+.mc-top{display:flex;align-items:center;gap:12px;position:relative;z-index:1}
+.menu-icon{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.menu-icon.c-green{background:rgba(126,217,87,.16)}
+.menu-icon.c-blue{background:rgba(94,180,255,.16)}
+.menu-icon.c-amber{background:rgba(224,184,74,.16)}
+.menu-icon.c-purple{background:rgba(180,140,255,.16)}
+.mc-title{font-size:15px;font-weight:800;flex:1;min-width:0}
+.menu-cta{flex-shrink:0;font-size:11px;font-weight:800;padding:6px 10px;border-radius:20px;white-space:nowrap;background:rgba(255,255,255,.06)}
+.c-amber-text{color:#e0b84a}
+.c-blue-text{color:#5eb4ff}
+.c-green-text{color:#7ed957}
+.c-purple-text{color:#b48cff}
+.mc-desc{font-size:12px;color:#9db3a3;line-height:1.4;margin-top:9px;position:relative;z-index:1}
+
 .footer{text-align:center;margin-top:16px;font-size:11px;color:#4a5a4d}
 
 /* ── новости ── */
+.section-label{font-size:12px;font-weight:800;color:#d7e6da;margin:4px 0 10px;text-transform:uppercase;letter-spacing:.5px;opacity:.85}
 .news-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px;-webkit-overflow-scrolling:touch}
 .news-scroll::-webkit-scrollbar{display:none}
-.news-card{flex-shrink:0;width:250px;background:linear-gradient(150deg,rgba(126,217,87,.12),#1e3024 55%);border:1px solid rgba(126,217,87,.22);border-radius:16px;padding:14px}
+.news-card{flex-shrink:0;width:250px;background:linear-gradient(150deg,rgba(126,217,87,.12),#1e3024 55%);border:1px solid rgba(126,217,87,.22);border-radius:16px;padding:14px;box-shadow:0 6px 18px rgba(0,0,0,.28)}
 .news-card .nc-badge{display:inline-block;font-size:9px;font-weight:800;color:#7ed957;background:rgba(126,217,87,.15);padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
 .news-card .nc-title{font-size:14px;font-weight:800;margin-bottom:5px;line-height:1.3}
 .news-card .nc-text{font-size:12px;color:#b9c9bd;line-height:1.45;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
@@ -100,42 +116,42 @@ input:focus{outline:none;border-color:#7ed957}
       <p>Выбери, что хочешь сделать</p>
     </div>
 
+    <div class="menu-card mc-amber" onclick="go('/battle')">
+      <div class="mc-top">
+        <div class="menu-icon c-amber">⚔️</div>
+        <h2 class="mc-title">Battle с другом</h2>
+        <div class="menu-cta c-amber-text">Играть →</div>
+      </div>
+      <p class="mc-desc">Пригласи друга и узнай, кто лучше разбирается в футболе</p>
+    </div>
+
+    <div class="menu-card mc-blue" onclick="go('/scanner')">
+      <div class="mc-top">
+        <div class="menu-icon c-blue">📷</div>
+        <h2 class="mc-title">Сканер мяча</h2>
+        <div class="menu-cta c-blue-text">Сканировать →</div>
+      </div>
+      <p class="mc-desc">Наведи камеру на футбольный мяч и получи информацию о нём</p>
+    </div>
+
     <div id="news-feed"></div>
 
-    <div class="menu-card" onclick="go('/battle')">
-      <div class="menu-icon c-amber">⚔️</div>
-      <div class="menu-text">
-        <h2>Батл с другом</h2>
-        <p>Проверьте знание футбола 1×1</p>
+    <div class="menu-card mc-green" onclick="go('/games')">
+      <div class="mc-top">
+        <div class="menu-icon c-green">⚽</div>
+        <h2 class="mc-title">Игры</h2>
+        <div class="menu-cta c-green-text">Смотреть →</div>
       </div>
-      <div class="menu-arrow">→</div>
+      <p class="mc-desc">Записывайся на ближайшие игры</p>
     </div>
 
-    <div class="menu-card" onclick="go('/games')">
-      <div class="menu-icon c-green">⚽</div>
-      <div class="menu-text">
-        <h2>Игры</h2>
-        <p>Записывайся на ближайшие игры</p>
+    <div class="menu-card mc-purple hidden" id="admin-card" onclick="go('/admin')">
+      <div class="mc-top">
+        <div class="menu-icon c-purple">⚙️</div>
+        <h2 class="mc-title">Создать игру</h2>
+        <div class="menu-cta c-purple-text">Открыть →</div>
       </div>
-      <div class="menu-arrow">→</div>
-    </div>
-
-    <div class="menu-card" onclick="go('/scanner')">
-      <div class="menu-icon c-blue">📷</div>
-      <div class="menu-text">
-        <h2>Сканер мячей</h2>
-        <p>Наведи камеру и узнай модель мяча</p>
-      </div>
-      <div class="menu-arrow">→</div>
-    </div>
-
-    <div class="menu-card hidden" id="admin-card" onclick="go('/admin')">
-      <div class="menu-icon c-purple">⚙️</div>
-      <div class="menu-text">
-        <h2>Создать игру</h2>
-        <p>Только для админов</p>
-      </div>
-      <div class="menu-arrow">→</div>
+      <p class="mc-desc">Только для админов</p>
     </div>
 
     <div class="footer">@football_igraem_astana</div>
@@ -217,13 +233,15 @@ async function loadNews() {
     const items = r.announcements || [];
     const feed = document.getElementById("news-feed");
     if (items.length === 0) { feed.innerHTML = ""; return; }
-    feed.innerHTML = `<div class="news-scroll">${items.map(a => `
-      <div class="news-card">
-        <div class="nc-badge">📢 Анонс</div>
-        <div class="nc-title">${a.title}</div>
-        <div class="nc-text">${a.text}</div>
-        <div class="nc-date">${formatNewsDate(a.created_at)}</div>
-      </div>`).join("")}</div>`;
+    feed.innerHTML = `
+      <div class="section-label">📰 Последние новости</div>
+      <div class="news-scroll">${items.map(a => `
+        <div class="news-card">
+          <div class="nc-badge">📢 Анонс</div>
+          <div class="nc-title">${a.title}</div>
+          <div class="nc-text">${a.text}</div>
+          <div class="nc-date">${formatNewsDate(a.created_at)}</div>
+        </div>`).join("")}</div>`;
   } catch (e) {}
 }
 loadNews();
