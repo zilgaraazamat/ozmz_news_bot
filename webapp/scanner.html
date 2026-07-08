@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Сканер мячей — OZMZ</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#000}
+body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;color:#f5f5f0;-webkit-hyphens:none;hyphens:none}
+.hidden{display:none!important}
+
+/* ── экран камеры ── */
+#screen-camera{position:fixed;inset:0;background:#000}
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam-topbar{position:absolute;top:0;left:0;right:0;padding:16px;display:flex;justify-content:space-between;align-items:center;z-index:5;background:linear-gradient(rgba(0,0,0,.5),transparent)}
+.cam-title{font-size:14px;font-weight:800;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.cam-hint{position:absolute;top:64px;left:0;right:0;text-align:center;font-size:12px;color:#e8f5ea;z-index:5;padding:0 24px;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:4}
+.scan-ring{width:min(62vw,280px);height:min(62vw,280px);border-radius:50%;border:3px solid rgba(126,217,87,.55);position:relative;transition:border-color .25s,box-shadow .25s}
+.scan-ring.locked{border-color:#7ed957;box-shadow:0 0 0 6px rgba(126,217,87,.18),0 0 30px rgba(126,217,87,.5)}
+.scan-ring::before{content:"";position:absolute;inset:-10px;border-radius:50%;border:1px solid rgba(126,217,87,.25);animation:pulse-ring 2.2s ease-in-out infinite}
+@keyframes pulse-ring{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.06);opacity:.15}}
+.progress-ring{position:absolute;inset:0;transform:rotate(-90deg)}
+.progress-ring circle{fill:none;stroke:#7ed957;stroke-width:4;stroke-linecap:round;stroke-dasharray:754;stroke-dashoffset:754;transition:stroke-dashoffset .08s linear}
+.cam-status{position:absolute;bottom:100px;left:0;right:0;text-align:center;z-index:5}
+.cam-status-text{display:inline-block;padding:8px 18px;border-radius:20px;background:rgba(14,26,18,.75);font-size:13px;font-weight:700;color:#e8f5ea;backdrop-filter:blur(6px)}
+.cam-status-text.found{color:#7ed957}
+.flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20}
+.flash.on{animation:flash-anim .35s ease-out}
+@keyframes flash-anim{0%{opacity:.9}100%{opacity:0}}
+.cam-error{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;z-index:6;background:#0e1a12}
+.cam-error .ic{font-size:40px}
+.btn-retry{padding:12px 24px;border-radius:12px;border:1px solid rgba(126,217,87,.4);background:transparent;color:#7ed957;font-weight:700;font-size:14px;cursor:pointer}
+
+/* ── экран анализа ── */
+#screen-analyzing{position:fixed;inset:0;background:#0e1a12;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:10}
+.analyzing-photo-wrap{width:160px;height:160px;border-radius:50%;overflow:hidden;border:3px solid rgba(126,217,87,.4);position:relative}
+.analyzing-photo-wrap img{width:100%;height:100%;object-fit:cover}
+.scan-sweep{position:absolute;inset:0;background:linear-gradient(180deg,transparent 0%,rgba(126,217,87,.35) 50%,transparent 100%);animation:sweep 1.4s linear infinite}
+@keyframes sweep{0%{transform:translateY(-100%)}100%{transform:translateY(100%)}}
+.analyzing-text{font-size:15px;font-weight:800;color:#7ed957}
+.analyzing-dots::after{content:"";animation:dots 1.4s steps(4,end) infinite}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}100%{content:""}}
+
+/* ── экран результата ── */
+#screen-result{position:fixed;inset:0;overflow-y:auto;background:#0e1a12;-webkit-overflow-scrolling:touch;z-index:10}
+.result-wrap{max-width:440px;margin:0 auto;padding:16px 16px 40px}
+.result-photo-wrap{width:100%;aspect-ratio:1/1;max-height:280px;border-radius:20px;overflow:hidden;margin-bottom:16px;position:relative;background:#1e3024}
+.result-photo-wrap img{width:100%;height:100%;object-fit:cover}
+.result-name{font-size:22px;font-weight:900;text-align:center;margin-bottom:4px}
+.result-conf{text-align:center;font-size:12px;color:#6b7c6e;margin-bottom:20px}
+.result-conf.low{color:#e0b84a}
+.info-card{background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:16px;padding:16px;margin-bottom:12px}
+.info-card .ic-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.info-card .ic{font-size:18px}
+.info-card .ic-title{font-size:12px;font-weight:800;color:#7ed957;text-transform:uppercase;letter-spacing:.5px}
+.info-card .ic-body{font-size:14px;line-height:1.5;color:#f5f5f0}
+.tournament-chip{display:inline-block;background:rgba(126,217,87,.12);color:#7ed957;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;margin:2px 4px 2px 0}
+.not-found-box{text-align:center;padding:30px 20px}
+.not-found-box .ic{font-size:44px;margin-bottom:14px}
+.not-found-box p{font-size:14px;color:#9db3a3;line-height:1.5}
+.btn-scan-again{width:100%;padding:15px;border:none;border-radius:14px;background:#7ed957;color:#0e1a12;font-weight:800;font-size:15px;cursor:pointer;margin-top:8px}
+.result-topbar{position:sticky;top:0;padding:14px 16px;background:linear-gradient(180deg,#0e1a12 60%,transparent);z-index:2}
+.back-chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#9db3a3;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ ЭКРАН 1: КАМЕРА ═══════════════ -->
+<div id="screen-camera">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="capture-canvas" class="hidden"></canvas>
+
+  <div class="cam-topbar">
+    <div class="cam-title">⚽ Сканер мячей</div>
+  </div>
+  <div class="cam-hint" id="cam-hint">Наведи камеру на футбольный мяч</div>
+
+  <div class="cam-overlay">
+    <div class="scan-ring" id="scan-ring">
+      <svg class="progress-ring" viewBox="0 0 240 240">
+        <circle cx="120" cy="120" r="120" id="progress-circle"></circle>
+      </svg>
+    </div>
+  </div>
+
+  <div class="cam-status">
+    <div class="cam-status-text" id="cam-status-text">Ищу мяч...</div>
+  </div>
+
+  <div class="cam-error hidden" id="cam-error">
+    <div class="ic">📷</div>
+    <div>Нет доступа к камере.<br>Разреши доступ в настройках Telegram и попробуй снова.</div>
+    <button class="btn-retry" onclick="initCamera()">Повторить</button>
+  </div>
+</div>
+
+<div class="flash" id="flash"></div>
+
+<!-- ═══════════════ ЭКРАН 2: АНАЛИЗ ═══════════════ -->
+<div id="screen-analyzing" class="hidden">
+  <div class="analyzing-photo-wrap">
+    <img id="analyzing-photo" src="" alt="">
+    <div class="scan-sweep"></div>
+  </div>
+  <div class="analyzing-text">Анализируем мяч<span class="analyzing-dots"></span></div>
+</div>
+
+<!-- ═══════════════ ЭКРАН 3: РЕЗУЛЬТАТ ═══════════════ -->
+<div id="screen-result" class="hidden">
+  <div class="result-topbar">
+    <div class="back-chip" onclick="resetScanner()">← Сканировать ещё</div>
+  </div>
+  <div class="result-wrap" id="result-wrap"></div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   Архитектура (для расширения — форма, бутсы, автографы и т.д.):
+   1. CameraScreen   — доступ к камере, видео-поток, оверлей
+   2. BallDetection  — определение объекта в кадре (COCO-SSD, класс "sports ball")
+   3. AutoCapture    — логика "когда снимать" (стабильность + попадание в круг)
+   4. AIRecognition  — отправка фото на сервер, Claude Vision распознаёт модель
+   5. ResultScreen   — отображение карточек результата
+   ════════════════════════════════════════════════════════════════════ */
+
+let userId = new URLSearchParams(location.search).get("uid");
+
+function goBackToMenu() {
+  location.href = "/app" + (userId ? ("?uid=" + userId) : "");
+}
+
+if (window.Telegram && Telegram.WebApp) {
+  Telegram.WebApp.ready();
+  Telegram.WebApp.expand();
+  if (!userId) {
+    const tgUser = Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+    if (tgUser && tgUser.id) userId = String(tgUser.id);
+  }
+  Telegram.WebApp.BackButton.show();
+  Telegram.WebApp.BackButton.onClick(() => {
+    if (!document.getElementById("screen-camera").classList.contains("hidden")) {
+      goBackToMenu();
+    } else {
+      resetScanner();
+    }
+  });
+}
+(function () {
+  let startX = null, startY = null;
+  document.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    if (t.clientX < 24) { startX = t.clientX; startY = t.clientY; }
+  }, { passive: true });
+  document.addEventListener("touchend", e => {
+    if (startX === null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = Math.abs(t.clientY - startY);
+    if (dx > 70 && dy < 60) goBackToMenu();
+    startX = null;
+  }, { passive: true });
+})();
+
+/* ── 1. CameraScreen ─────────────────────────────────────────────── */
+
+const video = document.getElementById("video");
+const captureCanvas = document.getElementById("capture-canvas");
+let stream = null;
+
+async function initCamera() {
+  document.getElementById("cam-error").classList.add("hidden");
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 1280 } },
+      audio: false,
+    });
+    video.srcObject = stream;
+    await video.play();
+    startDetectionLoop();
+  } catch (e) {
+    console.error("[camera] error:", e);
+    document.getElementById("cam-error").classList.remove("hidden");
+  }
+}
+
+function stopCamera() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+}
+
+/* ── 2. BallDetection ────────────────────────────────────────────── */
+/* Настоящая CV-модель (COCO-SSD, класс "sports ball") — грузится в фоне.
+   Если модель недоступна (нет сети/CDN) — плавный откат на эвристику
+   "стабильность кадра" (детект движения), чтобы автозахват всё равно работал. */
+
+let cocoModel = null;
+let modelLoading = false;
+let modelFailed = false;
+
+async function loadDetectionModel() {
+  if (modelLoading || cocoModel) return;
+  modelLoading = true;
+  try {
+    await loadScript("https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js");
+    await loadScript("https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js");
+    cocoModel = await cocoSsd.load({ base: "lite_mobilenet_v2" });
+    console.log("[detection] COCO-SSD загружен");
+  } catch (e) {
+    console.warn("[detection] модель не загрузилась, работаем на эвристике:", e);
+    modelFailed = true;
+  }
+  modelLoading = false;
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+/* Возвращает {inRing: bool, score: number} — есть ли мяч внутри круга сейчас */
+async function detectBallInRing() {
+  const ringPx = getRingPixelRect();
+
+  if (cocoModel) {
+    try {
+      const preds = await cocoModel.detect(video);
+      const balls = preds.filter(p => p.class === "sports ball");
+      if (balls.length === 0) return { inRing: false, score: 0, mode: "cv" };
+
+      const best = balls.reduce((a, b) => (a.score > b.score ? a : b));
+      const [bx, by, bw, bh] = best.bbox;
+      const cx = bx + bw / 2, cy = by + bh / 2;
+      const withinCenter = cx > ringPx.left && cx < ringPx.right && cy > ringPx.top && cy < ringPx.bottom;
+      const sizeOk = bw > ringPx.size * 0.55 && bw < ringPx.size * 1.6;
+      return { inRing: withinCenter && sizeOk && best.score > 0.45, score: best.score, mode: "cv" };
+    } catch (e) {
+      return heuristicStability(ringPx);
+    }
+  }
+  return heuristicStability(ringPx);
+}
+
+function getRingPixelRect() {
+  const ring = document.getElementById("scan-ring");
+  const r = ring.getBoundingClientRect();
+  const scaleX = video.videoWidth / window.innerWidth;
+  const scaleY = video.videoHeight / window.innerHeight;
+  return {
+    left: r.left * scaleX, right: r.right * scaleX,
+    top: r.top * scaleY, bottom: r.bottom * scaleY,
+    size: r.width * scaleX,
+  };
+}
+
+/* Эвристический fallback: анализируем неподвижность + "наполненность" ROI —
+   не настоящая детекция мяча, но даёт разумный автозахват без модели. */
+let lastFrameData = null;
+function heuristicStability(ringPx) {
+  const c = document.createElement("canvas");
+  const size = 48;
+  c.width = size; c.height = size;
+  const ctx = c.getContext("2d");
+  try {
+    ctx.drawImage(video, ringPx.left, ringPx.top, ringPx.size, ringPx.size, 0, 0, size, size);
+    const frame = ctx.getImageData(0, 0, size, size).data;
+
+    let sum = 0, sumSq = 0;
+    for (let i = 0; i < frame.length; i += 4) {
+      const lum = (frame[i] + frame[i + 1] + frame[i + 2]) / 3;
+      sum += lum; sumSq += lum * lum;
+    }
+    const n = frame.length / 4;
+    const mean = sum / n;
+    const variance = sumSq / n - mean * mean;
+    const hasContent = variance > 200;
+
+    let motionScore = 0;
+    if (lastFrameData) {
+      let diff = 0;
+      for (let i = 0; i < frame.length; i += 4) {
+        diff += Math.abs(frame[i] - lastFrameData[i]);
+      }
+      motionScore = diff / n;
+    }
+    lastFrameData = frame;
+
+    const isStable = motionScore < 8;
+    return { inRing: hasContent && isStable, score: hasContent ? 0.5 : 0, mode: "heuristic" };
+  } catch (e) {
+    return { inRing: false, score: 0, mode: "heuristic" };
+  }
+}
+
+/* ── 3. AutoCapture ──────────────────────────────────────────────── */
+
+const STABLE_FRAMES_NEEDED = 10;
+const TICK_MS = 90;
+let stableFrames = 0;
+let detectionTimer = null;
+let captured = false;
+
+function startDetectionLoop() {
+  loadDetectionModel();
+  captured = false;
+  stableFrames = 0;
+  if (detectionTimer) clearInterval(detectionTimer);
+  detectionTimer = setInterval(detectionTick, TICK_MS);
+}
+
+async function detectionTick() {
+  if (captured || video.readyState < 2) return;
+
+  const result = await detectBallInRing();
+  const ring = document.getElementById("scan-ring");
+  const statusEl = document.getElementById("cam-status-text");
+  const hintEl = document.getElementById("cam-hint");
+  const progressCircle = document.getElementById("progress-circle");
+
+  if (result.inRing) {
+    stableFrames++;
+    ring.classList.add("locked");
+    statusEl.classList.add("found");
+    statusEl.textContent = result.mode === "cv" ? "Мяч найден — держи ровно" : "Похоже на мяч — держи ровно";
+    hintEl.textContent = "";
+
+    const progress = Math.min(1, stableFrames / STABLE_FRAMES_NEEDED);
+    const circumference = 754;
+    progressCircle.style.strokeDashoffset = String(circumference * (1 - progress));
+
+    if (stableFrames >= STABLE_FRAMES_NEEDED) {
+      captured = true;
+      clearInterval(detectionTimer);
+      doCapture();
+    }
+  } else {
+    stableFrames = Math.max(0, stableFrames - 2);
+    ring.classList.remove("locked");
+    statusEl.classList.remove("found");
+    statusEl.textContent = "Ищу мяч...";
+    hintEl.textContent = "Наведи камеру на футбольный мяч";
+    document.getElementById("progress-circle").style.strokeDashoffset = "754";
+  }
+}
+
+function doCapture() {
+  const w = video.videoWidth, h = video.videoHeight;
+  captureCanvas.width = w;
+  captureCanvas.height = h;
+  const ctx = captureCanvas.getContext("2d");
+  ctx.drawImage(video, 0, 0, w, h);
+  const dataUrl = captureCanvas.toDataURL("image/jpeg", 0.85);
+
+  const flash = document.getElementById("flash");
+  flash.classList.add("on");
+  setTimeout(() => flash.classList.remove("on"), 380);
+
+  stopCamera();
+  showAnalyzingScreen(dataUrl);
+  runRecognition(dataUrl);
+}
+
+/* ── 4. AIRecognition ────────────────────────────────────────────── */
+
+async function runRecognition(dataUrl) {
+  try {
+    const res = await fetch("/api/scanner/analyze", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, image: dataUrl }),
+    }).then(r => r.json());
+
+    if (res.ok) {
+      showResultScreen(dataUrl, res.result);
+    } else {
+      showResultScreen(dataUrl, { found: false });
+    }
+  } catch (e) {
+    console.error("[recognition] error:", e);
+    showResultScreen(dataUrl, { found: false });
+  }
+}
+
+/* ── 5. ResultScreen ─────────────────────────────────────────────── */
+
+function showAnalyzingScreen(dataUrl) {
+  document.getElementById("screen-camera").classList.add("hidden");
+  document.getElementById("analyzing-photo").src = dataUrl;
+  document.getElementById("screen-analyzing").classList.remove("hidden");
+}
+
+function showResultScreen(dataUrl, result) {
+  document.getElementById("screen-analyzing").classList.add("hidden");
+  const wrap = document.getElementById("result-wrap");
+
+  if (!result || !result.found) {
+    wrap.innerHTML = `
+      <div class="result-photo-wrap"><img src="${dataUrl}"></div>
+      <div class="not-found-box">
+        <div class="ic">🔍</div>
+        <p>Не удалось определить модель мяча.<br>Попробуйте сфотографировать его при лучшем освещении.</p>
+        <button class="btn-scan-again" onclick="resetScanner()">Попробовать снова</button>
+      </div>`;
+    document.getElementById("screen-result").classList.remove("hidden");
+    return;
+  }
+
+  const conf = result.confidence;
+  const isLow = conf !== null && conf !== undefined && conf < 75;
+  const nameLine = isLow
+    ? `Похож на ${result.name || result.model || "мяч"} (уверенность ${conf}%)`
+    : (result.name || result.model || "Мяч распознан");
+
+  const tournaments = Array.isArray(result.tournaments) ? result.tournaments : [];
+
+  wrap.innerHTML = `
+    <div class="result-photo-wrap"><img src="${dataUrl}"></div>
+    <div class="result-name">${nameLine}</div>
+    ${conf !== null && conf !== undefined ? `<div class="result-conf ${isLow ? "low" : ""}">Уверенность распознавания: ${conf}%</div>` : ""}
+
+    ${result.model ? `
+    <div class="info-card">
+      <div class="ic-row"><span class="ic">⚽</span><span class="ic-title">Модель</span></div>
+      <div class="ic-body">${result.model}</div>
+    </div>` : ""}
+
+    ${result.year ? `
+    <div class="info-card">
+      <div class="ic-row"><span class="ic">📅</span><span class="ic-title">Год выпуска</span></div>
+      <div class="ic-body">${result.year}</div>
+    </div>` : ""}
+
+    ${result.usage ? `
+    <div class="info-card">
+      <div class="ic-row"><span class="ic">🏆</span><span class="ic-title">Где использовался</span></div>
+      <div class="ic-body">${result.usage}</div>
+    </div>` : ""}
+
+    ${tournaments.length ? `
+    <div class="info-card">
+      <div class="ic-row"><span class="ic">🌍</span><span class="ic-title">Турниры</span></div>
+      <div class="ic-body">${tournaments.map(t => `<span class="tournament-chip">${t}</span>`).join("")}</div>
+    </div>` : ""}
+
+    ${result.fun_fact ? `
+    <div class="info-card">
+      <div class="ic-row"><span class="ic">⭐</span><span class="ic-title">Интересный факт</span></div>
+      <div class="ic-body">${result.fun_fact}</div>
+    </div>` : ""}
+
+    ${result.design ? `
+    <div class="info-card">
+      <div class="ic-row"><span class="ic">🎨</span><span class="ic-title">Особенности дизайна</span></div>
+      <div class="ic-body">${result.design}</div>
+    </div>` : ""}
+
+    <button class="btn-scan-again" onclick="resetScanner()">📷 Сканировать ещё</button>
+  `;
+  document.getElementById("screen-result").classList.remove("hidden");
+}
+
+function resetScanner() {
+  document.getElementById("screen-result").classList.add("hidden");
+  document.getElementById("screen-analyzing").classList.add("hidden");
+  document.getElementById("screen-camera").classList.remove("hidden");
+  document.getElementById("scan-ring").classList.remove("locked");
+  document.getElementById("progress-circle").style.strokeDashoffset = "754";
+  lastFrameData = null;
+  initCamera();
+}
+
+/* ── старт ───────────────────────────────────────────────────────── */
+initCamera();
+</script>
+</body>
+</html>

@@ -146,6 +146,35 @@ def claude(prompt, max_tokens=350):
         print(f"  [Claude] ERROR: {e}")
         return ""
 
+
+def claude_vision(image_b64, media_type, prompt, max_tokens=700):
+    """Как claude(), но с изображением — для распознавания фото (мячи, форма, бутсы и т.д.)."""
+    try:
+        r = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key":         ANTHROPIC_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type":      "application/json",
+            },
+            json={
+                "model":      "claude-sonnet-4-6",
+                "max_tokens": max_tokens,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": image_b64}},
+                        {"type": "text", "text": prompt},
+                    ],
+                }],
+            },
+            timeout=45,
+        )
+        return r.json()["content"][0]["text"].strip()
+    except Exception as e:
+        print(f"  [Claude Vision] ERROR: {e}")
+        return ""
+
 # ── Telegram send ─────────────────────────────────────────────────────────────
 
 def tg_post(chat_id, method, **kwargs):

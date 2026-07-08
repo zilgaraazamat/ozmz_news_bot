@@ -3,7 +3,7 @@ import json
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-from api import now_astana, tg_post
+from api import now_astana, tg_post, claude_vision
 from config import PORT, PLAYER_CATEGORIES, ADMIN_IDS, CHAT_ID
 from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
@@ -288,6 +288,49 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"  [WARN] games/claim-payment: {e}")
                 self.send_response(400); self.end_headers()
 
+        elif path == "/api/scanner/analyze":
+            try:
+                data = json.loads(body)
+                image_b64 = data.get("image") or ""
+                if "," in image_b64 and image_b64.strip().startswith("data:"):
+                    image_b64 = image_b64.split(",", 1)[1]
+                if not image_b64:
+                    self._json({"ok": False, "error": "Нет изображения"})
+                    return
+
+                prompt = (
+                    "Ты — эксперт по футбольным мячам (модели Adidas, Nike, Puma, Select, Mikasa и "
+                    "другие, включая официальные мячи чемпионатов мира, Лиги чемпионов, чемпионатов "
+                    "Европы и клубных турниров). Внимательно рассмотри фото и определи модель мяча.\n\n"
+                    "Верни ТОЛЬКО валидный JSON, без markdown-обрамления и лишнего текста, строго "
+                    "в такой структуре:\n"
+                    '{"found": true, "confidence": 92, "name": "Adidas Teamgeist", '
+                    '"model": "Adidas Teamgeist Berlin", "year": "2006", '
+                    '"usage": "Официальный мяч Чемпионата мира FIFA 2006", '
+                    '"tournaments": ["Чемпионат мира 2006"], '
+                    '"fun_fact": "1-3 предложения интересного факта", '
+                    '"design": "краткое описание дизайна и технологий"}\n\n'
+                    "Правила:\n"
+                    "- Если на фото вообще не похоже на футбольный мяч или изображение слишком "
+                    'нечёткое — верни {"found": false, "confidence": null, "name": null, "model": null, '
+                    '"year": null, "usage": null, "tournaments": [], "fun_fact": null, "design": null}.\n'
+                    "- Если мяч виден, но ты не уверен в точной модели — всё равно дай наиболее "
+                    "вероятную догадку (found: true) и укажи реалистичный процент уверенности в "
+                    "confidence (0-100), не завышай.\n"
+                    "- Пиши по-русски, без ссылок и markdown."
+                )
+                raw = claude_vision(image_b64, "image/jpeg", prompt, max_tokens=700)
+                cleaned = raw.replace("```json", "").replace("```", "").strip()
+                try:
+                    result = json.loads(cleaned)
+                except Exception:
+                    result = {"found": False, "confidence": None}
+
+                self._json({"ok": True, "result": result})
+            except Exception as e:
+                print(f"  [WARN] scanner/analyze: {e}")
+                self.send_response(400); self.end_headers()
+
         elif path == "/api/games/chat/send":
             try:
                 data = json.loads(body)
@@ -401,6 +444,8 @@ class Handler(BaseHTTPRequestHandler):
             self._file("webapp/admin.html", "text/html; charset=utf-8")
         elif path == "/games":
             self._file("webapp/games.html", "text/html; charset=utf-8")
+        elif path == "/scanner":
+            self._file("webapp/scanner.html", "text/html; charset=utf-8")
         elif path == "/api/is-admin":
             user_id = (q.get("user_id") or [""])[0]
             self._json({"is_admin": user_id in ADMIN_IDS})
