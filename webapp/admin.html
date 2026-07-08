@@ -110,8 +110,8 @@ textarea{resize:vertical;min-height:70px}
     <input id="f-price" placeholder="напр. 2000 тг с человека">
 
     <label>Ссылка на оплату</label>
-    <input id="f-payment-link" placeholder="напр. Kaspi-перевод или другая ссылка">
-    <div class="hint">Покажется игроку кнопкой «Оплатить» при регистрации</div>
+    <input id="f-payment-link" placeholder="напр. Kaspi-перевод или другая ссылка" value="https://pay.kaspi.kz/pay/ybsrtfje">
+    <div class="hint">Покажется игроку кнопкой «Оплатить» при регистрации. Можно изменить под конкретную игру</div>
 
     <label>Доп. информация</label>
     <textarea id="f-extra" placeholder="форма, парковка, что взять с собой..."></textarea>
@@ -375,7 +375,7 @@ async function createGame() {
     } else {
       const saved = document.getElementById("saved-msg");
       saved.classList.add("show");
-      ["f-date","f-time","f-location","f-num-players","f-num-teams","f-players-per-team","f-price","f-payment-link","f-extra"]
+      ["f-date","f-time","f-location","f-num-players","f-num-teams","f-players-per-team","f-price","f-extra"]
         .forEach(id => document.getElementById(id).value = "");
       setTimeout(() => saved.classList.remove("show"), 2500);
       loadManageGames();

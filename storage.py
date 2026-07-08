@@ -500,10 +500,10 @@ def get_my_signup(game_id, user_id):
 
 
 def cancel_signup(game_id, user_id):
-    """Игрок сам отменяет свою запись (пока не подтверждена админом)."""
+    """Игрок сам отменяет запись — можно и после подтверждения (предупреждение о невозврате денег — на фронте)."""
     user_id = str(user_id)
     with _lock, _conn() as c:
-        c.execute("DELETE FROM game_signups WHERE game_id=? AND user_id=? AND status='pending'",
+        c.execute("DELETE FROM game_signups WHERE game_id=? AND user_id=?",
                   (game_id, user_id))
 
 
