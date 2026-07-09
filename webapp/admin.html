@@ -18,7 +18,8 @@ label{font-size:12px;color:#6b7c6e;display:block;margin-bottom:6px;margin-top:12
 .fs-title{font-size:12px;font-weight:800;color:#7ed957;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .hint{font-size:11px;color:#4a5a4d;margin-top:4px}
 label:first-of-type{margin-top:0}
-input,textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:16px;font-family:inherit;color-scheme:dark;min-height:46px;box-sizing:border-box}
+input,textarea,select{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(126,217,87,.25);background:#0e1a12;color:#f5f5f0;font-size:16px;font-family:inherit;color-scheme:dark;min-height:46px;box-sizing:border-box}
+input[type="file"]{padding:10px 12px;font-size:13px}
 .row2 input{min-width:0}
 input:focus,textarea:focus{outline:none;border-color:#7ed957}
 textarea{resize:vertical;min-height:70px}
@@ -148,11 +149,26 @@ textarea{resize:vertical;min-height:70px}
   <div class="sub">Уйдёт в группу и появится на главной странице приложения</div>
   <div id="announce-error"></div>
 
+  <label>Фото (необязательно)</label>
+  <input type="file" accept="image/*" id="an-photo" onchange="handlePhotoSelect(event)">
+  <img id="an-photo-preview" class="hidden" style="width:100%;border-radius:12px;margin-top:8px;max-height:180px;object-fit:cover">
+
   <label>Заголовок</label>
   <input id="an-title" placeholder="напр. Важное объявление">
 
   <label>Текст</label>
   <textarea id="an-text" placeholder="Текст анонса..."></textarea>
+
+  <label>Категория</label>
+  <select id="an-category">
+    <option>Анонс</option>
+    <option>Турнир</option>
+    <option>Новости</option>
+    <option>Важно</option>
+  </select>
+
+  <label>Дата</label>
+  <input id="an-date" placeholder="напр. 2026-07-10 (год-месяц-день)">
 
   <button class="btn" id="announce-submit-btn" onclick="createAnnouncement()">Опубликовать</button>
   <div class="saved" id="announce-saved-msg">✅ Анонс опубликован</div>
@@ -451,10 +467,40 @@ async function createGame() {
   btn.removeAttribute("disabled");
 }
 
+let selectedPhotoBase64 = null;
+
+function handlePhotoSelect(event) {
+  const file = event.target.files[0];
+  if (!file) { selectedPhotoBase64 = null; return; }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 900;
+      const scale = Math.min(1, maxW / img.width);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      selectedPhotoBase64 = canvas.toDataURL("image/jpeg", 0.8);
+
+      const preview = document.getElementById("an-photo-preview");
+      preview.src = selectedPhotoBase64;
+      preview.classList.remove("hidden");
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 async function createAnnouncement() {
   document.getElementById("announce-error").innerHTML = "";
   const title = document.getElementById("an-title").value.trim();
   const text = document.getElementById("an-text").value.trim();
+  const category = document.getElementById("an-category").value;
+  const event_date = document.getElementById("an-date").value.trim();
   if (!title || !text) {
     document.getElementById("announce-error").innerHTML =
       `<div class="error-banner">⚠️ Заполни заголовок и текст</div>`;
@@ -466,7 +512,7 @@ async function createAnnouncement() {
   try {
     const res = await fetch("/api/admin/create-announcement", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, title, text })
+      body: JSON.stringify({ user_id: userId, title, text, category, event_date, image: selectedPhotoBase64 })
     }).then(r => r.json());
 
     if (!res.ok) {
@@ -475,6 +521,10 @@ async function createAnnouncement() {
     } else {
       document.getElementById("an-title").value = "";
       document.getElementById("an-text").value = "";
+      document.getElementById("an-date").value = "";
+      document.getElementById("an-photo").value = "";
+      document.getElementById("an-photo-preview").classList.add("hidden");
+      selectedPhotoBase64 = null;
       const saved = document.getElementById("announce-saved-msg");
       saved.classList.add("show");
       setTimeout(() => saved.classList.remove("show"), 2200);
@@ -498,7 +548,7 @@ async function loadAnnouncements() {
     }
     el.innerHTML = items.map(a => `
       <div class="manage-row">
-        <span class="manage-name">${a.title}</span>
+        <span class="manage-name">${a.image ? "🖼️ " : ""}[${a.category || "Анонс"}] ${a.title}</span>
         <div class="manage-actions">
           <button class="manage-delete-btn" style="margin-top:0" onclick="deleteAnnouncement(${a.id})">🗑</button>
         </div>

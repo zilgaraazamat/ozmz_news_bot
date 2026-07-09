@@ -156,10 +156,18 @@ def init_db():
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             title      TEXT,
             text       TEXT,
+            image      TEXT,
+            category   TEXT DEFAULT 'Анонс',
+            event_date TEXT,
             created_by TEXT,
             created_at TEXT,
             status     TEXT DEFAULT 'active'
         )""")
+        for col, ddl in [("image", "TEXT"), ("category", "TEXT DEFAULT 'Анонс'"), ("event_date", "TEXT")]:
+            try:
+                c.execute(f"ALTER TABLE announcements ADD COLUMN {col} {ddl}")
+            except sqlite3.OperationalError:
+                pass
 
 
 def get_role(user_id):
@@ -596,26 +604,30 @@ def get_chat_messages(game_id, since_id=0):
 
 # ── Анонсы/новости от админа ──────────────────────────────────────────────────
 
-def create_announcement(title, text, created_by):
+def create_announcement(title, text, created_by, image=None, category=None, event_date=None):
     with _lock, _conn() as c:
-        cur = c.execute("""INSERT INTO announcements(title, text, created_by, created_at, status)
-                           VALUES(?, ?, ?, datetime('now'), 'active')""",
-                        (title, text, str(created_by)))
+        cur = c.execute("""INSERT INTO announcements(title, text, image, category, event_date,
+                               created_by, created_at, status)
+                           VALUES(?, ?, ?, ?, ?, ?, datetime('now'), 'active')""",
+                        (title, text, image, category or "Анонс", event_date, str(created_by)))
         return cur.lastrowid
 
 
 def get_active_announcements(limit=10):
     with _lock, _conn() as c:
-        rows = c.execute("""SELECT id, title, text, created_at FROM announcements
-                             WHERE status='active' ORDER BY id DESC LIMIT ?""", (limit,)).fetchall()
-    return [{"id": r[0], "title": r[1], "text": r[2], "created_at": r[3]} for r in rows]
+        rows = c.execute("""SELECT id, title, text, image, category, event_date, created_at
+                             FROM announcements WHERE status='active' ORDER BY id DESC LIMIT ?""",
+                          (limit,)).fetchall()
+    return [{"id": r[0], "title": r[1], "text": r[2], "image": r[3], "category": r[4],
+             "event_date": r[5], "created_at": r[6]} for r in rows]
 
 
 def get_all_announcements():
     with _lock, _conn() as c:
-        rows = c.execute("""SELECT id, title, text, created_at, status FROM announcements
-                             ORDER BY id DESC""").fetchall()
-    return [{"id": r[0], "title": r[1], "text": r[2], "created_at": r[3], "status": r[4]} for r in rows]
+        rows = c.execute("""SELECT id, title, text, image, category, event_date, created_at, status
+                             FROM announcements ORDER BY id DESC""").fetchall()
+    return [{"id": r[0], "title": r[1], "text": r[2], "image": r[3], "category": r[4],
+             "event_date": r[5], "created_at": r[6], "status": r[7]} for r in rows]
 
 
 def delete_announcement(announcement_id):

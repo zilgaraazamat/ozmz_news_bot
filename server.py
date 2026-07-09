@@ -443,13 +443,21 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 title = (data.get("title") or "").strip()
                 text = (data.get("text") or "").strip()
+                category = (data.get("category") or "Анонс").strip()
+                event_date = (data.get("event_date") or "").strip() or None
+                image = data.get("image") or None
+                if image and "," in image and image.strip().startswith("data:"):
+                    image = image.split(",", 1)[1]
+                if image and len(image) > 900_000:
+                    self._json({"ok": False, "error": "Фото слишком большое, выбери другое"})
+                    return
                 if not title or not text:
                     self._json({"ok": False, "error": "Заполни заголовок и текст"})
                     return
 
-                create_announcement(title, text, admin_id)
+                create_announcement(title, text, admin_id, image, category, event_date)
 
-                group_text = f"📢 <b>{title}</b>\n\n{text}"
+                group_text = f"📢 <b>{category}: {title}</b>\n\n{text}"
                 tg_post(CHAT_ID, "sendMessage", text=group_text, parse_mode="HTML")
 
                 self._json({"ok": True})

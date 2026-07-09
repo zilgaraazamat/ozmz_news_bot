@@ -11,8 +11,6 @@ html{height:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0e1a12;color:#f5f5f0;min-height:100%;padding:24px 16px calc(96px + env(safe-area-inset-bottom));-webkit-hyphens:none;hyphens:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .wrap{width:100%;max-width:400px;margin:0 auto;position:relative}
 .hidden{display:none!important}
-.profile-fab{position:absolute;top:-4px;right:0;width:46px;height:46px;border-radius:50%;background:#1e3024;border:2px solid #7ed957;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.45);z-index:5;transition:transform .15s}
-.profile-fab:active{transform:scale(.92)}
 
 /* ── меню ── */
 .head{text-align:center;margin-bottom:20px;padding-top:4px}
@@ -20,37 +18,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .head h1{font-size:19px;font-weight:900}
 .head p{font-size:12px;color:#6b7c6e;margin-top:3px}
 
-.menu-card{position:relative;overflow:hidden;background:#1e3024;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:16px;margin-bottom:12px;cursor:pointer;transition:transform .12s;opacity:0;animation:card-in .35s ease forwards;box-shadow:0 8px 22px rgba(0,0,0,.32)}
-.menu-card:nth-of-type(1){animation-delay:.02s}
-.menu-card:nth-of-type(2){animation-delay:.06s}
-.menu-card:nth-of-type(3){animation-delay:.1s}
-.menu-card:nth-of-type(4){animation-delay:.14s}
-.menu-card:nth-of-type(5){animation-delay:.18s}
+/* ── quick actions: компактные квадратные кнопки в ряд ── */
+.quick-actions{display:flex;gap:12px;margin-bottom:22px}
+.qa-btn{flex:1;aspect-ratio:1/1;max-height:84px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-radius:18px;cursor:pointer;transition:transform .12s;opacity:0;animation:card-in .35s ease forwards;box-shadow:0 6px 16px rgba(0,0,0,.3)}
+.quick-actions .qa-btn:nth-child(1){animation-delay:.02s}
+.quick-actions .qa-btn:nth-child(2){animation-delay:.06s}
+.quick-actions .qa-btn:nth-child(3){animation-delay:.1s}
 @keyframes card-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.menu-card:active{transform:scale(.97)}
-.menu-card::after{content:"";position:absolute;right:-24px;top:-24px;width:110px;height:110px;border-radius:50%;pointer-events:none;opacity:.5}
-.menu-card.mc-amber{background:linear-gradient(135deg,rgba(224,184,74,.14),#1e3024 62%)}
-.menu-card.mc-amber::after{background:radial-gradient(circle,rgba(224,184,74,.35),transparent 70%)}
-.menu-card.mc-blue{background:linear-gradient(135deg,rgba(94,180,255,.14),#1e3024 62%)}
-.menu-card.mc-blue::after{background:radial-gradient(circle,rgba(94,180,255,.35),transparent 70%)}
-.menu-card.mc-green{background:linear-gradient(135deg,rgba(126,217,87,.14),#1e3024 62%)}
-.menu-card.mc-green::after{background:radial-gradient(circle,rgba(126,217,87,.35),transparent 70%)}
-.menu-card.mc-purple{background:linear-gradient(135deg,rgba(180,140,255,.14),#1e3024 62%)}
-.menu-card.mc-purple::after{background:radial-gradient(circle,rgba(180,140,255,.35),transparent 70%)}
-
-.mc-top{display:flex;align-items:center;gap:12px;position:relative;z-index:1}
-.menu-icon{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-.menu-icon.c-green{background:rgba(126,217,87,.16)}
-.menu-icon.c-blue{background:rgba(94,180,255,.16)}
-.menu-icon.c-amber{background:rgba(224,184,74,.16)}
-.menu-icon.c-purple{background:rgba(180,140,255,.16)}
-.mc-title{font-size:15px;font-weight:800;flex:1;min-width:0}
-.menu-cta{flex-shrink:0;font-size:11px;font-weight:800;padding:6px 10px;border-radius:20px;white-space:nowrap;background:rgba(255,255,255,.06)}
-.c-amber-text{color:#e0b84a}
-.c-blue-text{color:#5eb4ff}
-.c-green-text{color:#7ed957}
-.c-purple-text{color:#b48cff}
-.mc-desc{font-size:12px;color:#9db3a3;line-height:1.4;margin-top:9px;position:relative;z-index:1}
+.qa-btn:active{transform:scale(.93)}
+.qa-amber{background:linear-gradient(150deg,rgba(224,184,74,.18),#1e3024 70%);border:1px solid rgba(224,184,74,.28)}
+.qa-blue{background:linear-gradient(150deg,rgba(94,180,255,.18),#1e3024 70%);border:1px solid rgba(94,180,255,.28)}
+.qa-purple{background:linear-gradient(150deg,rgba(180,140,255,.18),#1e3024 70%);border:1px solid rgba(180,140,255,.28)}
+.qa-icon{font-size:24px}
+.qa-label{font-size:11px;font-weight:800;color:#f5f5f0}
 
 .footer{text-align:center;margin-top:16px;font-size:11px;color:#4a5a4d}
 
@@ -62,15 +42,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .bn-item.active{color:#7ed957}
 .bn-item:active{opacity:.7}
 
-/* ── новости ── */
-.section-label{font-size:12px;font-weight:800;color:#d7e6da;margin:4px 0 10px;text-transform:uppercase;letter-spacing:.5px;opacity:.85}
-.news-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px;-webkit-overflow-scrolling:touch}
-.news-scroll::-webkit-scrollbar{display:none}
-.news-card{flex-shrink:0;width:250px;background:linear-gradient(150deg,rgba(126,217,87,.12),#1e3024 55%);border:1px solid rgba(126,217,87,.22);border-radius:16px;padding:14px;box-shadow:0 6px 18px rgba(0,0,0,.28)}
-.news-card .nc-badge{display:inline-block;font-size:9px;font-weight:800;color:#7ed957;background:rgba(126,217,87,.15);padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-.news-card .nc-title{font-size:14px;font-weight:800;margin-bottom:5px;line-height:1.3}
-.news-card .nc-text{font-size:12px;color:#b9c9bd;line-height:1.45;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
-.news-card .nc-date{font-size:10px;color:#5a6b5e;margin-top:8px}
+/* ── лента новостей: главный акцент экрана ── */
+.section-label{font-size:13px;font-weight:800;color:#d7e6da;margin:4px 0 12px;text-transform:uppercase;letter-spacing:.5px;opacity:.85}
+.news-list{display:flex;flex-direction:column;gap:14px}
+.news-item{background:#1e3024;border:1px solid rgba(255,255,255,.06);border-radius:18px;overflow:hidden;cursor:pointer;transition:transform .12s;box-shadow:0 8px 22px rgba(0,0,0,.3)}
+.news-item:active{transform:scale(.98)}
+.news-item .ni-photo{width:100%;height:160px;object-fit:cover;display:block;background:#152019}
+.news-item .ni-body{padding:14px 16px 16px}
+.news-item .ni-badge{display:inline-block;font-size:9px;font-weight:800;padding:4px 9px;border-radius:6px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.ni-badge.b-anons{color:#7ed957;background:rgba(126,217,87,.15)}
+.ni-badge.b-turnir{color:#e0b84a;background:rgba(224,184,74,.15)}
+.ni-badge.b-novosti{color:#5eb4ff;background:rgba(94,180,255,.15)}
+.ni-badge.b-vazhno{color:#ff8080;background:rgba(255,80,80,.15)}
+.news-item .ni-title{font-size:16px;font-weight:800;margin-bottom:6px;line-height:1.3}
+.news-item .ni-text{font-size:13px;color:#9db3a3;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.news-item .ni-date{font-size:11px;color:#5a6b5e;margin-top:10px}
+.news-empty{text-align:center;padding:40px 16px;color:#5a6b5e;font-size:13px}
+
+/* ── модальное окно полной статьи ── */
+.news-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:flex-end;backdrop-filter:blur(4px)}
+.news-modal-card{width:100%;max-height:88vh;overflow-y:auto;background:#152019;border-radius:24px 24px 0 0;position:relative;padding-bottom:calc(24px + env(safe-area-inset-bottom));animation:modal-up .25s ease}
+@keyframes modal-up{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+.news-modal-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;border:none;font-size:15px;cursor:pointer;z-index:2}
+.news-modal-card .nm-photo{width:100%;height:220px;object-fit:cover;display:block}
+.news-modal-card .nm-body{padding:18px 20px}
+.news-modal-card .nm-title{font-size:20px;font-weight:900;margin:10px 0 8px;line-height:1.3}
+.news-modal-card .nm-text{font-size:14px;color:#d7e6da;line-height:1.65;white-space:pre-wrap}
+.news-modal-card .nm-date{font-size:12px;color:#5a6b5e;margin-top:14px}
+
 
 /* ── профиль ── */
 .card{width:100%;background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:22px;padding:22px 18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
@@ -113,54 +112,30 @@ input:focus{outline:none;border-color:#7ed957}
 <body>
 <div class="wrap">
 
-  <!-- Профиль — отдельная кнопка-аватарка, не в общем списке -->
-  <div class="profile-fab" id="profile-fab" onclick="showProfile()">👤</div>
-
   <!-- ЭКРАН: меню -->
   <div id="screen-menu">
     <div class="head">
       <img class="logo" src="/logo.jpg" alt="OZMZ">
       <h1>OZMZ Football Astana</h1>
-      <p>Выбери, что хочешь сделать</p>
+      <p>Будь в курсе всего, что происходит</p>
     </div>
 
-    <div class="menu-card mc-amber" onclick="go('/battle')">
-      <div class="mc-top">
-        <div class="menu-icon c-amber">⚔️</div>
-        <h2 class="mc-title">Battle с другом</h2>
-        <div class="menu-cta c-amber-text">Играть →</div>
+    <div class="quick-actions" id="quick-actions">
+      <div class="qa-btn qa-amber" onclick="go('/battle')">
+        <div class="qa-icon">⚔️</div>
+        <div class="qa-label">Battle</div>
       </div>
-      <p class="mc-desc">Пригласи друга и узнай, кто лучше разбирается в футболе</p>
-    </div>
-
-    <div class="menu-card mc-blue" onclick="go('/scanner')">
-      <div class="mc-top">
-        <div class="menu-icon c-blue">📷</div>
-        <h2 class="mc-title">Сканер мяча</h2>
-        <div class="menu-cta c-blue-text">Сканировать →</div>
+      <div class="qa-btn qa-blue" onclick="go('/scanner')">
+        <div class="qa-icon">📷</div>
+        <div class="qa-label">Scanner</div>
       </div>
-      <p class="mc-desc">Наведи камеру на футбольный мяч и получи информацию о нём</p>
+      <div class="qa-btn qa-purple hidden" id="admin-qa" onclick="go('/admin')">
+        <div class="qa-icon">⚙️</div>
+        <div class="qa-label">Игра+</div>
+      </div>
     </div>
 
     <div id="news-feed"></div>
-
-    <div class="menu-card mc-green" onclick="go('/games')">
-      <div class="mc-top">
-        <div class="menu-icon c-green">⚽</div>
-        <h2 class="mc-title">Игры</h2>
-        <div class="menu-cta c-green-text">Смотреть →</div>
-      </div>
-      <p class="mc-desc">Записывайся на ближайшие игры</p>
-    </div>
-
-    <div class="menu-card mc-purple hidden" id="admin-card" onclick="go('/admin')">
-      <div class="mc-top">
-        <div class="menu-icon c-purple">⚙️</div>
-        <h2 class="mc-title">Создать игру</h2>
-        <div class="menu-cta c-purple-text">Открыть →</div>
-      </div>
-      <p class="mc-desc">Только для админов</p>
-    </div>
 
     <div class="footer">@football_igraem_astana</div>
   </div>
@@ -200,6 +175,13 @@ input:focus{outline:none;border-color:#7ed957}
 
 </div>
 
+<div class="news-modal hidden" id="news-modal" onclick="closeNewsModalOutside(event)">
+  <div class="news-modal-card">
+    <button class="news-modal-close" onclick="closeNewsModal()">✕</button>
+    <div id="news-modal-body"></div>
+  </div>
+</div>
+
 <nav class="bottom-nav">
   <div class="bn-item" data-tab="home" onclick="bnGo('home')">
     <div class="bn-icon">🏠</div>
@@ -237,37 +219,73 @@ function go(path) {
   if (!userId) return;
   try {
     const r = await fetch(`/api/is-admin?user_id=${userId}`).then(r => r.json());
-    if (r.is_admin) document.getElementById("admin-card").classList.remove("hidden");
+    if (r.is_admin) document.getElementById("admin-qa").classList.remove("hidden");
   } catch (e) {}
 })();
 
-function formatNewsDate(iso) {
-  if (!iso) return "";
-  const [datePart] = iso.split(" ");
-  const [y, m, d] = (datePart || "").split("-");
+function formatNewsDate(iso, eventDate) {
+  const src = eventDate || (iso ? iso.split(" ")[0] : "");
+  const [y, m, d] = (src || "").split("-");
   const months = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
   if (!y || !m || !d) return "";
   return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1] || ""}`;
 }
 
+function badgeClass(category) {
+  const map = { "Анонс": "b-anons", "Турнир": "b-turnir", "Новости": "b-novosti", "Важно": "b-vazhno" };
+  return map[category] || "b-anons";
+}
+
+let newsCache = [];
+
 async function loadNews() {
   try {
     const r = await fetch("/api/announcements").then(r => r.json());
-    const items = r.announcements || [];
+    newsCache = r.announcements || [];
     const feed = document.getElementById("news-feed");
-    if (items.length === 0) { feed.innerHTML = ""; return; }
+    if (newsCache.length === 0) {
+      feed.innerHTML = `
+        <div class="section-label">📰 Новости</div>
+        <div class="news-empty">Пока новостей нет — загляни позже ⚽</div>`;
+      return;
+    }
     feed.innerHTML = `
-      <div class="section-label">📰 Последние новости</div>
-      <div class="news-scroll">${items.map(a => `
-        <div class="news-card">
-          <div class="nc-badge">📢 Анонс</div>
-          <div class="nc-title">${a.title}</div>
-          <div class="nc-text">${a.text}</div>
-          <div class="nc-date">${formatNewsDate(a.created_at)}</div>
+      <div class="section-label">📰 Новости</div>
+      <div class="news-list">${newsCache.map((a, i) => `
+        <div class="news-item" onclick="openNewsModal(${i})">
+          ${a.image ? `<img class="ni-photo" src="data:image/jpeg;base64,${a.image}">` : ""}
+          <div class="ni-body">
+            <span class="ni-badge ${badgeClass(a.category)}">${a.category || "Анонс"}</span>
+            <div class="ni-title">${a.title}</div>
+            <div class="ni-text">${a.text}</div>
+            <div class="ni-date">${formatNewsDate(a.created_at, a.event_date)}</div>
+          </div>
         </div>`).join("")}</div>`;
   } catch (e) {}
 }
 loadNews();
+
+function openNewsModal(i) {
+  const a = newsCache[i];
+  if (!a) return;
+  document.getElementById("news-modal-body").innerHTML = `
+    ${a.image ? `<img class="nm-photo" src="data:image/jpeg;base64,${a.image}">` : ""}
+    <div class="nm-body">
+      <span class="ni-badge ${badgeClass(a.category)}">${a.category || "Анонс"}</span>
+      <div class="nm-title">${a.title}</div>
+      <div class="nm-text">${a.text}</div>
+      <div class="nm-date">${formatNewsDate(a.created_at, a.event_date)}</div>
+    </div>`;
+  document.getElementById("news-modal").classList.remove("hidden");
+}
+
+function closeNewsModal() {
+  document.getElementById("news-modal").classList.add("hidden");
+}
+
+function closeNewsModalOutside(e) {
+  if (e.target.id === "news-modal") closeNewsModal();
+}
 
 function setActiveTab(tab) {
   document.querySelectorAll(".bn-item").forEach(el => {
@@ -284,7 +302,6 @@ function bnGo(tab) {
 function showMenu() {
   document.getElementById("screen-profile").classList.add("hidden");
   document.getElementById("screen-menu").classList.remove("hidden");
-  document.getElementById("profile-fab").classList.remove("hidden");
   setActiveTab("home");
   if (window.Telegram && Telegram.WebApp) Telegram.WebApp.BackButton.hide();
 }
@@ -292,7 +309,6 @@ function showMenu() {
 function showProfile() {
   document.getElementById("screen-menu").classList.add("hidden");
   document.getElementById("screen-profile").classList.remove("hidden");
-  document.getElementById("profile-fab").classList.add("hidden");
   setActiveTab("profile");
   if (window.Telegram && Telegram.WebApp) {
     Telegram.WebApp.BackButton.show();
