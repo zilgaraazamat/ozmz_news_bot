@@ -43,20 +43,46 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .bn-item:active{opacity:.7}
 
 /* ── лента новостей: главный акцент экрана ── */
-.section-label{font-size:13px;font-weight:800;color:#d7e6da;margin:4px 0 12px;text-transform:uppercase;letter-spacing:.5px;opacity:.85}
-.news-list{display:flex;flex-direction:column;gap:14px}
-.news-item{background:#1e3024;border:1px solid rgba(255,255,255,.06);border-radius:18px;overflow:hidden;cursor:pointer;transition:transform .12s;box-shadow:0 8px 22px rgba(0,0,0,.3)}
-.news-item:active{transform:scale(.98)}
-.news-item .ni-photo{width:100%;height:160px;object-fit:cover;display:block;background:#152019}
-.news-item .ni-body{padding:14px 16px 16px}
-.news-item .ni-badge{display:inline-block;font-size:9px;font-weight:800;padding:4px 9px;border-radius:6px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-.ni-badge.b-anons{color:#7ed957;background:rgba(126,217,87,.15)}
-.ni-badge.b-turnir{color:#e0b84a;background:rgba(224,184,74,.15)}
-.ni-badge.b-novosti{color:#5eb4ff;background:rgba(94,180,255,.15)}
-.ni-badge.b-vazhno{color:#ff8080;background:rgba(255,80,80,.15)}
-.news-item .ni-title{font-size:16px;font-weight:800;margin-bottom:6px;line-height:1.3}
-.news-item .ni-text{font-size:13px;color:#9db3a3;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.news-item .ni-date{font-size:11px;color:#5a6b5e;margin-top:10px}
+.section-label{font-size:13px;font-weight:800;color:#d7e6da;margin:4px 0 14px;text-transform:uppercase;letter-spacing:.5px;opacity:.85}
+.news-list{display:flex;flex-direction:column;gap:18px}
+.news-item{
+  position:relative;
+  background:linear-gradient(180deg,#213626,#182720);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:26px;
+  overflow:hidden;
+  cursor:pointer;
+  opacity:0;
+  transform:translateY(10px);
+  animation:news-in .4s ease forwards;
+  transition:transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .28s cubic-bezier(.2,.8,.2,1), border-color .28s;
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 14px 34px rgba(0,0,0,.38), 0 2px 8px rgba(0,0,0,.25);
+}
+@keyframes news-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.news-list .news-item:nth-child(1){animation-delay:.02s}
+.news-list .news-item:nth-child(2){animation-delay:.06s}
+.news-list .news-item:nth-child(3){animation-delay:.1s}
+.news-list .news-item:nth-child(4){animation-delay:.14s}
+.news-list .news-item:nth-child(5){animation-delay:.18s}
+@media (hover:hover){
+  .news-item:hover{transform:translateY(-4px);box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 22px 44px rgba(0,0,0,.45), 0 4px 12px rgba(0,0,0,.3);border-color:rgba(126,217,87,.25)}
+  .news-item:hover .ni-photo{transform:scale(1.04)}
+}
+.news-item:active{transform:scale(.975) translateY(0);box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 8px 18px rgba(0,0,0,.32)}
+.news-item .ni-photo-wrap{position:relative;width:100%;height:190px;overflow:hidden;background:#152019}
+.news-item .ni-photo{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
+.news-item .ni-photo-fade{position:absolute;left:0;right:0;bottom:0;height:56px;background:linear-gradient(180deg,rgba(20,32,25,0),#1c2e22);pointer-events:none}
+.news-item .ni-badge-overlay{position:absolute;top:12px;left:12px;z-index:2}
+.news-item .ni-body{padding:16px 18px 20px}
+.ni-badge{display:inline-block;font-size:10px;font-weight:800;padding:6px 11px;border-radius:100px;text-transform:uppercase;letter-spacing:.6px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.ni-badge.b-anons{color:#7ed957;background:rgba(20,40,25,.65);box-shadow:0 0 0 1px rgba(126,217,87,.35) inset}
+.ni-badge.b-turnir{color:#e0b84a;background:rgba(40,32,12,.65);box-shadow:0 0 0 1px rgba(224,184,74,.35) inset}
+.ni-badge.b-novosti{color:#5eb4ff;background:rgba(14,28,42,.65);box-shadow:0 0 0 1px rgba(94,180,255,.35) inset}
+.ni-badge.b-vazhno{color:#ff8080;background:rgba(42,16,16,.65);box-shadow:0 0 0 1px rgba(255,80,80,.35) inset}
+.ni-badge.b-drugoe{color:#c9b8ff;background:rgba(28,20,42,.65);box-shadow:0 0 0 1px rgba(180,140,255,.35) inset}
+.news-item .ni-title{font-size:18px;font-weight:900;margin:12px 0 7px;line-height:1.28;letter-spacing:-.2px}
+.news-item .ni-text{font-size:13.5px;color:#9db3a3;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.news-item .ni-date{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:#5a6b5e;margin-top:12px}
 .news-empty{text-align:center;padding:40px 16px;color:#5a6b5e;font-size:13px}
 
 /* ── модальное окно полной статьи ── */
@@ -64,9 +90,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .news-modal-card{width:100%;max-height:88vh;overflow-y:auto;background:#152019;border-radius:24px 24px 0 0;position:relative;padding-bottom:calc(24px + env(safe-area-inset-bottom));animation:modal-up .25s ease}
 @keyframes modal-up{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
 .news-modal-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;border:none;font-size:15px;cursor:pointer;z-index:2}
-.news-modal-card .nm-photo{width:100%;height:220px;object-fit:cover;display:block}
-.news-modal-card .nm-body{padding:18px 20px}
-.news-modal-card .nm-title{font-size:20px;font-weight:900;margin:10px 0 8px;line-height:1.3}
+.news-modal-card .nm-photo{width:100%;height:230px;object-fit:cover;display:block}
+.news-modal-card .nm-body{padding:20px 20px 4px}
+.news-modal-card .nm-title{font-size:21px;font-weight:900;margin:12px 0 9px;line-height:1.3;letter-spacing:-.2px}
 .news-modal-card .nm-text{font-size:14px;color:#d7e6da;line-height:1.65;white-space:pre-wrap}
 .news-modal-card .nm-date{font-size:12px;color:#5a6b5e;margin-top:14px}
 
@@ -232,8 +258,8 @@ function formatNewsDate(iso, eventDate) {
 }
 
 function badgeClass(category) {
-  const map = { "Анонс": "b-anons", "Турнир": "b-turnir", "Новости": "b-novosti", "Важно": "b-vazhno" };
-  return map[category] || "b-anons";
+  const map = { "Анонс": "b-anons", "Турнир": "b-turnir", "Новости": "b-novosti", "Важно": "b-vazhno", "Другое": "b-drugoe" };
+  return map[category] || "b-drugoe";
 }
 
 let newsCache = [];
@@ -253,12 +279,17 @@ async function loadNews() {
       <div class="section-label">📰 Новости</div>
       <div class="news-list">${newsCache.map((a, i) => `
         <div class="news-item" onclick="openNewsModal(${i})">
-          ${a.image ? `<img class="ni-photo" src="data:image/jpeg;base64,${a.image}">` : ""}
+          ${a.image ? `
+          <div class="ni-photo-wrap">
+            <img class="ni-photo" src="data:image/jpeg;base64,${a.image}">
+            <div class="ni-photo-fade"></div>
+            <span class="ni-badge ${badgeClass(a.category)} ni-badge-overlay">${a.category || "Другое"}</span>
+          </div>` : ""}
           <div class="ni-body">
-            <span class="ni-badge ${badgeClass(a.category)}">${a.category || "Анонс"}</span>
+            ${!a.image ? `<span class="ni-badge ${badgeClass(a.category)}">${a.category || "Другое"}</span>` : ""}
             <div class="ni-title">${a.title}</div>
             <div class="ni-text">${a.text}</div>
-            <div class="ni-date">${formatNewsDate(a.created_at, a.event_date)}</div>
+            <div class="ni-date">🗓 ${formatNewsDate(a.created_at, a.event_date)}</div>
           </div>
         </div>`).join("")}</div>`;
   } catch (e) {}
@@ -271,10 +302,10 @@ function openNewsModal(i) {
   document.getElementById("news-modal-body").innerHTML = `
     ${a.image ? `<img class="nm-photo" src="data:image/jpeg;base64,${a.image}">` : ""}
     <div class="nm-body">
-      <span class="ni-badge ${badgeClass(a.category)}">${a.category || "Анонс"}</span>
+      <span class="ni-badge ${badgeClass(a.category)}">${a.category || "Другое"}</span>
       <div class="nm-title">${a.title}</div>
       <div class="nm-text">${a.text}</div>
-      <div class="nm-date">${formatNewsDate(a.created_at, a.event_date)}</div>
+      <div class="nm-date">🗓 ${formatNewsDate(a.created_at, a.event_date)}</div>
     </div>`;
   document.getElementById("news-modal").classList.remove("hidden");
 }
