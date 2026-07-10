@@ -80,6 +80,10 @@ def init_db():
             c.execute("ALTER TABLE games ADD COLUMN payment_link TEXT")
         except sqlite3.OperationalError:
             pass
+        try:
+            c.execute("ALTER TABLE games ADD COLUMN image TEXT")
+        except sqlite3.OperationalError:
+            pass
 
         c.execute("""CREATE TABLE IF NOT EXISTS game_signups(
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -405,25 +409,25 @@ def get_all_roles():
 # ── Игры ──────────────────────────────────────────────────────────────────────
 
 def create_game(game_date, game_time, location, num_players, num_teams,
-                 players_per_team, price, extra_info, created_by, payment_link=None):
+                 players_per_team, price, extra_info, created_by, payment_link=None, image=None):
     with _lock, _conn() as c:
         cur = c.execute("""INSERT INTO games(
                 game_date, game_time, location, num_players, num_teams,
-                players_per_team, price, extra_info, payment_link, created_by, created_at, status
-            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'active')""",
+                players_per_team, price, extra_info, payment_link, image, created_by, created_at, status
+            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'active')""",
             (game_date, game_time, location, num_players, num_teams,
-             players_per_team, price, extra_info, payment_link, str(created_by)))
+             players_per_team, price, extra_info, payment_link, image, str(created_by)))
         return cur.lastrowid
 
 
 def get_all_games():
     with _lock, _conn() as c:
         rows = c.execute("""SELECT id, game_date, game_time, location, num_players, num_teams,
-                                    players_per_team, price, extra_info, payment_link,
+                                    players_per_team, price, extra_info, payment_link, image,
                                     created_by, created_at, status
                              FROM games ORDER BY id DESC""").fetchall()
     keys = ["id", "date", "time", "location", "num_players", "num_teams",
-            "players_per_team", "price", "extra_info", "payment_link", "created_by", "created_at", "status"]
+            "players_per_team", "price", "extra_info", "payment_link", "image", "created_by", "created_at", "status"]
     return [dict(zip(keys, r)) for r in rows]
 
 
@@ -474,13 +478,13 @@ def get_active_games():
 def get_game(game_id):
     with _lock, _conn() as c:
         row = c.execute("""SELECT id, game_date, game_time, location, num_players, num_teams,
-                                   players_per_team, price, extra_info, payment_link,
+                                   players_per_team, price, extra_info, payment_link, image,
                                    created_by, created_at, status
                             FROM games WHERE id=?""", (game_id,)).fetchone()
     if not row:
         return None
     keys = ["id", "date", "time", "location", "num_players", "num_teams",
-            "players_per_team", "price", "extra_info", "payment_link", "created_by", "created_at", "status"]
+            "players_per_team", "price", "extra_info", "payment_link", "image", "created_by", "created_at", "status"]
     return dict(zip(keys, row))
 
 

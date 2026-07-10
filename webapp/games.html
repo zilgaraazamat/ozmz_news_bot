@@ -17,23 +17,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .empty{text-align:center;color:#6B7280;font-size:14px;padding:40px 10px}
 .game-card{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:12px;margin-bottom:12px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 10px 26px rgba(0,0,0,.35)}
 
-.gc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
-.gc-when{display:flex;flex-direction:column;gap:3px;padding-top:2px}
-.gc-date{font-size:16px;font-weight:800;color:#F5F6F7;line-height:1.1}
-.gc-time{font-size:13px;color:#9BA1AC;display:flex;align-items:center;gap:4px}
-.gc-thumb{width:52px;height:52px;border-radius:12px;overflow:hidden;flex-shrink:0;background:#23262D;border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:20px}
+.gc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+.gc-info{flex:1;min-width:0;padding-top:1px}
+.gc-datetime{font-size:15px;font-weight:800;color:#F5F6F7;letter-spacing:-.1px;font-variant-numeric:tabular-nums;line-height:1.2}
+.gc-dt-dot{color:#4A4E57;margin:0 3px;font-weight:400}
+.gc-venue-name{font-size:13px;font-weight:600;color:#C7CAD1;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gc-venue-addr{font-size:12px;color:#7B818C;margin-top:2px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.gc-thumb{width:32%;max-width:120px;flex-shrink:0;aspect-ratio:4/3;border-radius:14px;overflow:hidden;position:relative;background:#181A1F}
 .gc-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.gc-thumb-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#20232B,#181A1F);position:relative;overflow:hidden}
+.gc-thumb-placeholder::before{content:'';position:absolute;inset:-20%;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 2px,transparent 2px 14px)}
+.gc-thumb-placeholder span{font-size:22px;opacity:.5;position:relative;z-index:1}
 
-.gc-venue{margin-bottom:8px}
-.gc-venue-name{font-size:14px;font-weight:700;color:#F5F6F7}
-.gc-venue-addr{font-size:12px;color:#9BA1AC;margin-top:2px;line-height:1.35}
-
-.gc-price-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.gc-price{font-size:14px;font-weight:800;color:#F5F6F7}
+.gc-price-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.gc-price{font-size:15px;font-weight:800;color:#F5F6F7;font-variant-numeric:tabular-nums;letter-spacing:-.1px}
 .gc-pay-status{font-size:11px;font-weight:600;color:#9BA1AC;background:#23262D;border-radius:6px;padding:3px 8px}
 
 .gc-occupancy{margin-bottom:8px}
-.gc-occ-row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:#9BA1AC;margin-bottom:4px}
+.gc-occ-row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:#9BA1AC;margin-bottom:5px;font-variant-numeric:tabular-nums}
 .gc-free{color:#8B93F5;font-weight:700;flex-shrink:0}
 .gc-progress{height:6px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden}
 .gc-progress-fill{height:100%;background:linear-gradient(90deg,#5E6AD2,#4A55C7);border-radius:4px;transition:width .3s}
@@ -258,6 +259,109 @@ function entryPeopleCount(s) {
   return s.is_addition ? (s.guests_count || 1) : 1 + (s.guests_count || 0);
 }
 
+// ── карточка игры: переиспользуемые виджеты ──────────────────────────────────
+
+function gameThumbWidget(g) {
+  const inner = g.image
+    ? `<img src="data:image/jpeg;base64,${g.image}" alt="${g.location}">`
+    : `<div class="gc-thumb-placeholder"><span>⚽</span></div>`;
+  return `<div class="gc-thumb">${inner}</div>`;
+}
+
+function gameInfoWidget(g) {
+  return `
+    <div class="gc-info">
+      <div class="gc-datetime">${shortDate(g)}<span class="gc-dt-dot">•</span>${g.time}</div>
+      <div class="gc-venue-name">📍 ${g.location}</div>
+      ${g.extra_info ? `<div class="gc-venue-addr">${g.extra_info}</div>` : ""}
+    </div>`;
+}
+
+function gameTopWidget(g) {
+  return `<div class="gc-top">${gameInfoWidget(g)}${gameThumbWidget(g)}</div>`;
+}
+
+function gamePriceWidget(g) {
+  if (!g.price) return "";
+  return `
+    <div class="gc-price-row">
+      <span class="gc-price">💰 ${g.price}</span>
+      ${g.payment_link ? `<span class="gc-pay-status">оплата по ссылке</span>` : ""}
+    </div>`;
+}
+
+function gameOccupancyWidget(g, confirmedCount, totalCount) {
+  const freeSpots = g.num_players ? Math.max(0, g.num_players - confirmedCount) : null;
+  const occPct = g.num_players ? Math.min(100, Math.round((confirmedCount / g.num_players) * 100)) : 0;
+  return `
+    <div class="gc-occupancy">
+      <div class="gc-occ-row">
+        <span>👥 ${confirmedCount}/${g.num_players || "?"} подтверждено${totalCount > confirmedCount ? `, ещё ${totalCount - confirmedCount} ожидает` : ""}</span>
+        ${freeSpots !== null ? `<span class="gc-free">${freeSpots} своб.</span>` : ""}
+      </div>
+      ${g.num_players ? `<div class="gc-progress"><div class="gc-progress-fill" style="width:${occPct}%"></div></div>` : ""}
+    </div>`;
+}
+
+function gameRosterWidget(g, totalCount) {
+  return `
+    <div class="roster">
+      <div class="roster-title">👥 Участники (${totalCount})</div>
+      ${rosterHtml(g.signups)}
+    </div>`;
+}
+
+function gameAddFormWidget(g, mySignups) {
+  if (mySignups.length === 0) {
+    return `
+      <label class="guests-label">Сколько вас всего придёт (с тобой)?</label>
+      <input type="number" class="guests-input" id="guests-${g.id}" min="1" max="20" value="1">
+      <button class="btn" onclick="signup(${g.id})">Записаться</button>`;
+  }
+  const addExpanded = !!addFormExpanded[g.id];
+  return `
+    <button class="add-toggle-btn" onclick="toggleAddForm(${g.id})"><span class="atb-plus">+</span> Добавить игроков <span class="atb-chevron">${addExpanded ? "▲" : "▼"}</span></button>
+    <div class="add-more-inline ${addExpanded ? "" : "hidden"}" id="add-form-${g.id}">
+      <input type="number" class="guests-input-inline" id="addmore-${g.id}" min="1" max="20" value="1">
+      <button class="btn-switch-inline" onclick="addMorePeople(${g.id})">Добавить</button>
+    </div>`;
+}
+
+function gameSecondaryWidget(g, mySignups) {
+  if (!mySignups.length) return "";
+  return `
+    <div class="secondary-row">
+      <button class="secondary-btn" onclick="toggleTeamsDisplay(${g.id})">🏆 Команды</button>
+      <button class="secondary-btn" onclick="toggleChat(${g.id})" id="chat-toggle-${g.id}">💬 Чат</button>
+    </div>
+    <div class="teams-body ${teamsExpanded[g.id] ? "" : "hidden"}" id="teams-body-wrap-${g.id}">${teamsExpanded[g.id] ? teamsInnerHtml(g.teams) : ""}</div>
+    <div class="chat-box hidden" id="chat-box-${g.id}">
+      <div class="chat-messages" id="chat-messages-${g.id}"></div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chat-input-${g.id}" placeholder="Написать..." maxlength="500">
+        <button class="chat-send-btn" onclick="sendChatMessage(${g.id})">➤</button>
+      </div>
+    </div>`;
+}
+
+function gameCardWidget(g) {
+  const confirmedCount = totalPeople(g.signups, "confirmed");
+  const totalCount = totalPeople(g.signups, null);
+  const mySignups = g.my_signups || [];
+  const myEntriesHtml = mySignups.map(s => myEntryActionsHtml(g.id, s, g.payment_link)).join("");
+
+  return `
+    <div class="game-card">
+      ${gameTopWidget(g)}
+      ${gamePriceWidget(g)}
+      ${gameOccupancyWidget(g, confirmedCount, totalCount)}
+      ${gameRosterWidget(g, totalCount)}
+      ${myEntriesHtml}
+      ${gameAddFormWidget(g, mySignups)}
+      ${gameSecondaryWidget(g, mySignups)}
+    </div>`;
+}
+
 let teamsExpanded = {};
 
 function toggleTeamsDisplay(gameId) {
@@ -322,80 +426,7 @@ function renderGames(games) {
     return;
   }
 
-  el.innerHTML = filtered.map(g => {
-    const confirmedCount = totalPeople(g.signups, "confirmed");
-    const totalCount = totalPeople(g.signups, null);
-    const mySignups = g.my_signups || [];
-
-    const myEntriesHtml = mySignups.map(s => myEntryActionsHtml(g.id, s, g.payment_link)).join("");
-
-    let addFormHtml;
-    if (mySignups.length === 0) {
-      addFormHtml = `
-        <label class="guests-label">Сколько вас всего придёт (с тобой)?</label>
-        <input type="number" class="guests-input" id="guests-${g.id}" min="1" max="20" value="1">
-        <button class="btn" onclick="signup(${g.id})">Записаться</button>`;
-    } else {
-      const addExpanded = !!addFormExpanded[g.id];
-      addFormHtml = `
-        <button class="add-toggle-btn" onclick="toggleAddForm(${g.id})"><span class="atb-plus">+</span> Добавить игроков <span class="atb-chevron">${addExpanded ? "▲" : "▼"}</span></button>
-        <div class="add-more-inline ${addExpanded ? "" : "hidden"}" id="add-form-${g.id}">
-          <input type="number" class="guests-input-inline" id="addmore-${g.id}" min="1" max="20" value="1">
-          <button class="btn-switch-inline" onclick="addMorePeople(${g.id})">Добавить</button>
-        </div>`;
-    }
-
-    const secondaryRow = mySignups.length ? `
-      <div class="secondary-row">
-        <button class="secondary-btn" onclick="toggleTeamsDisplay(${g.id})">🏆 Команды</button>
-        <button class="secondary-btn" onclick="toggleChat(${g.id})" id="chat-toggle-${g.id}">💬 Чат</button>
-      </div>
-      <div class="teams-body ${teamsExpanded[g.id] ? "" : "hidden"}" id="teams-body-wrap-${g.id}">${teamsExpanded[g.id] ? teamsInnerHtml(g.teams) : ""}</div>
-      <div class="chat-box hidden" id="chat-box-${g.id}">
-        <div class="chat-messages" id="chat-messages-${g.id}"></div>
-        <div class="chat-input-row">
-          <input class="chat-input" id="chat-input-${g.id}" placeholder="Написать..." maxlength="500">
-          <button class="chat-send-btn" onclick="sendChatMessage(${g.id})">➤</button>
-        </div>
-      </div>` : "";
-
-    const freeSpots = g.num_players ? Math.max(0, g.num_players - confirmedCount) : null;
-    const occPct = g.num_players ? Math.min(100, Math.round((confirmedCount / g.num_players) * 100)) : 0;
-
-    return `
-      <div class="game-card">
-        <div class="gc-top">
-          <div class="gc-when">
-            <div class="gc-date">${shortDate(g)}</div>
-            <div class="gc-time">🕐 ${g.time}</div>
-          </div>
-          <div class="gc-thumb">${g.image ? `<img src="data:image/jpeg;base64,${g.image}">` : `<span>🏟️</span>`}</div>
-        </div>
-        <div class="gc-venue">
-          <div class="gc-venue-name">📍 ${g.location}</div>
-          ${g.extra_info ? `<div class="gc-venue-addr">${g.extra_info}</div>` : ""}
-        </div>
-        ${g.price ? `
-        <div class="gc-price-row">
-          <span class="gc-price">💰 ${g.price}</span>
-          ${g.payment_link ? `<span class="gc-pay-status">оплата по ссылке</span>` : ""}
-        </div>` : ""}
-        <div class="gc-occupancy">
-          <div class="gc-occ-row">
-            <span>👥 ${confirmedCount}/${g.num_players || "?"} подтверждено${totalCount > confirmedCount ? `, ещё ${totalCount - confirmedCount} ожидает` : ""}</span>
-            ${freeSpots !== null ? `<span class="gc-free">${freeSpots} своб.</span>` : ""}
-          </div>
-          ${g.num_players ? `<div class="gc-progress"><div class="gc-progress-fill" style="width:${occPct}%"></div></div>` : ""}
-        </div>
-        <div class="roster">
-          <div class="roster-title">👥 Участники (${totalCount})</div>
-          ${rosterHtml(g.signups)}
-        </div>
-        ${myEntriesHtml}
-        ${addFormHtml}
-        ${secondaryRow}
-      </div>`;
-  }).join("");
+  el.innerHTML = filtered.map(gameCardWidget).join("");
 }
 
 let addFormExpanded = {};

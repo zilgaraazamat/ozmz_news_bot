@@ -170,8 +170,15 @@ class Handler(BaseHTTPRequestHandler):
                 extra_info       = (data.get("extra_info") or "").strip()
                 payment_link     = (data.get("payment_link") or "").strip() or None
 
+                image = data.get("image") or None
+                if image and "," in image and image.strip().startswith("data:"):
+                    image = image.split(",", 1)[1]
+                if image and len(image) > 900_000:
+                    self._json({"ok": False, "error": "Фото слишком большое, выбери другое"})
+                    return
+
                 game_id = create_game(game_date, game_time, location, num_players, num_teams,
-                                       players_per_team, price, extra_info, user_id, payment_link)
+                                       players_per_team, price, extra_info, user_id, payment_link, image)
 
                 lines = [
                     "⚽ <b>НОВАЯ ИГРА!</b>",

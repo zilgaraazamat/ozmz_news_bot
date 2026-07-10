@@ -131,6 +131,13 @@ textarea{resize:vertical;min-height:70px}
       <textarea id="f-extra" placeholder="форма, парковка, что взять с собой..."></textarea>
     </div>
 
+    <div class="form-section">
+      <div class="fs-title">🖼️ Фото поля</div>
+      <input type="file" accept="image/*" id="f-photo" onchange="handleGamePhotoSelect(event)">
+      <img id="f-photo-preview" class="hidden" style="width:100%;border-radius:12px;margin-top:8px;max-height:180px;object-fit:cover">
+      <div class="hint">Покажется превью карточки игры в приложении. Необязательно.</div>
+    </div>
+
     <button class="btn" id="submit-btn" onclick="createGame()">Создать и опубликовать</button>
     <div class="saved" id="saved-msg">✅ Игра создана и опубликована</div>
   </div>
@@ -438,6 +445,7 @@ async function createGame() {
     price: document.getElementById("f-price").value.trim(),
     extra_info: document.getElementById("f-extra").value.trim(),
     payment_link: document.getElementById("f-payment-link").value.trim(),
+    image: selectedGamePhotoBase64,
   };
   if (!payload.date || !payload.time || !payload.location) {
     showError("Заполни минимум дату, время и место.");
@@ -459,6 +467,9 @@ async function createGame() {
       saved.classList.add("show");
       ["f-date","f-time","f-location","f-num-players","f-num-teams","f-players-per-team","f-price","f-extra"]
         .forEach(id => document.getElementById(id).value = "");
+      document.getElementById("f-photo").value = "";
+      document.getElementById("f-photo-preview").classList.add("hidden");
+      selectedGamePhotoBase64 = null;
       setTimeout(() => saved.classList.remove("show"), 2500);
       loadManageGames();
     }
@@ -489,6 +500,41 @@ function handlePhotoSelect(event) {
 
       const preview = document.getElementById("an-photo-preview");
       preview.src = selectedPhotoBase64;
+      preview.classList.remove("hidden");
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+let selectedGamePhotoBase64 = null;
+
+function handleGamePhotoSelect(event) {
+  const file = event.target.files[0];
+  if (!file) { selectedGamePhotoBase64 = null; return; }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      // карточка показывает фото ~1/3 ширины с фиксированным соотношением 4:3 — обрезаем под него
+      const targetRatio = 4 / 3;
+      let sx = 0, sy = 0, sw = img.width, sh = img.height;
+      if (sw / sh > targetRatio) {
+        sw = sh * targetRatio;
+        sx = (img.width - sw) / 2;
+      } else {
+        sh = sw / targetRatio;
+        sy = (img.height - sh) / 2;
+      }
+      const outW = 480, outH = Math.round(outW / targetRatio);
+      const canvas = document.createElement("canvas");
+      canvas.width = outW; canvas.height = outH;
+      canvas.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
+      selectedGamePhotoBase64 = canvas.toDataURL("image/jpeg", 0.82);
+
+      const preview = document.getElementById("f-photo-preview");
+      preview.src = selectedGamePhotoBase64;
       preview.classList.remove("hidden");
     };
     img.src = e.target.result;
