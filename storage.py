@@ -643,10 +643,25 @@ def get_my_signup(game_id, user_id):
 
 def cancel_signup(entry_id, user_id):
     """Игрок сам отменяет конкретную партию — можно и после подтверждения
-    (предупреждение о невозврате денег — на фронте). Проверяем владение."""
+    (предупреждение о невозврате денег — на фронте), НО только пока матч ещё не завершился.
+    После завершения матча регистрация становится частью истории/статистики — отмена
+    задним числом больше не должна её стирать. Возвращает True при успешной отмене,
+    False если отменять уже нельзя (запись не найдена или матч уже завершён)."""
     user_id = str(user_id)
     with _lock, _conn() as c:
+        row = c.execute(
+            "SELECT game_id FROM game_signups WHERE id=? AND user_id=?", (entry_id, user_id)
+        ).fetchone()
+    if not row:
+        return False
+
+    game = get_game(row[0])
+    if game and is_match_completed(game):
+        return False  # матч уже завершён — запись зафиксирована, отмена не выполняется
+
+    with _lock, _conn() as c:
         c.execute("DELETE FROM game_signups WHERE id=? AND user_id=?", (entry_id, user_id))
+    return True
 
 
 def confirm_signup(entry_id):

@@ -254,7 +254,10 @@ class Handler(BaseHTTPRequestHandler):
                 if not user_id or not entry_id or not game_id:
                     self._json({"ok": False, "error": "bad_request"})
                     return
-                cancel_signup(entry_id, user_id)
+                cancelled = cancel_signup(entry_id, user_id)
+                if not cancelled:
+                    self._json({"ok": False, "error": "Матч уже завершён — отменить запись нельзя"})
+                    return
                 _recompute_teams(game_id)
                 self._json({"ok": True})
             except Exception as e:
