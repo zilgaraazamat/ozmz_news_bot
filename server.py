@@ -11,6 +11,7 @@ from storage import (
     display_name_from_profile,
     create_game, get_all_games, get_active_games, get_history_games, get_game, cancel_game, delete_game,
     mark_game_completed,
+    create_game_template, get_game_templates, get_game_template, update_game_template, delete_game_template,
     signup_for_game, get_signups, get_my_signup, get_my_signups, confirm_signup, cancel_signup, mark_payment_claimed,
     is_registered_for_game, add_chat_message, get_chat_messages,
     get_username,
@@ -216,6 +217,93 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] create-game: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/admin/create-game-template":
+            try:
+                data = json.loads(body)
+                admin_id = str(data.get("user_id", ""))
+                if admin_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Нет прав администратора"})
+                    return
+
+                name  = (data.get("name") or "").strip()
+                field = (data.get("field") or "").strip()
+                if not name or not field:
+                    self._json({"ok": False, "error": "Заполни минимум название и поле"})
+                    return
+
+                address      = (data.get("address") or "").strip() or None
+                default_time = (data.get("default_time") or "").strip() or None
+                price        = (data.get("price") or "").strip() or None
+                max_players  = data.get("max_players") or None
+                duration     = data.get("duration") or None
+                description  = (data.get("description") or "").strip() or None
+                payment_link = (data.get("payment_link") or "").strip() or None
+
+                image = data.get("image") or None
+                if image and "," in image and image.strip().startswith("data:"):
+                    image = image.split(",", 1)[1]
+                if image and len(image) > 900_000:
+                    self._json({"ok": False, "error": "Фото слишком большое, выбери другое"})
+                    return
+
+                template_id = create_game_template(name, field, address, default_time, price,
+                                                     max_players, duration, description, payment_link,
+                                                     image, admin_id)
+                self._json({"ok": True, "id": template_id})
+            except Exception as e:
+                print(f"  [WARN] create-game-template: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/admin/update-game-template":
+            try:
+                data = json.loads(body)
+                admin_id = str(data.get("user_id", ""))
+                if admin_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Нет прав администратора"})
+                    return
+
+                template_id = data.get("id")
+                name  = (data.get("name") or "").strip()
+                field = (data.get("field") or "").strip()
+                if not template_id or not name or not field:
+                    self._json({"ok": False, "error": "Заполни минимум название и поле"})
+                    return
+
+                address      = (data.get("address") or "").strip() or None
+                default_time = (data.get("default_time") or "").strip() or None
+                price        = (data.get("price") or "").strip() or None
+                max_players  = data.get("max_players") or None
+                duration     = data.get("duration") or None
+                description  = (data.get("description") or "").strip() or None
+                payment_link = (data.get("payment_link") or "").strip() or None
+
+                image = data.get("image") or None
+                if image and "," in image and image.strip().startswith("data:"):
+                    image = image.split(",", 1)[1]
+                if image and len(image) > 900_000:
+                    self._json({"ok": False, "error": "Фото слишком большое, выбери другое"})
+                    return
+
+                update_game_template(template_id, name, field, address, default_time, price,
+                                      max_players, duration, description, payment_link, image)
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] update-game-template: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/admin/delete-game-template":
+            try:
+                data = json.loads(body)
+                admin_id = str(data.get("user_id", ""))
+                if admin_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Нет прав администратора"})
+                    return
+                delete_game_template(data.get("id"))
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] delete-game-template: {e}")
                 self.send_response(400); self.end_headers()
 
         elif path == "/api/games/signup":
@@ -597,6 +685,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"error": "forbidden"})
             else:
                 self._json({"messages": get_chat_messages(game_id, since_id)})
+        elif path == "/api/admin/game-templates":
+            user_id = (q.get("user_id") or [""])[0]
+            if user_id not in ADMIN_IDS:
+                self._json({"error": "forbidden"})
+            else:
+                self._json({"templates": get_game_templates()})
         elif path == "/api/admin/games":
             user_id = (q.get("user_id") or [""])[0]
             if user_id not in ADMIN_IDS:

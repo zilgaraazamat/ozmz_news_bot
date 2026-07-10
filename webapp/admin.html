@@ -201,6 +201,16 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#5E6AD2;backgr
     <div class="screen-sub">Анонс сразу уйдёт в группу @football_igraem_astana</div>
     <div id="error-banner"></div>
 
+    <div class="section-card" id="template-picker-card">
+      <div class="fs-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>⚡ Шаблон игры</span>
+        <span style="color:#5E6AD2;font-weight:700;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12px" onclick="showScreen('templates-list')">Управлять →</span>
+      </div>
+      <div class="hint" style="margin:-4px 0 12px">Выбери шаблон — все поля заполнятся сами, останется проверить дату.</div>
+      <div class="filters" id="template-chips"></div>
+      <div class="hint" id="template-applied-hint" style="display:none;color:#16A34A;font-weight:700;margin-top:10px">✅ Шаблон применён — проверь дату и время, затем публикуй</div>
+    </div>
+
     <div class="section-card">
       <div class="fs-title">📅 Когда и где</div>
       <div class="row2">
@@ -263,6 +273,71 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#5E6AD2;backgr
       </div>
     </div>
     <div id="games-manage-list"></div>
+  </div>
+
+  <!-- ═══ ШАБЛОНЫ ИГР: СПИСОК ═══ -->
+  <div id="screen-templates-list" class="screen hidden">
+    <div class="screen-sub">Шаблон сохраняет постоянные данные игры — поле, цену, состав, оплату и фото. При создании игры останется выбрать шаблон и проверить дату.</div>
+    <button class="btn btn-primary" style="margin-bottom:16px" onclick="openTemplateEditor(null)">+ Новый шаблон</button>
+    <div id="templates-list"></div>
+  </div>
+
+  <!-- ═══ ШАБЛОНЫ ИГР: СОЗДАТЬ / РЕДАКТИРОВАТЬ ═══ -->
+  <div id="screen-template-edit" class="screen hidden">
+    <div class="screen-sub">Заполни один раз — дальше при создании игры нужно будет только выбрать шаблон и проверить дату.</div>
+    <div id="template-error-banner"></div>
+
+    <div class="section-card">
+      <div class="fs-title">🏷️ Название шаблона</div>
+      <label>Название</label>
+      <input id="t-name" placeholder="напр. Football Понедельник 21:00">
+      <label>Время по умолчанию</label>
+      <input id="t-default-time" type="time">
+      <div class="hint">Подставится автоматически при выборе шаблона — можно поменять под конкретную игру.</div>
+    </div>
+
+    <div class="section-card">
+      <div class="fs-title">📍 Поле</div>
+      <label>Поле</label>
+      <input id="t-field" placeholder="напр. Арена Central Park">
+      <label>Адрес</label>
+      <input id="t-address" placeholder="напр. ул. Кабанбай батыра, 15">
+    </div>
+
+    <div class="section-card">
+      <div class="fs-title">👥 Состав игры</div>
+      <div class="row2">
+        <div><label>Игроков всего</label><input id="t-max-players" type="number" min="1" placeholder="16"></div>
+        <div><label>Длительность, мин</label><input id="t-duration" type="number" min="1" placeholder="90"></div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="fs-title">💰 Оплата</div>
+      <label>Цена</label>
+      <input id="t-price" placeholder="напр. 2000 тг с человека">
+      <label>Ссылка на оплату</label>
+      <input id="t-payment-link" placeholder="напр. Kaspi-перевод или другая ссылка">
+      <div class="hint">Покажется игроку кнопкой «Оплатить» при регистрации.</div>
+    </div>
+
+    <div class="section-card">
+      <div class="fs-title">ℹ️ Описание</div>
+      <textarea id="t-description" placeholder="форма, парковка, что взять с собой..."></textarea>
+    </div>
+
+    <div class="section-card">
+      <div class="fs-title">🖼️ Фото поля</div>
+      <div id="t-photo-zone"></div>
+      <input type="file" accept="image/*" id="t-photo" onchange="handleTemplatePhotoSelect(event)">
+      <div class="hint">Подставится как фото игры при создании. Необязательно.</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="showScreen('templates-list')">Отмена</button>
+      <button class="btn btn-primary" id="template-submit-btn" onclick="saveTemplate()">Создать шаблон</button>
+    </div>
+    <div class="saved" id="template-saved-msg">✅ Шаблон сохранён</div>
   </div>
 
   <!-- ═══ НОВОСТИ: СОЗДАТЬ ═══ -->
@@ -439,6 +514,8 @@ const SCREEN_TITLES = {
   "dashboard": "Панель администратора",
   "games-create": "Создать игру",
   "games-manage": "Управление играми",
+  "templates-list": "Шаблоны игр",
+  "template-edit": "Шаблон игры",
   "news-create": "Создать новость",
   "news-manage": "Управление новостями",
   "players-list": "Игроки",
@@ -454,9 +531,10 @@ function showScreen(id) {
   document.getElementById("topbar-back").classList.toggle("hidden", id === "dashboard");
   window.scrollTo(0, 0);
 
-  if (id === "games-create") { renderPhotoZone("f-photo-zone", "f-photo", selectedGamePhotoBase64); }
+  if (id === "games-create") { renderPhotoZone("f-photo-zone", "f-photo", selectedGamePhotoBase64); loadGameTemplatesForPicker(); }
   if (id === "news-create") { renderPhotoZone("an-photo-zone", "an-photo", selectedPhotoBase64); }
   if (id === "games-manage") loadManageGames();
+  if (id === "templates-list") loadTemplatesList();
   if (id === "news-manage") loadAnnouncements();
   if (id === "players-list") loadPlayers();
 }
@@ -469,6 +547,7 @@ function backToDashboard() {
 const MODULES = [
   { icon: "🏟", title: "Игры", items: [
     { label: "Создать игру", screen: "games-create" },
+    { label: "Шаблоны игр", screen: "templates-list" },
     { label: "Управление и записи", screen: "games-manage" },
   ]},
   { icon: "📰", title: "Новости", items: [
@@ -878,6 +957,9 @@ async function createGame() {
       ["f-date","f-time","f-location","f-num-players","f-num-teams","f-players-per-team","f-price","f-extra"]
         .forEach(id => document.getElementById(id).value = "");
       clearPhoto("f-photo");
+      selectedTemplateId = null;
+      renderTemplateChips();
+      document.getElementById("template-applied-hint").style.display = "none";
       setTimeout(() => saved.classList.remove("show"), 2500);
       loadDashboardData();
     }
@@ -887,9 +969,10 @@ async function createGame() {
   btn.removeAttribute("disabled");
 }
 
-/* ── Загрузка фото: общий dropzone-компонент для игр и новостей ─────────── */
+/* ── Загрузка фото: общий dropzone-компонент для игр, новостей и шаблонов ── */
 let selectedPhotoBase64 = null;
 let selectedGamePhotoBase64 = null;
+let selectedTemplatePhotoBase64 = null;
 
 function renderPhotoZone(zoneId, inputId, currentBase64) {
   document.getElementById(zoneId).innerHTML = dropzoneHtml(inputId, currentBase64);
@@ -899,6 +982,7 @@ function clearPhoto(inputId) {
   document.getElementById(inputId).value = "";
   if (inputId === "an-photo") { selectedPhotoBase64 = null; renderPhotoZone("an-photo-zone", "an-photo", null); }
   if (inputId === "f-photo") { selectedGamePhotoBase64 = null; renderPhotoZone("f-photo-zone", "f-photo", null); }
+  if (inputId === "t-photo") { selectedTemplatePhotoBase64 = null; renderPhotoZone("t-photo-zone", "t-photo", null); }
 }
 
 function handlePhotoSelect(event) {
@@ -951,6 +1035,235 @@ function handleGamePhotoSelect(event) {
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function handleTemplatePhotoSelect(event) {
+  const file = event.target.files[0];
+  if (!file) { selectedTemplatePhotoBase64 = null; return; }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const targetRatio = 4 / 3;
+      let sx = 0, sy = 0, sw = img.width, sh = img.height;
+      if (sw / sh > targetRatio) {
+        sw = sh * targetRatio;
+        sx = (img.width - sw) / 2;
+      } else {
+        sh = sw / targetRatio;
+        sy = (img.height - sh) / 2;
+      }
+      const outW = 480, outH = Math.round(outW / targetRatio);
+      const canvas = document.createElement("canvas");
+      canvas.width = outW; canvas.height = outH;
+      canvas.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
+      selectedTemplatePhotoBase64 = canvas.toDataURL("image/jpeg", 0.82);
+      renderPhotoZone("t-photo-zone", "t-photo", selectedTemplatePhotoBase64);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ШАБЛОНЫ ИГР
+   Цель: создать игру за считанные секунды — выбрал шаблон, проверил дату,
+   опубликовал. Шаблон хранит поле, адрес, цену, состав, оплату, описание и фото.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Пикер шаблонов на экране «Создать игру» ─────────────────────────────── */
+let gameTemplates = [];
+let selectedTemplateId = null;
+
+async function loadGameTemplatesForPicker() {
+  try {
+    const r = await fetch(`/api/admin/game-templates?user_id=${userId}`).then(r => r.json());
+    gameTemplates = r.templates || [];
+    renderTemplateChips();
+  } catch (e) {}
+}
+
+function renderTemplateChips() {
+  const el = document.getElementById("template-chips");
+  if (!el) return;
+  if (gameTemplates.length === 0) {
+    el.innerHTML = `<div class="hint">Шаблонов пока нет — <span style="color:#5E6AD2;font-weight:700;cursor:pointer" onclick="openTemplateEditor(null)">создай первый</span>, чтобы публиковать игры за секунды</div>`;
+    return;
+  }
+  el.innerHTML = gameTemplates.map(t => `
+    <div class="filter-chip ${selectedTemplateId === t.id ? "active" : ""}" onclick="applyTemplate(${t.id})">${t.name}</div>
+  `).join("");
+}
+
+function applyTemplate(id) {
+  const t = gameTemplates.find(x => x.id === id);
+  if (!t) return;
+  selectedTemplateId = id;
+  renderTemplateChips();
+
+  document.getElementById("f-time").value = t.default_time || "";
+  document.getElementById("f-location").value = [t.field, t.address].filter(Boolean).join(", ");
+  document.getElementById("f-num-players").value = t.max_players || "";
+  document.getElementById("f-price").value = t.price || "";
+  document.getElementById("f-payment-link").value = t.payment_link || "";
+
+  let extra = t.description || "";
+  if (t.duration) extra = `⏱ Длительность: ${t.duration} мин` + (extra ? `\n${extra}` : "");
+  document.getElementById("f-extra").value = extra;
+
+  selectedGamePhotoBase64 = t.image ? `data:image/jpeg;base64,${t.image}` : null;
+  renderPhotoZone("f-photo-zone", "f-photo", selectedGamePhotoBase64);
+
+  document.getElementById("template-applied-hint").style.display = "block";
+  document.getElementById("f-date").focus();
+}
+
+/* ── Управление шаблонами: список ────────────────────────────────────────── */
+async function loadTemplatesList() {
+  try {
+    const r = await fetch(`/api/admin/game-templates?user_id=${userId}`).then(r => r.json());
+    window.__allTemplates = r.templates || [];
+    renderTemplatesList();
+  } catch (e) {}
+}
+
+function renderTemplatesList() {
+  const list = window.__allTemplates || [];
+  const el = document.getElementById("templates-list");
+  if (list.length === 0) {
+    el.innerHTML = `<div class="list-empty">Шаблонов пока нет — создай первый, чтобы публиковать игры за секунды</div>`;
+    return;
+  }
+  el.innerHTML = list.map(t => `
+    <div class="news-card">
+      <div class="news-card-top">
+        <div>
+          <div class="news-card-title">${t.image ? "🖼️ " : "⚡ "}${t.name}</div>
+          <div class="news-card-meta">
+            ${badgeHtml(t.default_time || "время не задано", "accent")}
+            <span>${[t.field, t.address].filter(Boolean).join(", ") || "поле не указано"}</span>
+          </div>
+          <div class="news-card-meta">
+            ${t.price ? `<span>💰 ${t.price}</span>` : ""}
+            ${t.max_players ? `<span>👥 ${t.max_players}</span>` : ""}
+            ${t.duration ? `<span>⏱ ${t.duration} мин</span>` : ""}
+          </div>
+        </div>
+      </div>
+      <div class="game-actions-row">
+        <button class="mini-btn mini-btn-success" onclick="openTemplateEditor(${t.id})">✏️ Изменить</button>
+        <button class="mini-btn" style="border-color:#DDE1E8;background:#F9FAFB;color:#334155" onclick="duplicateTemplate(${t.id})">📄 Копия</button>
+        <button class="mini-btn mini-btn-danger" onclick="deleteTemplate(${t.id})">🗑 Удалить</button>
+      </div>
+    </div>`).join("");
+}
+
+/* ── Управление шаблонами: создание / редактирование ─────────────────────── */
+let editingTemplateId = null;
+
+function openTemplateEditor(id) {
+  editingTemplateId = id;
+  document.getElementById("template-error-banner").innerHTML = "";
+  const t = id ? (window.__allTemplates || []).find(x => x.id === id) : null;
+
+  document.getElementById("t-name").value = t ? (t.name || "") : "";
+  document.getElementById("t-default-time").value = t ? (t.default_time || "") : "";
+  document.getElementById("t-field").value = t ? (t.field || "") : "";
+  document.getElementById("t-address").value = t ? (t.address || "") : "";
+  document.getElementById("t-max-players").value = t ? (t.max_players || "") : "";
+  document.getElementById("t-duration").value = t ? (t.duration || "") : "";
+  document.getElementById("t-price").value = t ? (t.price || "") : "";
+  document.getElementById("t-payment-link").value = t ? (t.payment_link || "") : "https://pay.kaspi.kz/pay/ybsrtfje";
+  document.getElementById("t-description").value = t ? (t.description || "") : "";
+
+  selectedTemplatePhotoBase64 = t && t.image ? `data:image/jpeg;base64,${t.image}` : null;
+  renderPhotoZone("t-photo-zone", "t-photo", selectedTemplatePhotoBase64);
+
+  document.getElementById("template-submit-btn").textContent = t ? "Сохранить изменения" : "Создать шаблон";
+  showScreen("template-edit");
+}
+
+async function saveTemplate() {
+  document.getElementById("template-error-banner").innerHTML = "";
+  const name = document.getElementById("t-name").value.trim();
+  const field = document.getElementById("t-field").value.trim();
+  if (!name || !field) {
+    document.getElementById("template-error-banner").innerHTML = `<div class="error-banner">⚠️ Заполни минимум название и поле</div>`;
+    return;
+  }
+
+  const payload = {
+    user_id: userId,
+    name,
+    field,
+    address: document.getElementById("t-address").value.trim(),
+    default_time: document.getElementById("t-default-time").value.trim(),
+    price: document.getElementById("t-price").value.trim(),
+    max_players: document.getElementById("t-max-players").value.trim(),
+    duration: document.getElementById("t-duration").value.trim(),
+    description: document.getElementById("t-description").value.trim(),
+    payment_link: document.getElementById("t-payment-link").value.trim(),
+    image: selectedTemplatePhotoBase64,
+  };
+  const url = editingTemplateId ? "/api/admin/update-game-template" : "/api/admin/create-game-template";
+  if (editingTemplateId) payload.id = editingTemplateId;
+
+  const btn = document.getElementById("template-submit-btn");
+  btn.setAttribute("disabled", "true");
+  try {
+    const res = await fetch(url, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(r => r.json());
+
+    if (!res.ok) {
+      document.getElementById("template-error-banner").innerHTML = `<div class="error-banner">⚠️ ${res.error || "Не удалось сохранить шаблон"}</div>`;
+    } else {
+      const saved = document.getElementById("template-saved-msg");
+      saved.classList.add("show");
+      await loadTemplatesList();
+      setTimeout(() => { saved.classList.remove("show"); showScreen("templates-list"); }, 900);
+    }
+  } catch (e) {
+    document.getElementById("template-error-banner").innerHTML = `<div class="error-banner">⚠️ Ошибка сети</div>`;
+  }
+  btn.removeAttribute("disabled");
+}
+
+async function deleteTemplate(id) {
+  if (!confirm("Удалить шаблон? Это действие необратимо.")) return;
+  try {
+    const res = await fetch("/api/admin/delete-game-template", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, id })
+    }).then(r => r.json());
+    if (res.ok) loadTemplatesList();
+  } catch (e) {}
+}
+
+async function duplicateTemplate(id) {
+  const t = (window.__allTemplates || []).find(x => x.id === id);
+  if (!t) return;
+  try {
+    const res = await fetch("/api/admin/create-game-template", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: userId,
+        name: `${t.name} (копия)`,
+        field: t.field,
+        address: t.address,
+        default_time: t.default_time,
+        price: t.price,
+        max_players: t.max_players,
+        duration: t.duration,
+        description: t.description,
+        payment_link: t.payment_link,
+        image: t.image ? `data:image/jpeg;base64,${t.image}` : null,
+      })
+    }).then(r => r.json());
+    if (res.ok) loadTemplatesList();
+  } catch (e) {}
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
