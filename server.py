@@ -8,6 +8,7 @@ from config import PORT, PLAYER_CATEGORIES, ADMIN_IDS, CHAT_ID
 from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
     get_profile, set_nickname, set_jersey_number, get_role, set_role, get_games_played_count, get_leaderboard_most_games,
+    get_progression, settle_completed_games_xp,
     display_name_from_profile,
     create_game, get_all_games, get_active_games, get_history_games, get_game, cancel_game, delete_game,
     mark_game_completed,
@@ -732,12 +733,20 @@ class Handler(BaseHTTPRequestHandler):
             profile = get_profile(user_id)
             role = get_role(user_id)
             games_played = get_games_played_count(user_id) if user_id else 0
+            if user_id:
+                settle_completed_games_xp(user_id)  # начислить XP за игры, завершившиеся с прошлого визита
+            progression = get_progression(user_id)
             self._json({
                 "name": profile["name"] if profile else None,
                 "nickname": profile["nickname"] if profile else None,
                 "jersey_number": profile["jersey_number"] if profile else None,
                 "role": role,
                 "games_played": games_played,
+                "level": progression["level"],
+                "xp": progression["xp"],
+                "ovr": progression["ovr"],
+                "xp_for_next_level": progression["xp_for_next_level"],
+                "xp_progress_pct": progression["xp_progress_pct"],
             })
         elif path == "/api/player-profile":
             # Публичный профиль — доступен всем, без проверки владения.
@@ -752,13 +761,19 @@ class Handler(BaseHTTPRequestHandler):
                 recent_out = [{
                     "id": g["id"], "date": g["date"], "time": g["time"], "location": g["location"],
                 } for g in recent]
+                settle_completed_games_xp(target_id)  # начислить XP за игры, завершившиеся с прошлого визита
+                progression = get_progression(target_id)
                 self._json({
                     "user_id": target_id,
                     "name": display_name,
                     "role": role,
                     "games_played": get_games_played_count(target_id),
                     "recent_matches": recent_out,
-                    "ovr": 60,  # заглушка — общая система рейтинга ещё не реализована (см. Hero на Home)
+                    "level": progression["level"],
+                    "xp": progression["xp"],
+                    "ovr": progression["ovr"],
+                    "xp_for_next_level": progression["xp_for_next_level"],
+                    "xp_progress_pct": progression["xp_progress_pct"],
                     "mvp_implemented": False,
                     "achievements_implemented": False,
                 })
