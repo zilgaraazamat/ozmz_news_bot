@@ -7,7 +7,7 @@ from api import now_astana, tg_post, claude_vision
 from config import PORT, PLAYER_CATEGORIES, ADMIN_IDS, CHAT_ID
 from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
-    get_profile, set_nickname, get_role, set_role, get_games_played_count,
+    get_profile, set_nickname, get_role, set_role, get_games_played_count, get_leaderboard_most_games,
     create_game, get_all_games, get_active_games, get_history_games, get_game, cancel_game, delete_game,
     signup_for_game, get_signups, get_my_signup, get_my_signups, confirm_signup, cancel_signup, mark_payment_claimed,
     is_registered_for_game, add_chat_message, get_chat_messages,
@@ -574,6 +574,14 @@ class Handler(BaseHTTPRequestHandler):
                 "role": role,
                 "games_played": games_played,
             })
+        elif path == "/api/leaderboard":
+            lb_type = (q.get("type") or ["games"])[0]
+            if lb_type == "mvp":
+                # MVP пока не отслеживается в базе — отдаём пустой список,
+                # фронтенд покажет "скоро" вместо того чтобы выдумывать данные.
+                self._json({"leaderboard": [], "implemented": False})
+            else:
+                self._json({"leaderboard": get_leaderboard_most_games(5), "implemented": True})
         elif path == "/":
             self._admin_html()
         else:

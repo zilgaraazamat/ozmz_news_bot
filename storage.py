@@ -370,6 +370,48 @@ def get_games_played_count(user_id):
     return count
 
 
+def get_leaderboard_most_games(limit=5):
+    """Топ игроков по числу сыгранных игр (подтверждённая запись + дата уже в прошлом).
+    Считается по тому же принципу, что и get_games_played_count, но сразу для всех игроков."""
+    import re
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+    iso_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+    with _lock, _conn() as c:
+        rows = c.execute("""
+            SELECT s.user_id, g.game_date FROM game_signups s
+            JOIN games g ON g.id = s.game_id
+            WHERE s.status='confirmed' AND s.user_id IS NOT NULL AND s.user_id != ''
+        """).fetchall()
+
+    counts = {}
+    for user_id, d in rows:
+        d = (d or "").strip()
+        if iso_re.match(d) and d < today:
+            counts[user_id] = counts.get(user_id, 0) + 1
+
+    if not counts:
+        return []
+
+    with _lock, _conn() as c:
+        placeholders = ",".join("?" for _ in counts)
+        profile_rows = c.execute(
+            f"SELECT user_id, name, nickname FROM users WHERE user_id IN ({placeholders})",
+            list(counts.keys())
+        ).fetchall()
+    profiles = {r[0]: {"name": r[1], "nickname": r[2]} for r in profile_rows}
+
+    board = []
+    for user_id, count in counts.items():
+        p = profiles.get(user_id, {})
+        display = (p.get("nickname") or p.get("name") or "Игрок").strip()
+        board.append({"user_id": user_id, "name": display, "count": count})
+
+    board.sort(key=lambda x: -x["count"])
+    return board[:limit]
+
+
 def set_nickname(user_id, nickname):
     user_id = str(user_id)
     with _lock, _conn() as c:
