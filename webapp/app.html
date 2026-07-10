@@ -447,6 +447,7 @@ class NewsCarousel {
 
   _measure() {
     const vw = this.viewport.clientWidth;
+    if (vw === 0) return; // контейнер сейчас скрыт (другой экран открыт) — не портим слайды нулевой шириной
     this.gap = 14;
     this.slideW = this.count > 1 ? Math.round(vw * 0.86) : vw;
     Array.from(this.track.children).forEach(el => {
@@ -454,6 +455,22 @@ class NewsCarousel {
       el.style.marginRight = this.gap + "px";
     });
     this.step = this.slideW + this.gap;
+  }
+
+  // Вызывается снаружи, когда экран с каруселью снова становится видимым
+  // (например, при возврате с другой вкладки) — на случай, если размеры
+  // окна успели измениться, пока карусель была скрыта.
+  refresh() {
+    this._measure();
+    this._setTransform(false);
+    this._startAutoplay();
+  }
+
+  // Останавливает автопрокрутку, пока экран с каруселью не виден —
+  // чтобы она не листала слайды впустую в фоне.
+  pause() {
+    this._stopAutoplay();
+    clearTimeout(this.resumeTimer);
   }
 
   _setTransform(animate) {
@@ -719,6 +736,7 @@ function showMenu() {
   document.getElementById("screen-menu").classList.remove("hidden");
   setActiveTab("home");
   if (window.Telegram && Telegram.WebApp) Telegram.WebApp.BackButton.hide();
+  if (newsCarousel) newsCarousel.refresh();
 }
 
 function showProfile() {
@@ -729,6 +747,7 @@ function showProfile() {
     Telegram.WebApp.BackButton.show();
     Telegram.WebApp.BackButton.onClick(showMenu);
   }
+  if (newsCarousel) newsCarousel.pause();
   loadProfile();
 }
 
