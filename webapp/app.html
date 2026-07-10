@@ -185,10 +185,18 @@ input:focus{outline:none;border-color:#5E6AD2}
 .saved.show{opacity:1}
 .no-role{text-align:center;font-size:13px;color:#6B7280;padding:12px;background:rgba(255,255,255,.03);border-radius:10px;margin-bottom:18px}
 .error-banner{background:rgba(255,69,58,.12);border:1px solid rgba(255,69,58,.3);color:#FF6961;font-size:12px;padding:10px 12px;border-radius:10px;margin-bottom:16px;line-height:1.4}
-.nick-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
-.nick-display{flex:1;min-width:0;background:#23262D;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 14px;font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.nick-edit-btn{flex-shrink:0;width:42px;height:42px;border-radius:10px;background:#23262D;border:1px solid rgba(255,255,255,.08);color:#8B93F5;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.nick-edit-btn:active{background:rgba(94,106,210,.14)}
+.identity{display:flex;flex-direction:column;align-items:center;margin-bottom:4px;min-height:38px;justify-content:center}
+.name-display{display:flex;align-items:center;justify-content:center;gap:8px;max-width:100%}
+.name-display h1{margin-bottom:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.identity-edit-btn{flex-shrink:0;width:28px;height:28px;border-radius:8px;background:#23262D;border:1px solid rgba(255,255,255,.08);color:#8B93F5;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,background .15s}
+.identity-edit-btn:active{transform:scale(.9);background:rgba(94,106,210,.14)}
+.name-edit{display:flex;align-items:center;gap:6px;width:100%}
+.name-edit input{width:auto;flex:1;padding:9px 12px;margin-bottom:0;font-size:15px;text-align:center;font-weight:700}
+.identity-icon-btn{border:none;border-radius:9px;width:36px;height:36px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .15s}
+.identity-icon-btn:active{transform:scale(.9)}
+.identity-icon-btn.save{background:#5E6AD2;color:#fff}
+.identity-icon-btn.cancel{background:#23262D;color:#9BA1AC;border:1px solid rgba(255,255,255,.08)}
+.identity-icon-btn[disabled]{opacity:.5;pointer-events:none}
 .btn-outline{background:transparent;border:1px solid rgba(94,106,210,.4);color:#8B93F5}
 .cta-card{background:linear-gradient(135deg,rgba(94,106,210,.14),rgba(94,106,210,.04));border:1px solid rgba(94,106,210,.3);border-radius:14px;padding:16px;margin-bottom:18px;text-align:center;cursor:pointer;transition:transform .15s}
 .cta-card:active{transform:scale(.97)}
@@ -279,30 +287,23 @@ input:focus{outline:none;border-color:#5E6AD2}
   <div id="screen-profile" class="hidden">
     <div class="card">
       <div class="avatar">👤</div>
-      <h1 id="display-name">Профиль</h1>
+
+      <div class="identity">
+        <div class="name-display" id="name-display">
+          <h1 id="display-name">Профиль</h1>
+          <button class="identity-edit-btn" id="edit-btn" onclick="enterEditMode()" title="Редактировать ник">✏️</button>
+        </div>
+        <div class="name-edit hidden" id="name-edit">
+          <input id="nick-input" placeholder="Как тебя называть?" maxlength="24">
+          <button class="identity-icon-btn save" id="save-btn" onclick="saveNick()" title="Сохранить">✓</button>
+          <button class="identity-icon-btn cancel hidden" id="cancel-btn" onclick="cancelEdit()" title="Отмена">✕</button>
+        </div>
+      </div>
       <div class="sub" id="profile-sub">Ник виден другим в батлах и постах команды</div>
 
       <div id="error-banner"></div>
       <div id="role-block"></div>
       <div id="stats-block"></div>
-
-      <!-- режим просмотра -->
-      <div id="view-mode">
-        <label>Твой ник</label>
-        <div class="nick-row">
-          <div class="nick-display" id="nick-display">—</div>
-          <button class="nick-edit-btn" onclick="enterEditMode()" title="Редактировать ник">✏️</button>
-        </div>
-      </div>
-
-      <!-- режим редактирования -->
-      <div id="edit-mode" class="hidden">
-        <label for="nick-input">Твой ник</label>
-        <input id="nick-input" placeholder="Как тебя называть?" maxlength="24">
-        <div class="hint">До 24 символов. Виден в батлах и итогах теста.</div>
-        <button class="btn" id="save-btn" onclick="saveNick()">Сохранить</button>
-        <button class="btn btn-outline" id="cancel-btn" onclick="cancelEdit()">Отмена</button>
-      </div>
 
       <div class="saved" id="saved-msg">✅ Сохранено</div>
     </div>
@@ -777,19 +778,22 @@ function showError(msg) {
 }
 
 function showView() {
-  document.getElementById("view-mode").classList.remove("hidden");
-  document.getElementById("edit-mode").classList.add("hidden");
+  document.getElementById("name-display").classList.remove("hidden");
+  document.getElementById("name-edit").classList.add("hidden");
 }
 
 function showEdit() {
-  document.getElementById("view-mode").classList.add("hidden");
-  document.getElementById("edit-mode").classList.remove("hidden");
+  document.getElementById("name-display").classList.add("hidden");
+  document.getElementById("name-edit").classList.remove("hidden");
 }
 
 function enterEditMode() {
   document.getElementById("error-banner").innerHTML = "";
+  document.getElementById("nick-input").value = window.__currentNickname || "";
   showEdit();
-  document.getElementById("nick-input").focus();
+  const input = document.getElementById("nick-input");
+  input.focus();
+  input.select();
 }
 
 function cancelEdit() {
@@ -848,12 +852,10 @@ async function loadProfile() {
 
     if (r.nickname) {
       document.getElementById("display-name").textContent = r.nickname;
-      document.getElementById("nick-display").textContent = r.nickname;
       document.getElementById("cancel-btn").classList.remove("hidden");
       showView();
     } else {
       document.getElementById("display-name").textContent = r.name || "Профиль";
-      document.getElementById("nick-display").textContent = "Ещё не задан";
       document.getElementById("cancel-btn").classList.add("hidden");
       showEdit();
     }
@@ -867,8 +869,10 @@ async function saveNick() {
   if (!userId) { showError("Нет Telegram ID."); return; }
   if (!nickname) { showError("Введи ник перед сохранением."); return; }
 
-  const btn = document.getElementById("save-btn");
-  btn.setAttribute("disabled", "true");
+  const saveBtn = document.getElementById("save-btn");
+  const cancelBtn = document.getElementById("cancel-btn");
+  saveBtn.setAttribute("disabled", "true");
+  cancelBtn.setAttribute("disabled", "true");
   try {
     const res = await fetch("/api/profile", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -880,8 +884,8 @@ async function saveNick() {
     } else {
       document.getElementById("error-banner").innerHTML = "";
       document.getElementById("display-name").textContent = nickname;
-      document.getElementById("nick-display").textContent = nickname;
       window.__currentNickname = nickname;
+      document.getElementById("cancel-btn").classList.remove("hidden");
       showView();
       const saved = document.getElementById("saved-msg");
       saved.classList.add("show");
@@ -890,8 +894,14 @@ async function saveNick() {
   } catch (e) {
     showError("Не получилось сохранить — проверь соединение.");
   }
-  btn.removeAttribute("disabled");
+  saveBtn.removeAttribute("disabled");
+  cancelBtn.removeAttribute("disabled");
 }
+
+document.getElementById("nick-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") saveNick();
+  if (e.key === "Escape" && !document.getElementById("cancel-btn").classList.contains("hidden")) cancelEdit();
+});
 </script>
 </body>
 </html>
