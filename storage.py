@@ -1,6 +1,6 @@
 import sqlite3
 import threading
-from config import ROLE_DB_PATH
+from config import ROLE_DB_PATH, ASTANA_TZ
 
 _lock = threading.Lock()
 
@@ -346,49 +346,85 @@ def get_profile(user_id):
     return {"name": row[0], "nickname": row[1], "phone": row[2], "username": row[3]}
 
 
-def get_games_played_count(user_id):
-    """Считает игры, где статус записи — confirmed, а дата игры уже в прошлом.
-    Учитываются только игры с датой в формате ISO (YYYY-MM-DD) — так надёжно."""
-    import re
-    from datetime import datetime
-    user_id = str(user_id)
-    today = datetime.now().strftime("%Y-%m-%d")
-    iso_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+MATCH_DURATION_HOURS = 2  # стандартная продолжительность матча, если админ не отметил игру завершённой вручную
 
+
+def _match_end_datetime(game):
+    """Расчётное время окончания матча = дата+время начала + стандартная длительность.
+    None, если дату/время не удаётся разобрать — тогда матч не считается завершённым автоматически."""
+    import re
+    from datetime import datetime, timedelta
+    d = (game.get("date") or "").strip()
+    t = (game.get("time") or "").strip()
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", d):
+        return None
+    m = re.match(r"^(\d{1,2}):(\d{2})$", t)
+    hh, mm = (int(m.group(1)), int(m.group(2))) if m else (23, 59)  # время не указано — считаем на конец дня
+    try:
+        start = datetime.strptime(d, "%Y-%m-%d").replace(hour=hh, minute=mm)
+    except Exception:
+        return None
+    return start + timedelta(hours=MATCH_DURATION_HOURS)
+
+
+def is_match_completed(game):
+    """Матч считается завершённым, только если:
+    — админ явно отметил его завершённым (status='completed'), ИЛИ
+    — расчётное время окончания (начало + стандартная длительность) уже наступило.
+    Отменённые игры никогда не засчитываются. Игра НЕ считается завершённой сразу
+    после регистрации/подтверждения игрока — только когда матч реально прошёл."""
+    from datetime import datetime
+    if game.get("status") == "completed":
+        return True
+    if game.get("status") != "active":
+        return False
+    end_dt = _match_end_datetime(game)
+    if end_dt is None:
+        return False
+    now = datetime.now(ASTANA_TZ).replace(tzinfo=None)
+    return now >= end_dt
+
+
+def mark_game_completed(game_id):
+    """Админ вручную отмечает матч завершённым — сразу засчитывает игру всем
+    подтверждённым игрокам, не дожидаясь расчётного времени окончания."""
+    with _lock, _conn() as c:
+        c.execute("UPDATE games SET status='completed' WHERE id=?", (game_id,))
+
+
+def get_games_played_count(user_id):
+    """Считает матчи, которые реально завершились (см. is_match_completed) и в которых
+    у игрока была подтверждённая регистрация, не отменённая им до начала игры.
+    Один матч — максимум +1, даже если у игрока несколько записей на него (напр. основная + доп. игроки)."""
+    user_id = str(user_id)
     with _lock, _conn() as c:
         rows = c.execute("""
-            SELECT DISTINCT g.id, g.game_date FROM game_signups s
+            SELECT DISTINCT g.id, g.game_date, g.game_time, g.status FROM game_signups s
             JOIN games g ON g.id = s.game_id
             WHERE s.user_id=? AND s.status='confirmed'
         """, (user_id,)).fetchall()
 
     count = 0
-    for (_gid, d) in rows:
-        d = (d or "").strip()
-        if iso_re.match(d) and d < today:
+    for game_id, d, t, status in rows:
+        if is_match_completed({"date": d, "time": t, "status": status}):
             count += 1
     return count
 
 
 def get_leaderboard_most_games(limit=5):
-    """Топ игроков по числу сыгранных игр (подтверждённая запись + дата уже в прошлом).
-    Считается по тому же принципу, что и get_games_played_count, но сразу для всех игроков."""
-    import re
-    from datetime import datetime
-    today = datetime.now().strftime("%Y-%m-%d")
-    iso_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
+    """Топ игроков по числу реально завершённых матчей — тот же принцип, что и
+    get_games_played_count, сразу для всех игроков. Дедуплицирует по game_id, чтобы
+    несколько записей одного игрока на один и тот же матч не считались как несколько игр."""
     with _lock, _conn() as c:
         rows = c.execute("""
-            SELECT s.user_id, g.game_date FROM game_signups s
+            SELECT DISTINCT s.user_id, g.id, g.game_date, g.game_time, g.status FROM game_signups s
             JOIN games g ON g.id = s.game_id
             WHERE s.status='confirmed' AND s.user_id IS NOT NULL AND s.user_id != ''
         """).fetchall()
 
     counts = {}
-    for user_id, d in rows:
-        d = (d or "").strip()
-        if iso_re.match(d) and d < today:
+    for user_id, game_id, d, t, status in rows:
+        if is_match_completed({"date": d, "time": t, "status": status}):
             counts[user_id] = counts.get(user_id, 0) + 1
 
     if not counts:
@@ -410,6 +446,7 @@ def get_leaderboard_most_games(limit=5):
 
     board.sort(key=lambda x: -x["count"])
     return board[:limit]
+
 
 
 def set_nickname(user_id, nickname):
@@ -518,36 +555,23 @@ def get_active_games():
 
 
 def get_history_games(user_id):
-    """Прошедшие активные игры, в которых пользователь был зарегистрирован — для вкладки «История»."""
-    import re
-    from datetime import datetime
+    """Прошедшие игры, реально завершившиеся (см. is_match_completed), в которых
+    пользователь был зарегистрирован — для вкладки «История»."""
     user_id = str(user_id)
-    try:
-        now_key = datetime.now().strftime("%Y-%m-%d %H:%M")
-    except Exception:
-        now_key = ""
-
     with _lock, _conn() as c:
         rows = c.execute("SELECT DISTINCT game_id FROM game_signups WHERE user_id=?", (user_id,)).fetchall()
     my_game_ids = {r[0] for r in rows}
     if not my_game_ids:
         return []
 
-    games = [g for g in get_all_games() if g["id"] in my_game_ids and g["status"] == "active"]
-    iso_date_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+    games = [g for g in get_all_games() if g["id"] in my_game_ids and g["status"] in ("active", "completed")]
 
     def sort_key(g):
         d = (g["date"] or "0000-00-00").strip()
         t = (g["time"] or "00:00").strip()
         return f"{d} {t}"
 
-    def is_past(g):
-        d = (g["date"] or "").strip()
-        if not iso_date_re.match(d):
-            return False  # неизвестный формат даты — не считаем завершённой
-        return sort_key(g) < now_key
-
-    past = [g for g in games if is_past(g)]
+    past = [g for g in games if is_match_completed(g)]
     past.sort(key=sort_key, reverse=True)
     return past
 

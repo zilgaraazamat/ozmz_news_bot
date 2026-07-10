@@ -9,6 +9,7 @@ from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
     get_profile, set_nickname, get_role, set_role, get_games_played_count, get_leaderboard_most_games,
     create_game, get_all_games, get_active_games, get_history_games, get_game, cancel_game, delete_game,
+    mark_game_completed,
     signup_for_game, get_signups, get_my_signup, get_my_signups, confirm_signup, cancel_signup, mark_payment_claimed,
     is_registered_for_game, add_chat_message, get_chat_messages,
     get_username,
@@ -425,6 +426,25 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] cancel-game: {e}")
+                self.send_response(400); self.end_headers()
+
+        elif path == "/api/admin/complete-game":
+            try:
+                data = json.loads(body)
+                admin_id = str(data.get("user_id", ""))
+                if admin_id not in ADMIN_IDS:
+                    self._json({"ok": False, "error": "Нет прав администратора"})
+                    return
+                game_id = data.get("game_id")
+                game = get_game(game_id)
+                if not game:
+                    self._json({"ok": False, "error": "Игра не найдена"})
+                    return
+
+                mark_game_completed(game_id)
+                self._json({"ok": True})
+            except Exception as e:
+                print(f"  [WARN] complete-game: {e}")
                 self.send_response(400); self.end_headers()
 
         elif path == "/api/admin/delete-game":

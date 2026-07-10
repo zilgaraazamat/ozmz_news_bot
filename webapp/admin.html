@@ -63,6 +63,7 @@ textarea{resize:vertical;min-height:70px}
 .cancelled-badge{color:#ff8080;background:rgba(255,80,80,.12)}
 .game-actions-row{display:flex;gap:8px;margin-top:12px}
 .manage-cancel-btn{flex:1;padding:9px;border:1px solid rgba(255,160,80,.35);background:transparent;color:#ffa050;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}
+.manage-complete-btn{flex:1;padding:9px;border:1px solid rgba(48,209,88,.35);background:transparent;color:#30D158;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}
 .manage-delete-btn{flex:1;padding:9px;border:1px solid rgba(255,80,80,.35);background:transparent;color:#ff8080;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;margin-top:12px}
 .game-actions-row .manage-delete-btn{margin-top:0}
 .denied{text-align:center;padding:40px 10px}
@@ -342,6 +343,7 @@ function renderManageGames(active) {
     const gameActions = cancelled
       ? `<button class="manage-delete-btn" onclick="deleteGame(${g.id})">🗑 Удалить игру</button>`
       : `<div class="game-actions-row">
+           ${(past && g.status === "active") ? `<button class="manage-complete-btn" onclick="completeGame(${g.id})">✅ Завершить</button>` : ""}
            <button class="manage-cancel-btn" onclick="cancelGame(${g.id})">❌ Отменить игру</button>
            <button class="manage-delete-btn" onclick="deleteGame(${g.id})">🗑 Удалить</button>
          </div>`;
@@ -371,6 +373,18 @@ async function cancelGame(gameId) {
     }).then(r => r.json());
     if (res.ok) loadManageGames();
     else showError(res.error || "Не удалось отменить игру");
+  } catch (e) {}
+}
+
+async function completeGame(gameId) {
+  if (!confirm("Отметить игру завершённой? Подтверждённым игрокам сразу засчитается сыгранная игра.")) return;
+  try {
+    const res = await fetch("/api/admin/complete-game", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, game_id: gameId })
+    }).then(r => r.json());
+    if (res.ok) loadManageGames();
+    else showError(res.error || "Не удалось завершить игру");
   } catch (e) {}
 }
 
