@@ -747,13 +747,21 @@ def get_chat_messages(game_id, since_id=0):
 
 # ── Анонсы/новости от админа ──────────────────────────────────────────────────
 
-def create_announcement(title, text, created_by, image=None, category=None, event_date=None):
+def create_announcement(title, text, created_by, image=None, category=None, event_date=None, published=True):
+    status = "active" if published else "draft"
     with _lock, _conn() as c:
         cur = c.execute("""INSERT INTO announcements(title, text, image, category, event_date,
                                created_by, created_at, status)
-                           VALUES(?, ?, ?, ?, ?, ?, datetime('now'), 'active')""",
-                        (title, text, image, category or "Анонс", event_date, str(created_by)))
+                           VALUES(?, ?, ?, ?, ?, ?, datetime('now'), ?)""",
+                        (title, text, image, category or "Анонс", event_date, str(created_by), status))
         return cur.lastrowid
+
+
+def publish_announcement(announcement_id):
+    """Публикует черновик — переводит его в статус 'active', и он сразу становится
+    виден в приложении (см. get_active_announcements)."""
+    with _lock, _conn() as c:
+        c.execute("UPDATE announcements SET status='active' WHERE id=?", (announcement_id,))
 
 
 def get_active_announcements(limit=10):
