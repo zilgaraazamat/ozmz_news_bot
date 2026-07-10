@@ -114,14 +114,26 @@ function avatarLetter(name) {
   return ((name || "?").trim().charAt(0) || "?").toUpperCase();
 }
 
-const WEEKDAYS = ["вс","пн","вт","ср","чт","пт","сб"];
-const MONTHS = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+function localeCode() {
+  const tw = window.Telegram && Telegram.WebApp;
+  const tgLang = tw && tw.initDataUnsafe && tw.initDataUnsafe.user && tw.initDataUnsafe.user.language_code;
+  return tgLang || navigator.language || "ru";
+}
 
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+// Дата матча всегда показывается с днём недели, отформатированным под язык
+// пользователя — не только число, чтобы сразу было видно, на какой день игра.
 function formatMatchDate(dateStr) {
   if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr || "";
   const [y, m, d] = dateStr.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
-  return `${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
+  const loc = localeCode();
+  const weekday = capitalize(new Intl.DateTimeFormat(loc, { weekday: "short" }).format(dt));
+  const dayMonth = new Intl.DateTimeFormat(loc, { day: "numeric", month: "short" }).format(dt).replace(/\.$/, "");
+  return `${weekday}, ${dayMonth}`;
 }
 
 function renderProfile(p) {

@@ -184,8 +184,18 @@ function showError(msg) {
   document.getElementById("error-banner").innerHTML = `<div class="error-banner">⚠️ ${msg}</div>`;
 }
 
-const WEEKDAYS = ["вс","пн","вт","ср","чт","пт","сб"];
-const MONTHS = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+// Дата игры форматируется под язык пользователя (Telegram language_code,
+// иначе язык браузера) и везде включает день недели — не только число,
+// чтобы сразу было понятно, на какой день приходится игра.
+function localeCode() {
+  const tw = window.Telegram && Telegram.WebApp;
+  const tgLang = tw && tw.initDataUnsafe && tw.initDataUnsafe.user && tw.initDataUnsafe.user.language_code;
+  return tgLang || navigator.language || "ru";
+}
+
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
 
 function parseGameDate(g) {
   // ожидаем ISO "YYYY-MM-DD"; для старых игр с другим форматом — null (не участвуют в фильтрах)
@@ -197,19 +207,25 @@ function parseGameDate(g) {
 function formatDate(g) {
   const dt = parseGameDate(g);
   if (!dt) return g.date || "";
+  const loc = localeCode();
   const today = new Date(); today.setHours(0,0,0,0);
-  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
   const diffDays = Math.round((dt - today) / 86400000);
-  if (diffDays === 0) return `Сегодня, ${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
-  if (diffDays === 1) return `Завтра, ${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
-  return `${dt.getDate()} ${MONTHS[dt.getMonth()]}, ${WEEKDAYS[dt.getDay()]}`;
+  const dayMonth = new Intl.DateTimeFormat(loc, { day: "numeric", month: "long" }).format(dt).replace(/\.$/, "");
+  if (diffDays === 0) return `Сегодня, ${dayMonth}`;
+  if (diffDays === 1) return `Завтра, ${dayMonth}`;
+  const weekday = capitalize(new Intl.DateTimeFormat(loc, { weekday: "long" }).format(dt));
+  return `${weekday}, ${dayMonth}`;
 }
 
 function shortDate(g) {
   const dt = parseGameDate(g);
   if (!dt) return g.date || "дата?";
-  return `${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
+  const loc = localeCode();
+  const weekday = capitalize(new Intl.DateTimeFormat(loc, { weekday: "short" }).format(dt));
+  const dayMonth = new Intl.DateTimeFormat(loc, { day: "numeric", month: "short" }).format(dt).replace(/\.$/, "");
+  return `${weekday}, ${dayMonth}`;
 }
+
 
 function isUpcoming(g) {
   const dt = parseGameDate(g);
