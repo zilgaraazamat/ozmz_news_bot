@@ -92,33 +92,35 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 /* ── лента новостей: главный акцент экрана ── */
 .section-label{display:flex;align-items:center;gap:10px;font-family:'Oswald',-apple-system,sans-serif;font-size:14px;font-weight:600;color:#E5E6E8;margin:4px 0 16px;text-transform:uppercase;letter-spacing:1px}
 .section-label::after{content:'';flex:1;height:1px;background:repeating-linear-gradient(90deg,rgba(94,106,210,.35) 0,rgba(94,106,210,.35) 5px,transparent 5px,transparent 10px)}
-.news-list{display:flex;flex-direction:column;gap:18px}
+
+.news-carousel,.news-single{opacity:0;animation:reveal-up .4s ease forwards}
+.nc-viewport{overflow:hidden;position:relative}
+.nc-track{display:flex}
+.nc-track.animate{transition:transform .38s cubic-bezier(.22,.8,.25,1)}
+.nc-dots{display:flex;justify-content:center;gap:7px;margin-top:14px}
+.nc-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.16);cursor:pointer;transition:background .25s,width .25s}
+.nc-dot.active{background:#5E6AD2;width:18px;border-radius:3px}
+
 .news-item{
   position:relative;
+  flex-shrink:0;
   background:#181A1F;
   border:1px solid rgba(255,255,255,.06);
   border-radius:20px;
   overflow:hidden;
   cursor:pointer;
-  opacity:0;
-  transform:translateY(10px);
-  animation:news-in .4s ease forwards;
-  transition:transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .28s cubic-bezier(.2,.8,.2,1), border-color .28s;
+  user-select:none;
+  -webkit-user-select:none;
+  transition:transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s cubic-bezier(.2,.8,.2,1), border-color .2s;
   box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 14px 34px rgba(0,0,0,.38), 0 2px 8px rgba(0,0,0,.25);
 }
-@keyframes news-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.news-list .news-item:nth-child(1){animation-delay:.02s}
-.news-list .news-item:nth-child(2){animation-delay:.06s}
-.news-list .news-item:nth-child(3){animation-delay:.1s}
-.news-list .news-item:nth-child(4){animation-delay:.14s}
-.news-list .news-item:nth-child(5){animation-delay:.18s}
 @media (hover:hover){
   .news-item:hover{transform:translateY(-4px);box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 22px 44px rgba(0,0,0,.45), 0 4px 12px rgba(0,0,0,.3);border-color:rgba(94,106,210,.3)}
   .news-item:hover .ni-photo{transform:scale(1.04)}
 }
-.news-item:active{transform:scale(.975) translateY(0);box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 8px 18px rgba(0,0,0,.32)}
-.news-item .ni-photo-wrap{position:relative;width:100%;height:190px;overflow:hidden;background:#14161B}
-.news-item .ni-photo{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
+.news-item:active{transform:scale(.975);box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 8px 18px rgba(0,0,0,.32)}
+.news-item .ni-photo-wrap{position:relative;width:100%;height:190px;overflow:hidden;background:#14161B;pointer-events:none}
+.news-item .ni-photo{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease;-webkit-user-drag:none}
 .news-item .ni-photo-fade{position:absolute;left:0;right:0;bottom:0;height:56px;background:linear-gradient(180deg,rgba(24,26,31,0),#181A1F);pointer-events:none}
 .news-item .ni-badge-overlay{position:absolute;top:12px;left:12px;z-index:2}
 .news-item .ni-body{padding:16px 18px 20px}
@@ -379,36 +381,224 @@ function badgeClass(category) {
   return map[category] || "b-drugoe";
 }
 
+// ── NewsCarousel: переиспользуемый компонент карусели ──────────────────────
+// Ничего не знает о новостях — только про свайпы, автопрокрутку, точки и
+// бесконечный луп. Что рисовать внутри каждого слайда и что делать по тапу —
+// передаётся снаружи через renderSlide/onSlideClick. Можно переиспользовать
+// для любой другой карусели в приложении.
+class NewsCarousel {
+  constructor(rootEl, { count, renderSlide, onSlideClick, autoplayDelay = 5000, resumeDelay = 4000 }) {
+    this.root = rootEl;
+    this.count = count;
+    this.renderSlide = renderSlide;
+    this.onSlideClick = onSlideClick;
+    this.autoplayDelay = autoplayDelay;
+    this.resumeDelay = resumeDelay;
+
+    this.loop = count > 1;
+    this.trackIndex = 1; // 1 = первый реальный слайд (0 — клон последнего, если loop)
+    this.deltaX = 0;
+    this.dragging = false;
+    this.startX = 0;
+    this.moved = 0;
+    this.autoplayTimer = null;
+    this.resumeTimer = null;
+
+    this._build();
+    this._measure();
+    this._setTransform(false);
+    this._bindEvents();
+    if (this.loop) this._startAutoplay();
+  }
+
+  _build() {
+    this.root.innerHTML = `
+      <div class="nc-viewport">
+        <div class="nc-track"></div>
+      </div>
+      ${this.loop ? `<div class="nc-dots"></div>` : ""}`;
+    this.viewport = this.root.querySelector(".nc-viewport");
+    this.track = this.root.querySelector(".nc-track");
+
+    const order = this.loop
+      ? [this.count - 1, ...Array.from({ length: this.count }, (_, i) => i), 0]
+      : Array.from({ length: this.count }, (_, i) => i);
+
+    order.forEach(realIndex => {
+      const slide = document.createElement("div");
+      slide.className = "news-item";
+      slide.innerHTML = this.renderSlide(realIndex);
+      slide.addEventListener("click", () => {
+        if (this.moved > 8) return; // это был свайп, а не тап
+        this.onSlideClick && this.onSlideClick(realIndex);
+      });
+      this.track.appendChild(slide);
+    });
+
+    if (this.loop) {
+      this.dotsEl = this.root.querySelector(".nc-dots");
+      this.dotsEl.innerHTML = Array.from({ length: this.count },
+        (_, i) => `<span class="nc-dot${i === 0 ? " active" : ""}"></span>`).join("");
+      Array.from(this.dotsEl.children).forEach((dot, i) => {
+        dot.addEventListener("click", () => this.goTo(i));
+      });
+    }
+  }
+
+  _measure() {
+    const vw = this.viewport.clientWidth;
+    this.gap = 14;
+    this.slideW = this.count > 1 ? Math.round(vw * 0.86) : vw;
+    Array.from(this.track.children).forEach(el => {
+      el.style.width = this.slideW + "px";
+      el.style.marginRight = this.gap + "px";
+    });
+    this.step = this.slideW + this.gap;
+  }
+
+  _setTransform(animate) {
+    this.track.classList.toggle("animate", animate);
+    const offset = -(this.trackIndex * this.step) + this.deltaX;
+    this.track.style.transform = `translateX(${offset}px)`;
+  }
+
+  _updateDots() {
+    if (!this.loop) return;
+    const active = ((this.trackIndex - 1) + this.count) % this.count;
+    Array.from(this.dotsEl.children).forEach((d, i) => d.classList.toggle("active", i === active));
+  }
+
+  _bindEvents() {
+    this.track.addEventListener("touchstart", e => this._onStart(e.touches[0].clientX), { passive: true });
+    this.track.addEventListener("touchmove", e => this._onMove(e, e.touches[0].clientX), { passive: false });
+    this.track.addEventListener("touchend", () => this._onEnd());
+    this.track.addEventListener("transitionend", () => this._onTransitionEnd());
+    this._onResize = () => { this._measure(); this._setTransform(false); };
+    window.addEventListener("resize", this._onResize);
+  }
+
+  _onStart(x) {
+    if (!this.loop) return;
+    this.dragging = true;
+    this.startX = x;
+    this.deltaX = 0;
+    this.moved = 0;
+    this._stopAutoplay();
+  }
+
+  _onMove(e, x) {
+    if (!this.dragging) return;
+    this.deltaX = x - this.startX;
+    this.moved = Math.abs(this.deltaX);
+    if (this.moved > 5) e.preventDefault();
+    this._setTransform(false);
+  }
+
+  _onEnd() {
+    if (!this.dragging) return;
+    this.dragging = false;
+    const threshold = this.slideW * 0.16;
+    if (this.deltaX < -threshold) this.trackIndex++;
+    else if (this.deltaX > threshold) this.trackIndex--;
+    this.deltaX = 0;
+    this._setTransform(true);
+    this._updateDots();
+    this._pauseThenResume();
+  }
+
+  _onTransitionEnd() {
+    if (!this.loop) return;
+    if (this.trackIndex === 0) {
+      this.trackIndex = this.count;
+      this._setTransform(false);
+    } else if (this.trackIndex === this.count + 1) {
+      this.trackIndex = 1;
+      this._setTransform(false);
+    }
+  }
+
+  next(userInitiated) {
+    this.trackIndex++;
+    this._setTransform(true);
+    this._updateDots();
+    if (userInitiated) this._pauseThenResume();
+  }
+
+  goTo(realIndex) {
+    this.trackIndex = realIndex + 1;
+    this._setTransform(true);
+    this._updateDots();
+    this._pauseThenResume();
+  }
+
+  _startAutoplay() {
+    this._stopAutoplay();
+    if (!this.loop) return;
+    this.autoplayTimer = setInterval(() => this.next(false), this.autoplayDelay);
+  }
+
+  _stopAutoplay() {
+    if (this.autoplayTimer) clearInterval(this.autoplayTimer);
+    this.autoplayTimer = null;
+  }
+
+  _pauseThenResume() {
+    this._stopAutoplay();
+    clearTimeout(this.resumeTimer);
+    this.resumeTimer = setTimeout(() => this._startAutoplay(), this.resumeDelay);
+  }
+
+  destroy() {
+    this._stopAutoplay();
+    clearTimeout(this.resumeTimer);
+    window.removeEventListener("resize", this._onResize);
+  }
+}
+
 let newsCache = [];
+let newsCarousel = null;
+
+function newsSlideHtml(a) {
+  return `
+    ${a.image ? `
+    <div class="ni-photo-wrap">
+      <img class="ni-photo" src="data:image/jpeg;base64,${a.image}">
+      <div class="ni-photo-fade"></div>
+      <span class="ni-badge ${badgeClass(a.category)} ni-badge-overlay">${a.category || "Другое"}</span>
+    </div>` : ""}
+    <div class="ni-body">
+      ${!a.image ? `<span class="ni-badge ${badgeClass(a.category)}">${a.category || "Другое"}</span>` : ""}
+      <div class="ni-title">${a.title}</div>
+      <div class="ni-text">${a.text}</div>
+      <div class="ni-date">🗓 ${formatNewsDate(a.created_at, a.event_date)}</div>
+    </div>`;
+}
 
 async function loadNews() {
   try {
     const r = await fetch("/api/announcements").then(r => r.json());
     newsCache = r.announcements || [];
     const feed = document.getElementById("news-feed");
+
+    if (newsCarousel) { newsCarousel.destroy(); newsCarousel = null; }
+
     if (newsCache.length === 0) {
       feed.innerHTML = `
         <div class="section-label">📰 Новости</div>
         <div class="news-empty">Пока новостей нет — загляни позже ⚽</div>`;
       return;
     }
+
+    const wrapClass = newsCache.length > 1 ? "news-carousel" : "news-single";
     feed.innerHTML = `
       <div class="section-label">📰 Новости</div>
-      <div class="news-list">${newsCache.map((a, i) => `
-        <div class="news-item" onclick="openNewsModal(${i})">
-          ${a.image ? `
-          <div class="ni-photo-wrap">
-            <img class="ni-photo" src="data:image/jpeg;base64,${a.image}">
-            <div class="ni-photo-fade"></div>
-            <span class="ni-badge ${badgeClass(a.category)} ni-badge-overlay">${a.category || "Другое"}</span>
-          </div>` : ""}
-          <div class="ni-body">
-            ${!a.image ? `<span class="ni-badge ${badgeClass(a.category)}">${a.category || "Другое"}</span>` : ""}
-            <div class="ni-title">${a.title}</div>
-            <div class="ni-text">${a.text}</div>
-            <div class="ni-date">🗓 ${formatNewsDate(a.created_at, a.event_date)}</div>
-          </div>
-        </div>`).join("")}</div>`;
+      <div class="${wrapClass}" id="news-carousel-root"></div>`;
+
+    newsCarousel = new NewsCarousel(document.getElementById("news-carousel-root"), {
+      count: newsCache.length,
+      renderSlide: i => newsSlideHtml(newsCache[i]),
+      onSlideClick: i => openNewsModal(i),
+    });
   } catch (e) {}
 }
 // ── Hero: рейтинг игрока (OVR) ──────────────────────────────────────────────
