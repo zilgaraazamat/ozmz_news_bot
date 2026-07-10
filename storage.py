@@ -346,6 +346,30 @@ def get_profile(user_id):
     return {"name": row[0], "nickname": row[1], "phone": row[2], "username": row[3]}
 
 
+def display_name_from_profile(profile):
+    """Единая логика отображаемого имени — везде в приложении. Приоритет:
+    личный ник, заданный в приложении → юзернейм из Telegram (@...) → имя из
+    Telegram (first_name) → «Игрок». Всё в итоге опирается на реальные данные
+    Telegram — «name» берётся из Telegram при первом заходе, «username» —
+    актуальный @ник, который обновляется на каждом сообщении боту."""
+    if not profile:
+        return "Игрок"
+    nickname = (profile.get("nickname") or "").strip()
+    if nickname:
+        return nickname
+    username = (profile.get("username") or "").strip()
+    if username:
+        return f"@{username}"
+    name = (profile.get("name") or "").strip()
+    if name:
+        return name
+    return "Игрок"
+
+
+def get_display_name(user_id):
+    return display_name_from_profile(get_profile(user_id))
+
+
 MATCH_DURATION_HOURS = 2  # стандартная продолжительность матча, если админ не отметил игру завершённой вручную
 
 
@@ -433,15 +457,14 @@ def get_leaderboard_most_games(limit=5):
     with _lock, _conn() as c:
         placeholders = ",".join("?" for _ in counts)
         profile_rows = c.execute(
-            f"SELECT user_id, name, nickname FROM users WHERE user_id IN ({placeholders})",
+            f"SELECT user_id, name, nickname, username FROM users WHERE user_id IN ({placeholders})",
             list(counts.keys())
         ).fetchall()
-    profiles = {r[0]: {"name": r[1], "nickname": r[2]} for r in profile_rows}
+    profiles = {r[0]: {"name": r[1], "nickname": r[2], "username": r[3]} for r in profile_rows}
 
     board = []
     for user_id, count in counts.items():
-        p = profiles.get(user_id, {})
-        display = (p.get("nickname") or p.get("name") or "Игрок").strip()
+        display = display_name_from_profile(profiles.get(user_id))
         board.append({"user_id": user_id, "name": display, "count": count})
 
     board.sort(key=lambda x: -x["count"])

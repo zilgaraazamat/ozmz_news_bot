@@ -8,6 +8,7 @@ from config import PORT, PLAYER_CATEGORIES, ADMIN_IDS, CHAT_ID
 from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
     get_profile, set_nickname, get_role, set_role, get_games_played_count, get_leaderboard_most_games,
+    display_name_from_profile,
     create_game, get_all_games, get_active_games, get_history_games, get_game, cancel_game, delete_game,
     mark_game_completed,
     signup_for_game, get_signups, get_my_signup, get_my_signups, confirm_signup, cancel_signup, mark_payment_claimed,
@@ -234,8 +235,7 @@ class Handler(BaseHTTPRequestHandler):
 
                 profile = get_profile(user_id)
                 role = get_role(user_id)
-                name = (profile["nickname"] if profile and profile.get("nickname")
-                        else (profile["name"] if profile else None)) or "Игрок"
+                name = display_name_from_profile(profile)
                 player = role["player"] if role else None
 
                 signup_for_game(game_id, user_id, name, player, guests_count, None, is_addition)
@@ -365,8 +365,7 @@ class Handler(BaseHTTPRequestHandler):
                     return
 
                 profile = get_profile(user_id)
-                name = (profile["nickname"] if profile and profile.get("nickname")
-                        else (profile["name"] if profile else None)) or "Игрок"
+                name = display_name_from_profile(profile)
 
                 add_chat_message(game_id, user_id, name, text)
                 self._json({"ok": True})
@@ -607,7 +606,7 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 profile = get_profile(target_id)
                 role = get_role(target_id)
-                display_name = ((profile.get("nickname") or profile.get("name")) if profile else None) or "Игрок"
+                display_name = display_name_from_profile(profile)
                 recent = get_history_games(target_id)[:5]
                 recent_out = [{
                     "id": g["id"], "date": g["date"], "time": g["time"], "location": g["location"],
@@ -689,10 +688,10 @@ class Handler(BaseHTTPRequestHandler):
             predict_block = f"""
 <div class="section">
   <h2>🎯 Конкурс прогнозов — {m['home']} vs {m['away']} ({m['time']})</h2>
-  <p style="color:#6b7c6e;margin:8px 0">Участников: <b style="color:#7ed957">{ps['total_predictions']}</b></p>
+  <p style="color:#9BA1AC;margin:8px 0">Участников: <b style="color:#8B93F5">{ps['total_predictions']}</b></p>
   <div style="display:flex;gap:8px;margin-top:12px">
-    <input id="score-input" placeholder="2:1" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(126,217,87,.3);background:#0e1a12;color:#f5f5f0;font-size:14px">
-    <button onclick="announceResult()" style="padding:8px 16px;background:#7ed957;color:#0e1a12;border:none;border-radius:8px;font-weight:700;cursor:pointer">Объявить итог</button>
+    <input id="score-input" placeholder="2:1" style="padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#23262D;color:#F5F6F7;font-size:14px">
+    <button onclick="announceResult()" style="padding:8px 16px;background:#5E6AD2;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">Объявить итог</button>
   </div>
 </div>
 <script>
@@ -705,22 +704,21 @@ function announceResult(){{
 </script>"""
 
         rows = "".join(
-            f"<tr><td>{i}</td><td>{h['name']}</td>"
+            f"<tr><td>{i}</td><td>{display_name_from_profile(get_profile(h['user_id'])) if h.get('user_id') else (h['name'] or 'Игрок')}</td>"
             f"<td><span class='badge'>{h['player']}</span></td>"
             f"<td>{h['date']}</td></tr>"
             for i, h in enumerate(reversed(quiz_history), 1)
         ) or '<tr><td colspan="4" class="empty">Тестов ещё не было 🎮</td></tr>'
 
         users_rows = "".join(
-            f"<tr><td>{i}</td><td>{u['name'] or '—'}</td>"
-            f"<td>{('<span class=\"badge\">' + u['nickname'] + '</span>') if u.get('nickname') else '—'}</td>"
+            f"<tr><td>{i}</td><td>{display_name_from_profile(u)}</td>"
             f"<td>{('@' + u['username']) if u.get('username') else '—'}</td>"
             f"<td>{mask_phone(u['phone'])}</td><td>{u['joined_at']}</td></tr>"
             for i, u in enumerate(users, 1)
-        ) or '<tr><td colspan="6" class="empty">Пока никто не заходил 👀</td></tr>'
+        ) or '<tr><td colspan="5" class="empty">Пока никто не заходил 👀</td></tr>'
 
         roles_rows = "".join(
-            f"<tr><td>{i}</td><td>{r['name']}</td>"
+            f"<tr><td>{i}</td><td>{display_name_from_profile(get_profile(r['user_id'])) if r.get('user_id') else (r['name'] or 'Игрок')}</td>"
             f"<td><span class='badge'>{r['player']}</span></td>"
             f"<td>{r['category']}</td></tr>"
             for i, r in enumerate(roles, 1)
@@ -734,29 +732,29 @@ function announceResult(){{
 <title>⚽ Панель Админа — OZMZ</title>
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
-body{{font-family:-apple-system,sans-serif;background:#0e1a12;color:#f5f5f0;min-height:100vh;padding:24px}}
+body{{font-family:-apple-system,sans-serif;background:#0B0D10;color:#F5F6F7;min-height:100vh;padding:24px}}
 .header{{display:flex;align-items:center;gap:12px;margin-bottom:28px}}
 .header h1{{font-size:22px;font-weight:700}}
 .stats{{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}}
-.stat{{background:#1e3024;border:1px solid rgba(126,217,87,.15);border-radius:12px;padding:16px}}
-.stat-num{{font-size:30px;font-weight:700;color:#7ed957}}
-.stat-label{{font-size:13px;color:#6b7c6e;margin-top:4px}}
-.section{{background:#1e3024;border:1px solid rgba(126,217,87,.15);border-radius:12px;padding:16px;margin-bottom:16px}}
-.section h2{{font-size:15px;color:#7ed957;margin-bottom:4px}}
-.table-wrap{{background:#1e3024;border:1px solid rgba(126,217,87,.15);border-radius:12px;overflow:hidden}}
+.stat{{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:16px}}
+.stat-num{{font-size:30px;font-weight:700;color:#8B93F5}}
+.stat-label{{font-size:13px;color:#9BA1AC;margin-top:4px}}
+.section{{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:16px;margin-bottom:16px}}
+.section h2{{font-size:15px;color:#8B93F5;margin-bottom:4px}}
+.table-wrap{{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:16px;overflow:hidden}}
 table{{width:100%;border-collapse:collapse}}
-th{{background:rgba(126,217,87,.1);padding:10px 14px;text-align:left;font-size:11px;color:#7ed957;letter-spacing:1px;text-transform:uppercase}}
-td{{padding:10px 14px;border-top:1px solid rgba(255,255,255,.05);font-size:13px}}
+th{{background:rgba(94,106,210,.1);padding:10px 14px;text-align:left;font-size:11px;color:#8B93F5;letter-spacing:1px;text-transform:uppercase}}
+td{{padding:10px 14px;border-top:1px solid rgba(255,255,255,.05);font-size:13px;color:#D7D9DC}}
 tr:hover td{{background:rgba(255,255,255,.03)}}
-.badge{{background:rgba(126,217,87,.15);color:#7ed957;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:600}}
-.empty{{text-align:center;padding:40px;color:#6b7c6e}}
+.badge{{background:rgba(94,106,210,.15);color:#8B93F5;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:600}}
+.empty{{text-align:center;padding:40px;color:#6B7280}}
 .refresh{{margin-top:14px;text-align:center}}
-.refresh a{{color:#7ed957;text-decoration:none;font-size:13px}}
+.refresh a{{color:#8B93F5;text-decoration:none;font-size:13px}}
 </style>
 </head>
 <body>
 <div class="header">
-  <img src="/logo.jpg" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #7ed957">
+  <img src="/logo.jpg" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #5E6AD2">
   <h1>Панель Админа — OZMZ Football</h1>
 </div>
 <div class="stats">
@@ -770,7 +768,7 @@ tr:hover td{{background:rgba(255,255,255,.03)}}
 <div class="section"><h2>📱 Пользователи (номера скрыты, кроме последних 4 цифр)</h2></div>
 <div class="table-wrap" style="margin-bottom:16px">
   <table>
-    <thead><tr><th>#</th><th>Имя</th><th>Ник</th><th>Username</th><th>Телефон</th><th>Дата регистрации</th></tr></thead>
+    <thead><tr><th>#</th><th>Игрок</th><th>Username</th><th>Телефон</th><th>Дата регистрации</th></tr></thead>
     <tbody>{users_rows}</tbody>
   </table>
 </div>
@@ -778,7 +776,7 @@ tr:hover td{{background:rgba(255,255,255,.03)}}
 <div class="section"><h2>🏆 Роли игроков (для /teams)</h2></div>
 <div class="table-wrap" style="margin-bottom:16px">
   <table>
-    <thead><tr><th>#</th><th>Имя</th><th>Футболист</th><th>Категория</th></tr></thead>
+    <thead><tr><th>#</th><th>Игрок</th><th>Футболист</th><th>Категория</th></tr></thead>
     <tbody>{roles_rows}</tbody>
   </table>
 </div>
