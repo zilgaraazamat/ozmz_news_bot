@@ -15,7 +15,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .head p{font-size:13px;color:#6B7280;margin-top:4px}
 .hidden{display:none!important}
 .empty{text-align:center;color:#6B7280;font-size:14px;padding:40px 10px}
-.game-card{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:12px;margin-bottom:12px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 10px 26px rgba(0,0,0,.35)}
+.game-card{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:12px;margin-bottom:12px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 10px 26px rgba(0,0,0,.35);opacity:0;transform:translateY(8px);animation:gc-in .32s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes gc-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 .gc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
 .gc-info{flex:1;min-width:0;padding-top:1px}
@@ -80,9 +81,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .guests-input-inline:focus{outline:none;border-color:#5E6AD2}
 .btn-switch-inline{flex:1;padding:9px;border:1px solid rgba(94,106,210,.4);background:transparent;color:#8B93F5;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 .teams-body{margin-top:8px}
-.filters{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
-.filter-chip{flex-shrink:0;padding:8px 14px;border-radius:20px;background:#181A1F;border:1px solid rgba(255,255,255,.08);color:#9BA1AC;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
-.filter-chip.active{background:rgba(94,106,210,.15);border-color:#5E6AD2;color:#8B93F5}
+.filters{position:sticky;top:0;z-index:20;display:flex;gap:8px;margin:0 0 16px;padding:14px 0 10px;overflow-x:auto;background:#0B0D10}
+.filter-chip{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:20px;background:#181A1F;border:1px solid rgba(255,255,255,.08);color:#9BA1AC;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s,border-color .2s,transform .12s}
+.filter-chip:active{transform:scale(.95)}
+.filter-chip.active{background:#5E6AD2;border-color:#5E6AD2;color:#fff;box-shadow:0 4px 14px rgba(94,106,210,.35)}
 
 /* ── нижняя навигация: тот же компонент, что и на главной ── */
 .bottom-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(11,13,16,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid rgba(255,255,255,.07);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
@@ -203,28 +205,50 @@ function shortDate(g) {
   return `${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
 }
 
-let currentFilter = "all";
+function isUpcoming(g) {
+  const dt = parseGameDate(g);
+  if (!dt) return true; // старый формат даты — не теряем игру, считаем предстоящей
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return dt >= today;
+}
+
+function isRegistered(g) {
+  return (g.my_signups || []).length > 0;
+}
+
+function hasOpenSpots(g) {
+  if (!g.num_players) return true; // лимит не задан — считаем открытой
+  return totalPeople(g.signups, "confirmed") < g.num_players;
+}
+
+// Каждая категория — просто предикат над игрой. Чтобы добавить новую вкладку,
+// достаточно дописать сюда ещё один объект — вся остальная логика подхватит её сама.
+const FILTERS = [
+  { id: "available", label: "🏟 Доступные",
+    match: g => isUpcoming(g) && !isRegistered(g) && hasOpenSpots(g),
+    empty: "Свободных игр пока нет ⚽<br>Загляни позже!" },
+  { id: "mine", label: "⚽ Мои игры",
+    match: g => isUpcoming(g) && isRegistered(g),
+    empty: "Ты пока не записан ни на одну игру.<br>Загляни во «Доступные» 🏟" },
+  { id: "history", label: "✅ История",
+    match: g => !isUpcoming(g) && isRegistered(g),
+    empty: "Пока нет сыгранных игр — они появятся здесь после матча." },
+];
+
+let currentFilter = "available";
 
 function matchesFilter(g) {
-  if (currentFilter === "all") return true;
-  const dt = parseGameDate(g);
-  if (!dt) return currentFilter === "all";
-  const today = new Date(); today.setHours(0,0,0,0);
-  const diffDays = Math.round((dt - today) / 86400000);
-  if (currentFilter === "today") return diffDays === 0;
-  if (currentFilter === "tomorrow") return diffDays === 1;
-  if (currentFilter === "week") return diffDays >= 0 && diffDays <= 7;
-  return true;
+  const f = FILTERS.find(f => f.id === currentFilter) || FILTERS[0];
+  return f.match(g);
+}
+
+function currentEmptyMessage() {
+  const f = FILTERS.find(f => f.id === currentFilter) || FILTERS[0];
+  return f.empty;
 }
 
 function renderFilters() {
-  const filters = [
-    { id: "all", label: "Все ближайшие" },
-    { id: "today", label: "Сегодня" },
-    { id: "tomorrow", label: "Завтра" },
-    { id: "week", label: "На неделе" },
-  ];
-  document.getElementById("filters").innerHTML = filters.map(f => `
+  document.getElementById("filters").innerHTML = FILTERS.map(f => `
     <div class="filter-chip ${currentFilter === f.id ? "active" : ""}" onclick="setFilter('${f.id}')">${f.label}</div>
   `).join("");
 }
@@ -344,14 +368,15 @@ function gameSecondaryWidget(g, mySignups) {
     </div>`;
 }
 
-function gameCardWidget(g) {
+function gameCardWidget(g, index) {
   const confirmedCount = totalPeople(g.signups, "confirmed");
   const totalCount = totalPeople(g.signups, null);
   const mySignups = g.my_signups || [];
   const myEntriesHtml = mySignups.map(s => myEntryActionsHtml(g.id, s, g.payment_link)).join("");
+  const delay = Math.min(index || 0, 8) * 0.045;
 
   return `
-    <div class="game-card">
+    <div class="game-card" style="animation-delay:${delay}s">
       ${gameTopWidget(g)}
       ${gamePriceWidget(g)}
       ${gameOccupancyWidget(g, confirmedCount, totalCount)}
@@ -422,11 +447,11 @@ function renderGames(games) {
   const filtered = (games || []).filter(matchesFilter);
 
   if (filtered.length === 0) {
-    el.innerHTML = `<div class="empty">Игр пока нет ⚽<br>Загляни позже или смени фильтр!</div>`;
+    el.innerHTML = `<div class="empty">${currentEmptyMessage()}</div>`;
     return;
   }
 
-  el.innerHTML = filtered.map(gameCardWidget).join("");
+  el.innerHTML = filtered.map((g, i) => gameCardWidget(g, i)).join("");
 }
 
 let addFormExpanded = {};

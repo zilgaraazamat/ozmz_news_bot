@@ -8,7 +8,7 @@ from config import PORT, PLAYER_CATEGORIES, ADMIN_IDS, CHAT_ID
 from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
     get_profile, set_nickname, get_role, set_role, get_games_played_count,
-    create_game, get_all_games, get_active_games, get_game, cancel_game, delete_game,
+    create_game, get_all_games, get_active_games, get_history_games, get_game, cancel_game, delete_game,
     signup_for_game, get_signups, get_my_signup, get_my_signups, confirm_signup, cancel_signup, mark_payment_claimed,
     is_registered_for_game, add_chat_message, get_chat_messages,
     get_username,
@@ -520,6 +520,8 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/games":
             user_id = (q.get("user_id") or [""])[0]
             games = get_active_games()
+            if user_id:
+                games = games + get_history_games(user_id)
             for g in games:
                 g["signups"] = get_signups(g["id"])
                 g["my_status"] = get_my_signup(g["id"], user_id) if user_id else None

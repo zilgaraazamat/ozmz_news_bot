@@ -475,6 +475,41 @@ def get_active_games():
     return upcoming
 
 
+def get_history_games(user_id):
+    """Прошедшие активные игры, в которых пользователь был зарегистрирован — для вкладки «История»."""
+    import re
+    from datetime import datetime
+    user_id = str(user_id)
+    try:
+        now_key = datetime.now().strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        now_key = ""
+
+    with _lock, _conn() as c:
+        rows = c.execute("SELECT DISTINCT game_id FROM game_signups WHERE user_id=?", (user_id,)).fetchall()
+    my_game_ids = {r[0] for r in rows}
+    if not my_game_ids:
+        return []
+
+    games = [g for g in get_all_games() if g["id"] in my_game_ids and g["status"] == "active"]
+    iso_date_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+    def sort_key(g):
+        d = (g["date"] or "0000-00-00").strip()
+        t = (g["time"] or "00:00").strip()
+        return f"{d} {t}"
+
+    def is_past(g):
+        d = (g["date"] or "").strip()
+        if not iso_date_re.match(d):
+            return False  # неизвестный формат даты — не считаем завершённой
+        return sort_key(g) < now_key
+
+    past = [g for g in games if is_past(g)]
+    past.sort(key=sort_key, reverse=True)
+    return past
+
+
 def get_game(game_id):
     with _lock, _conn() as c:
         row = c.execute("""SELECT id, game_date, game_time, location, num_players, num_teams,
