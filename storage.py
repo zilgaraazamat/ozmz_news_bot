@@ -89,6 +89,35 @@ def init_db():
         except sqlite3.OperationalError:
             pass
 
+        c.execute("""CREATE TABLE IF NOT EXISTS game_templates(
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            name         TEXT,
+            field        TEXT,
+            address      TEXT,
+            default_time TEXT,
+            price        TEXT,
+            max_players  INTEGER,
+            duration     INTEGER,
+            description  TEXT,
+            payment_link TEXT,
+            image        TEXT,
+            created_by   TEXT,
+            created_at   TEXT,
+            updated_at   TEXT
+        )""")
+        # Примеры шаблонов при самом первом запуске — чтобы раздел не выглядел
+        # пустым и админ сразу видел, как это работает. Только если шаблонов
+        # ещё вообще не было (не подставляем повторно, если админ их удалил).
+        if c.execute("SELECT COUNT(*) FROM game_templates").fetchone()[0] == 0:
+            c.executemany("""INSERT INTO game_templates(
+                    name, field, address, default_time, price, max_players, duration,
+                    description, payment_link, image, created_by, created_at, updated_at
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))""", [
+                ("Monday Football 21:00",    None, None, "21:00", None, None, None, None, None, None, "system"),
+                ("Wednesday Football 20:00", None, None, "20:00", None, None, None, None, None, None, "system"),
+                ("Friday Football 22:00",    None, None, "22:00", None, None, None, None, None, None, "system"),
+            ])
+
         c.execute("""CREATE TABLE IF NOT EXISTS game_signups(
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             game_id         INTEGER,
@@ -624,6 +653,60 @@ def get_game(game_id):
     keys = ["id", "date", "time", "location", "num_players", "num_teams",
             "players_per_team", "price", "extra_info", "payment_link", "image", "created_by", "created_at", "status"]
     return dict(zip(keys, row))
+
+
+# ── Шаблоны игр ──────────────────────────────────────────────────────────────
+# Сохраняют повторяющиеся настройки игры (поле, адрес, цена, состав, оплата,
+# описание, фото), чтобы админ не вводил их заново каждый раз — при создании
+# игры выбирается шаблон, и остаётся проверить только дату/время.
+
+_TEMPLATE_KEYS = ["id", "name", "field", "address", "default_time", "price", "max_players",
+                  "duration", "description", "payment_link", "image", "created_by", "created_at", "updated_at"]
+_TEMPLATE_SELECT = """SELECT id, name, field, address, default_time, price, max_players,
+                              duration, description, payment_link, image, created_by, created_at, updated_at
+                       FROM game_templates"""
+
+
+def create_game_template(name, field, address, default_time, price, max_players,
+                          duration, description, payment_link, image, created_by):
+    with _lock, _conn() as c:
+        cur = c.execute("""INSERT INTO game_templates(
+                name, field, address, default_time, price, max_players, duration,
+                description, payment_link, image, created_by, created_at, updated_at
+            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))""",
+            (name, field, address, default_time, price, max_players, duration,
+             description, payment_link, image, str(created_by)))
+        return cur.lastrowid
+
+
+def get_game_templates():
+    with _lock, _conn() as c:
+        rows = c.execute(f"{_TEMPLATE_SELECT} ORDER BY id DESC").fetchall()
+    return [dict(zip(_TEMPLATE_KEYS, r)) for r in rows]
+
+
+def get_game_template(template_id):
+    with _lock, _conn() as c:
+        row = c.execute(f"{_TEMPLATE_SELECT} WHERE id=?", (template_id,)).fetchone()
+    if not row:
+        return None
+    return dict(zip(_TEMPLATE_KEYS, row))
+
+
+def update_game_template(template_id, name, field, address, default_time, price,
+                          max_players, duration, description, payment_link, image):
+    with _lock, _conn() as c:
+        c.execute("""UPDATE game_templates SET
+                name=?, field=?, address=?, default_time=?, price=?, max_players=?, duration=?,
+                description=?, payment_link=?, image=?, updated_at=datetime('now')
+            WHERE id=?""",
+            (name, field, address, default_time, price, max_players, duration,
+             description, payment_link, image, template_id))
+
+
+def delete_game_template(template_id):
+    with _lock, _conn() as c:
+        c.execute("DELETE FROM game_templates WHERE id=?", (template_id,))
 
 
 # ── Записи на игры ────────────────────────────────────────────────────────────
