@@ -60,6 +60,10 @@ def init_db():
             c.execute("ALTER TABLE users ADD COLUMN username TEXT")
         except sqlite3.OperationalError:
             pass
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN jersey_number INTEGER")
+        except sqlite3.OperationalError:
+            pass
 
         c.execute("""CREATE TABLE IF NOT EXISTS games(
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -339,11 +343,11 @@ def get_profile(user_id):
     user_id = str(user_id)
     with _lock, _conn() as c:
         row = c.execute(
-            "SELECT name, nickname, phone, username FROM users WHERE user_id=?", (user_id,)
+            "SELECT name, nickname, phone, username, jersey_number FROM users WHERE user_id=?", (user_id,)
         ).fetchone()
     if not row:
         return None
-    return {"name": row[0], "nickname": row[1], "phone": row[2], "username": row[3]}
+    return {"name": row[0], "nickname": row[1], "phone": row[2], "username": row[3], "jersey_number": row[4]}
 
 
 def display_name_from_profile(profile):
@@ -479,6 +483,16 @@ def set_nickname(user_id, nickname):
                      VALUES(?, ?, datetime('now'))
                      ON CONFLICT(user_id) DO UPDATE SET nickname=excluded.nickname""",
                   (user_id, nickname))
+
+
+def set_jersey_number(user_id, jersey_number):
+    """Номер на футболке — от 0 до 99, не обязан быть уникальным среди игроков."""
+    user_id = str(user_id)
+    with _lock, _conn() as c:
+        c.execute("""INSERT INTO users(user_id, jersey_number, joined_at)
+                     VALUES(?, ?, datetime('now'))
+                     ON CONFLICT(user_id) DO UPDATE SET jersey_number=excluded.jersey_number""",
+                  (user_id, jersey_number))
 
 
 def save_username(user_id, username):

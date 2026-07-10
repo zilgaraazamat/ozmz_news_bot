@@ -203,6 +203,42 @@ input:focus{outline:none;border-color:#5E6AD2}
 .cta-card .ic{font-size:28px;margin-bottom:8px}
 .cta-card .title{font-size:14px;font-weight:800;margin-bottom:4px}
 .cta-card .sub2{font-size:12px;color:#9BA1AC}
+
+/* ===== Моя футболка — секция локера ===== */
+.locker-section{margin-top:6px}
+.locker-label{display:flex;align-items:center;gap:8px;font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:600;color:#9BA1AC;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px}
+.locker-label::before{content:"";width:16px;height:2px;background:#5E6AD2;border-radius:2px}
+.locker-panel{position:relative;border-radius:18px;padding:26px 16px 18px;overflow:hidden;background:
+    radial-gradient(ellipse at 50% 0%, rgba(94,106,210,.16) 0%, rgba(94,106,210,0) 55%),
+    linear-gradient(180deg,#101116 0%,#0A0B0E 60%,#08090B 100%);
+  border:1px solid rgba(255,255,255,.06);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04), inset 0 0 40px rgba(0,0,0,.6), 0 18px 40px rgba(0,0,0,.5);
+}
+.locker-panel::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0px,rgba(255,255,255,.018) 1px,transparent 1px,transparent 34px);
+}
+.locker-vents{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:1}
+.locker-vents span{width:22px;height:3px;border-radius:2px;background:rgba(255,255,255,.07)}
+.locker-bar{position:absolute;top:34px;left:50%;transform:translateX(-50%);width:112px;height:4px;border-radius:3px;
+  background:linear-gradient(90deg,#3a3d46,#6b6f7c 50%,#3a3d46);box-shadow:0 2px 6px rgba(0,0,0,.6);z-index:2}
+.jersey-wrap{position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;z-index:2;padding-top:10px}
+.jersey-glow{position:absolute;top:20px;left:50%;transform:translateX(-50%);width:220px;height:220px;
+  background:radial-gradient(circle,rgba(94,106,210,.30) 0%,rgba(94,106,210,0) 68%);pointer-events:none;z-index:0}
+.jersey-hook{width:2px;height:22px;background:linear-gradient(180deg,#6b6f7c,#3a3d46);margin-bottom:-2px;z-index:2}
+.jersey-svg{width:180px;height:216px;filter:drop-shadow(0 18px 22px rgba(0,0,0,.65));position:relative;z-index:2;transition:transform .15s}
+.jersey-wrap:active .jersey-svg{transform:scale(.97)}
+.jersey-nick-text{font-family:'Oswald',-apple-system,sans-serif;font-weight:700;letter-spacing:3px}
+.jersey-number-text{font-family:'Oswald',-apple-system,sans-serif;font-weight:700}
+.jersey-shadow{width:120px;height:16px;margin-top:2px;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 72%);z-index:1}
+.jersey-edit-fab{position:absolute;bottom:30px;right:2px;width:34px;height:34px;border-radius:50%;
+  background:#5E6AD2;border:2px solid #101116;color:#fff;font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(94,106,210,.45);z-index:3}
+.jersey-edit-fab:active{transform:scale(.9)}
+.jersey-hint{text-align:center;font-size:11px;color:#565A61;margin-top:14px}
+.jersey-edit-panel{display:flex;align-items:center;gap:8px;margin-top:14px;position:relative;z-index:2}
+.jersey-edit-panel input{width:auto;flex:1;padding:12px 14px;margin-bottom:0;font-size:16px;font-weight:700;text-align:center;
+  background:#0E0F13;border-color:rgba(255,255,255,.1)}
 </style>
 </head>
 <body>
@@ -306,6 +342,46 @@ input:focus{outline:none;border-color:#5E6AD2}
       <div id="stats-block"></div>
 
       <div class="saved" id="saved-msg">✅ Сохранено</div>
+
+      <div class="locker-section">
+        <div class="locker-label">Моя футболка</div>
+        <div class="locker-panel">
+          <div class="locker-vents"><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="locker-bar"></div>
+
+          <div class="jersey-wrap" id="jersey-wrap" onclick="enterJerseyEdit()">
+            <div class="jersey-glow"></div>
+            <div class="jersey-hook"></div>
+            <svg class="jersey-svg" viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="jerseyFill" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#7982E0"/>
+                  <stop offset="45%" stop-color="#5E6AD2"/>
+                  <stop offset="100%" stop-color="#3F4AA8"/>
+                </linearGradient>
+              </defs>
+              <path d="M72,8 L48,14 L14,34 L4,64 L34,78 L34,222 Q34,230 42,230 L158,230 Q166,230 166,222 L166,78 L196,64 L186,34 L152,14 L128,8 L100,32 Z"
+                fill="url(#jerseyFill)" stroke="rgba(0,0,0,.35)" stroke-width="1.5"/>
+              <path d="M72,8 L100,32 L128,8" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="3" stroke-linecap="round"/>
+              <rect x="8" y="58" width="26" height="9" rx="2" fill="rgba(255,255,255,.18)" transform="rotate(-18 21 62)"/>
+              <rect x="166" y="58" width="26" height="9" rx="2" fill="rgba(255,255,255,.18)" transform="rotate(18 179 62)"/>
+              <polygon points="34,78 34,230 44,230 44,90" fill="rgba(255,255,255,.06)"/>
+              <text id="jersey-nick-svg" class="jersey-nick-text" x="100" y="66" text-anchor="middle" fill="#F5F6F7" font-size="22" stroke="rgba(0,0,0,.35)" stroke-width="1" paint-order="stroke">AZA</text>
+              <text id="jersey-number-svg" class="jersey-number-text" x="100" y="170" text-anchor="middle" fill="#F5F6F7" font-size="76" stroke="rgba(0,0,0,.35)" stroke-width="2" paint-order="stroke">10</text>
+            </svg>
+            <button class="jersey-edit-fab" id="jersey-edit-btn" onclick="event.stopPropagation(); enterJerseyEdit()" title="Изменить номер">✏️</button>
+          </div>
+          <div class="jersey-shadow"></div>
+          <div class="jersey-hint" id="jersey-hint">Нажми на футболку, чтобы выбрать номер</div>
+
+          <div class="jersey-edit-panel hidden" id="jersey-edit-panel">
+            <input type="number" id="jersey-input" min="0" max="99" maxlength="2" placeholder="0–99" inputmode="numeric">
+            <button class="identity-icon-btn save" id="jersey-save-btn" onclick="saveJerseyNumber()" title="Сохранить">✓</button>
+            <button class="identity-icon-btn cancel" id="jersey-cancel-btn" onclick="cancelJerseyEdit()" title="Отмена">✕</button>
+          </div>
+          <div class="saved" id="jersey-saved-msg">✅ Сохранено</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -813,9 +889,11 @@ async function loadProfile() {
   try {
     const r = await fetch(`/api/profile?user_id=${userId}`).then(r => r.json());
     window.__currentNickname = r.nickname || "";
+    window.__currentJerseyNumber = (r.jersey_number === null || r.jersey_number === undefined) ? null : r.jersey_number;
 
     document.getElementById("nick-input").value = r.nickname || "";
     document.getElementById("nick-input").placeholder = r.name ? `Например, ${r.name}` : "Как тебя называть?";
+    renderJersey(r.nickname || r.name, window.__currentJerseyNumber);
 
     const roleBlock = document.getElementById("role-block");
     if (r.role) {
@@ -886,6 +964,7 @@ async function saveNick() {
       document.getElementById("display-name").textContent = nickname;
       window.__currentNickname = nickname;
       document.getElementById("cancel-btn").classList.remove("hidden");
+      renderJersey(nickname, window.__currentJerseyNumber);
       showView();
       const saved = document.getElementById("saved-msg");
       saved.classList.add("show");
@@ -901,6 +980,83 @@ async function saveNick() {
 document.getElementById("nick-input").addEventListener("keydown", (e) => {
   if (e.key === "Enter") saveNick();
   if (e.key === "Escape" && !document.getElementById("cancel-btn").classList.contains("hidden")) cancelEdit();
+});
+
+// ===== Моя футболка =====
+
+function fitJerseyNickFontSize(text) {
+  const len = text.length;
+  if (len <= 5) return 24;
+  if (len <= 8) return 19;
+  if (len <= 11) return 15;
+  if (len <= 14) return 12;
+  return 10;
+}
+
+function renderJersey(nickname, number) {
+  const displayNick = ((nickname || "OZMZ") + "").toUpperCase().slice(0, 24);
+  const nickEl = document.getElementById("jersey-nick-svg");
+  nickEl.textContent = displayNick;
+  nickEl.setAttribute("font-size", fitJerseyNickFontSize(displayNick));
+  document.getElementById("jersey-number-svg").textContent =
+    (number === null || number === undefined || number === "") ? "–" : String(number);
+}
+
+function enterJerseyEdit() {
+  document.getElementById("error-banner").innerHTML = "";
+  const input = document.getElementById("jersey-input");
+  input.value = (window.__currentJerseyNumber === null || window.__currentJerseyNumber === undefined)
+    ? "" : window.__currentJerseyNumber;
+  document.getElementById("jersey-hint").classList.add("hidden");
+  document.getElementById("jersey-edit-panel").classList.remove("hidden");
+  input.focus();
+  input.select();
+}
+
+function cancelJerseyEdit() {
+  document.getElementById("error-banner").innerHTML = "";
+  document.getElementById("jersey-edit-panel").classList.add("hidden");
+  document.getElementById("jersey-hint").classList.remove("hidden");
+}
+
+async function saveJerseyNumber() {
+  const raw = document.getElementById("jersey-input").value.trim();
+  if (!userId) { showError("Нет Telegram ID."); return; }
+  if (raw === "") { showError("Введи номер от 0 до 99."); return; }
+  const num = parseInt(raw, 10);
+  if (isNaN(num) || num < 0 || num > 99) { showError("Номер должен быть от 0 до 99."); return; }
+
+  const saveBtn = document.getElementById("jersey-save-btn");
+  const cancelBtn = document.getElementById("jersey-cancel-btn");
+  saveBtn.setAttribute("disabled", "true");
+  cancelBtn.setAttribute("disabled", "true");
+  try {
+    const res = await fetch("/api/profile", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, jersey_number: num })
+    }).then(r => r.json());
+
+    if (!res.ok) {
+      showError("Не удалось сохранить номер: " + (res.error || "неизвестная ошибка"));
+    } else {
+      document.getElementById("error-banner").innerHTML = "";
+      window.__currentJerseyNumber = num;
+      renderJersey(window.__currentNickname, num);
+      cancelJerseyEdit();
+      const saved = document.getElementById("jersey-saved-msg");
+      saved.classList.add("show");
+      setTimeout(() => saved.classList.remove("show"), 1800);
+    }
+  } catch (e) {
+    showError("Не получилось сохранить — проверь соединение.");
+  }
+  saveBtn.removeAttribute("disabled");
+  cancelBtn.removeAttribute("disabled");
+}
+
+document.getElementById("jersey-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") saveJerseyNumber();
+  if (e.key === "Escape") cancelJerseyEdit();
 });
 </script>
 </body>

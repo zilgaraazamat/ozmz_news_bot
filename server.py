@@ -7,7 +7,7 @@ from api import now_astana, tg_post, claude_vision
 from config import PORT, PLAYER_CATEGORIES, ADMIN_IDS, CHAT_ID
 from storage import (
     get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
-    get_profile, set_nickname, get_role, set_role, get_games_played_count, get_leaderboard_most_games,
+    get_profile, set_nickname, set_jersey_number, get_role, set_role, get_games_played_count, get_leaderboard_most_games,
     display_name_from_profile,
     create_game, get_all_games, get_active_games, get_history_games, get_game, cancel_game, delete_game,
     mark_game_completed,
@@ -140,12 +140,28 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 data     = json.loads(body)
                 user_id  = str(data.get("user_id", ""))
-                nickname = (data.get("nickname") or "").strip()[:24]
-                if not user_id or not nickname:
+                has_nickname = "nickname" in data
+                has_jersey   = "jersey_number" in data
+                if not user_id or not (has_nickname or has_jersey):
                     self._json({"ok": False, "error": "bad_request"})
-                else:
+                    return
+                if has_nickname:
+                    nickname = (data.get("nickname") or "").strip()[:24]
+                    if not nickname:
+                        self._json({"ok": False, "error": "bad_request"})
+                        return
                     set_nickname(user_id, nickname)
-                    self._json({"ok": True})
+                if has_jersey:
+                    try:
+                        jersey_number = int(data.get("jersey_number"))
+                    except (TypeError, ValueError):
+                        self._json({"ok": False, "error": "invalid_number"})
+                        return
+                    if jersey_number < 0 or jersey_number > 99:
+                        self._json({"ok": False, "error": "invalid_number"})
+                        return
+                    set_jersey_number(user_id, jersey_number)
+                self._json({"ok": True})
             except Exception as e:
                 print(f"  [WARN] profile: {e}")
                 self.send_response(400); self.end_headers()
@@ -625,6 +641,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json({
                 "name": profile["name"] if profile else None,
                 "nickname": profile["nickname"] if profile else None,
+                "jersey_number": profile["jersey_number"] if profile else None,
                 "role": role,
                 "games_played": games_played,
             })
