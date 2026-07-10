@@ -60,6 +60,13 @@ function getUidFromQuery() {
 if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
+  // Отключаем свайп-вниз для закрытия/сворачивания приложения — он часто
+  // срабатывает случайно при обычном скролле контента. Скролл и
+  // pull-to-refresh внутри приложения при этом продолжают работать как
+  // обычно; закрыть можно только кнопкой «Закрыть» в шапке Telegram.
+  if (typeof Telegram.WebApp.disableVerticalSwipes === "function") {
+    Telegram.WebApp.disableVerticalSwipes();
+  }
   Telegram.WebApp.BackButton.show();
   Telegram.WebApp.BackButton.onClick(() => {
     const uid = userId || getUidFromQuery();
