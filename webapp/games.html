@@ -63,16 +63,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .team-title{font-size:12px;font-weight:800;color:#8B93F5;margin-bottom:4px}
 .team-player{font-size:12px;padding:2px 0;color:#9BA1AC}
 .teams-title{font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px}
-.entry-block{background:#1D2027;border-radius:10px;margin-top:8px;overflow:hidden}
-.entry-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;cursor:pointer}
-.entry-summary:active{background:rgba(255,255,255,.03)}
-.entry-label{font-size:12px;font-weight:600;color:#F5F6F7;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.entry-chevron{font-size:9px;color:#6B7280;flex-shrink:0}
-.entry-actions{display:flex;gap:6px;padding:0 8px 8px}
-.icon-btn{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;text-decoration:none;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#F5F6F7;flex-shrink:0}
-.icon-btn-pay{border-color:rgba(94,106,210,.4);background:rgba(94,106,210,.14);color:#8B93F5}
-.icon-btn-confirm{border-color:rgba(94,106,210,.4);color:#8B93F5}
-.icon-btn-danger{border-color:rgba(255,69,58,.35);color:#FF6961}
+.entry-block{background:#1D2027;border-radius:12px;margin-top:8px;padding:10px;overflow:hidden}
+.entry-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.entry-label{font-size:13px;font-weight:700;color:#F5F6F7;flex:1;min-width:0}
+.status-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap;flex-shrink:0}
+.status-pill.pending{background:rgba(229,169,60,.14);color:#E5A93C}
+.status-pill.confirmed{background:rgba(48,209,88,.14);color:#30D158}
+.status-pill.cancelled{background:rgba(255,69,58,.14);color:#FF6961}
+.entry-actions-col{display:flex;flex-direction:column;gap:8px}
+.text-btn{display:block;width:100%;box-sizing:border-box;padding:13px;border-radius:12px;font-weight:700;font-size:14px;text-align:center;cursor:pointer;text-decoration:none;transition:transform .15s,background .15s}
+.text-btn:active{transform:scale(.97)}
+.text-btn-primary{border:none;background:#5E6AD2;color:#fff;box-shadow:0 4px 14px rgba(94,106,210,.3)}
+.text-btn-primary:active{background:#525DC4}
+.text-btn-secondary{border:1px solid rgba(94,106,210,.4);background:rgba(94,106,210,.12);color:#8B93F5}
+.text-btn-danger{border:1px solid rgba(255,69,58,.35);background:rgba(255,69,58,.08);color:#FF6961}
 .secondary-row{display:flex;gap:8px;margin-top:8px}
 .secondary-btn{flex:1;height:36px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 8px;border:1px solid rgba(255,255,255,.08);background:#1D2027;color:#D7D9DC;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 .add-toggle-btn{width:100%;height:40px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px solid rgba(94,106,210,.4);background:rgba(94,106,210,.1);color:#8B93F5;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer}
@@ -214,8 +218,12 @@ function isUpcoming(g) {
   return dt >= today;
 }
 
-function isRegistered(g) {
+function hasAnySignup(g) {
   return (g.my_signups || []).length > 0;
+}
+
+function hasConfirmedSignup(g) {
+  return (g.my_signups || []).some(s => s.status === "confirmed");
 }
 
 function hasOpenSpots(g) {
@@ -225,15 +233,23 @@ function hasOpenSpots(g) {
 
 // Каждая категория — просто предикат над игрой. Чтобы добавить новую вкладку,
 // достаточно дописать сюда ещё один объект — вся остальная логика подхватит её сама.
+//
+// Игра попадает в «Мои игры» только после того, как организатор подтвердил
+// оплату (status === "confirmed"). Пока подтверждения нет — игра в «Ожидает
+// оплаты», а не в «Мои игры», чтобы не создавать ложное ощущение, что место
+// уже забронировано.
 const FILTERS = [
   { id: "available", label: "🏟 Доступные",
-    match: g => isUpcoming(g) && !isRegistered(g) && hasOpenSpots(g),
+    match: g => isUpcoming(g) && !hasAnySignup(g) && hasOpenSpots(g),
     empty: "Свободных игр пока нет ⚽<br>Загляни позже!" },
-  { id: "mine", label: "⚽ Мои игры",
-    match: g => isUpcoming(g) && isRegistered(g),
-    empty: "Ты пока не записан ни на одну игру.<br>Загляни во «Доступные» 🏟" },
+  { id: "awaiting", label: "🟡 Ожидает оплаты",
+    match: g => isUpcoming(g) && hasAnySignup(g) && !hasConfirmedSignup(g),
+    empty: "Нет игр, ожидающих оплаты.<br>Запишись во «Доступные» 🏟" },
+  { id: "mine", label: "🟢 Мои игры",
+    match: g => isUpcoming(g) && hasConfirmedSignup(g),
+    empty: "Пока нет подтверждённых игр.<br>Оплати запись — и игра появится здесь." },
   { id: "history", label: "✅ История",
-    match: g => !isUpcoming(g) && isRegistered(g),
+    match: g => !isUpcoming(g) && hasAnySignup(g),
     empty: "Пока нет сыгранных игр — они появятся здесь после матча." },
 ];
 
@@ -412,44 +428,45 @@ function totalPeople(signups, statusFilter) {
     .reduce((sum, s) => sum + entryPeopleCount(s), 0);
 }
 
-let entryExpanded = {};
-
-function toggleEntry(gameId, entryId) {
-  const key = `${gameId}_${entryId}`;
-  entryExpanded[key] = !entryExpanded[key];
-  renderGames(window.__lastGames || []);
+function myEntryStatusPill(s) {
+  if (s.status === "confirmed") {
+    return `<span class="status-pill confirmed">🟢 Подтверждено</span>`;
+  }
+  if (s.payment_claimed) {
+    return `<span class="status-pill pending">🟡 Проверяем оплату</span>`;
+  }
+  return `<span class="status-pill pending">🟡 Ожидает оплаты</span>`;
 }
 
 function myEntryActionsHtml(gameId, s, paymentLink) {
   const count = entryPeopleCount(s);
-  const label = s.is_addition ? `Доп. игроки` : `Основная`;
-  const key = `${gameId}_${s.id}`;
-  const expanded = !!entryExpanded[key];
+  const label = s.is_addition ? "Доп. игроки" : "Моя запись";
 
-  let icon = "⏳", sub = "", actionsHtml;
-
+  let actionsHtml;
   if (s.status === "confirmed") {
-    icon = "✅";
-    actionsHtml = `<button class="icon-btn icon-btn-danger" onclick="cancelEntry(${gameId}, ${s.id}, true)" title="Отказаться">✖</button>`;
+    // Уже подтверждено организатором — оплата больше не нужна, доступна только отмена.
+    actionsHtml = `<button class="text-btn text-btn-danger" onclick="cancelEntry(${gameId}, ${s.id}, true)">Отменить регистрацию</button>`;
   } else if (s.payment_claimed) {
-    icon = "💰";
-    sub = " · ждём подтверждения";
-    actionsHtml = `<button class="icon-btn icon-btn-danger" onclick="cancelEntry(${gameId}, ${s.id}, true)" title="Отменить">✖</button>`;
+    // Игрок уже нажал «Я оплатил(а)» — ждём, пока организатор подтвердит.
+    actionsHtml = `<button class="text-btn text-btn-danger" onclick="cancelEntry(${gameId}, ${s.id}, true)">Отменить регистрацию</button>`;
   } else {
-    const payIcon = paymentLink
-      ? `<a class="icon-btn icon-btn-pay" href="${paymentLink}" target="_blank" title="Оплатить">💳</a>
-         <button class="icon-btn icon-btn-confirm" onclick="claimPayment(${gameId}, ${s.id})" title="Я оплатил(а)">✅</button>`
+    const payBtn = paymentLink
+      ? `<a class="text-btn text-btn-primary" href="${paymentLink}" target="_blank">Оплатить</a>`
       : "";
-    actionsHtml = `${payIcon}<button class="icon-btn icon-btn-danger" onclick="cancelEntry(${gameId}, ${s.id}, false)" title="Отменить">✖</button>`;
+    const confirmLabel = paymentLink ? "Я оплатил(а)" : "Подтвердить оплату";
+    actionsHtml = `
+      ${payBtn}
+      <button class="text-btn text-btn-secondary" onclick="claimPayment(${gameId}, ${s.id})">${confirmLabel}</button>
+      <button class="text-btn text-btn-danger" onclick="cancelEntry(${gameId}, ${s.id}, false)">Отменить регистрацию</button>`;
   }
 
   return `
     <div class="entry-block">
-      <div class="entry-summary" onclick="toggleEntry(${gameId}, ${s.id})">
-        <span class="entry-label">${icon} ${label} • ${count} чел.${sub}</span>
-        <span class="entry-chevron">${expanded ? "▲" : "▼"}</span>
+      <div class="entry-row">
+        <span class="entry-label">${label} • ${count} чел.</span>
+        ${myEntryStatusPill(s)}
       </div>
-      <div class="entry-actions ${expanded ? "" : "hidden"}">${actionsHtml}</div>
+      <div class="entry-actions-col">${actionsHtml}</div>
     </div>`;
 }
 
