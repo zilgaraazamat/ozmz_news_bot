@@ -52,7 +52,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .lb-tab.active{background:#5E6AD2;color:#fff}
 .lb-view-all{font-family:'Oswald',-apple-system,sans-serif;font-size:12px;font-weight:600;letter-spacing:.2px;color:#8B93F5;cursor:pointer;white-space:nowrap;padding:6px 2px;flex-shrink:0}
 .lb-list{display:flex;flex-direction:column;min-height:64px}
-.lb-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);opacity:0;transform:translateY(6px);animation:lb-row-in .3s ease forwards}
+.lb-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);opacity:0;transform:translateY(6px);animation:lb-row-in .3s ease forwards;cursor:pointer;transition:opacity .15s}
+.lb-row:active{opacity:.6}
 .lb-row:last-child{border-bottom:none}
 @keyframes lb-row-in{to{opacity:1;transform:translateY(0)}}
 .lb-rank{width:16px;flex-shrink:0;font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:#6B7280;text-align:center}
@@ -336,6 +337,14 @@ function go(path) {
   location.href = path + (userId ? ("?uid=" + userId) : "");
 }
 
+function openPlayer(targetUserId) {
+  if (!targetUserId) return;
+  const params = new URLSearchParams();
+  params.set("uid", targetUserId);
+  if (userId) params.set("me", userId);
+  location.href = "/player?" + params.toString();
+}
+
 // Награды и Статистика ещё не реализованы — лёгкая заглушка вместо 404
 function comingSoon() {
   const el = document.createElement("div");
@@ -448,7 +457,7 @@ function renderLeaderboardList() {
 
   const unit = currentLbTab === "mvp" ? "MVP" : "игр";
   list.innerHTML = data.leaderboard.slice(0, 5).map((p, i) => `
-    <div class="lb-row" style="animation-delay:${i * 0.05}s">
+    <div class="lb-row" style="animation-delay:${i * 0.05}s" onclick="openPlayer('${p.user_id}')">
       <div class="lb-rank ${i === 0 ? "top" : ""}">${i + 1}</div>
       <div class="lb-avatar">${avatarLetter(p.name)}</div>
       <div class="lb-name">${p.name}</div>

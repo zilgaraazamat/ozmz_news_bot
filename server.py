@@ -529,6 +529,8 @@ class Handler(BaseHTTPRequestHandler):
             self._file("webapp/games.html", "text/html; charset=utf-8")
         elif path == "/scanner":
             self._file("webapp/scanner.html", "text/html; charset=utf-8")
+        elif path == "/player":
+            self._file("webapp/player.html", "text/html; charset=utf-8")
         elif path == "/api/is-admin":
             user_id = (q.get("user_id") or [""])[0]
             self._json({"is_admin": user_id in ADMIN_IDS})
@@ -597,6 +599,29 @@ class Handler(BaseHTTPRequestHandler):
                 "role": role,
                 "games_played": games_played,
             })
+        elif path == "/api/player-profile":
+            # Публичный профиль — доступен всем, без проверки владения.
+            target_id = (q.get("user_id") or [""])[0]
+            if not target_id:
+                self._json({"error": "user_id required"})
+            else:
+                profile = get_profile(target_id)
+                role = get_role(target_id)
+                display_name = ((profile.get("nickname") or profile.get("name")) if profile else None) or "Игрок"
+                recent = get_history_games(target_id)[:5]
+                recent_out = [{
+                    "id": g["id"], "date": g["date"], "time": g["time"], "location": g["location"],
+                } for g in recent]
+                self._json({
+                    "user_id": target_id,
+                    "name": display_name,
+                    "role": role,
+                    "games_played": get_games_played_count(target_id),
+                    "recent_matches": recent_out,
+                    "ovr": 60,  # заглушка — общая система рейтинга ещё не реализована (см. Hero на Home)
+                    "mvp_implemented": False,
+                    "achievements_implemented": False,
+                })
         elif path == "/api/leaderboard":
             lb_type = (q.get("type") or ["games"])[0]
             if lb_type == "mvp":
