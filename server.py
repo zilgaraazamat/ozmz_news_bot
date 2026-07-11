@@ -40,6 +40,7 @@ POST_ROUTES = {
     "/api/admin/move-team-member":      "route_post_admin_move_team_member",
     "/api/admin/cancel-game":           "route_post_admin_cancel_game",
     "/api/admin/complete-game":         "route_post_admin_complete_game",
+    "/api/admin/complete-match":        "route_post_admin_complete_match",
     "/api/admin/delete-game":           "route_post_admin_delete_game",
     "/api/admin/create-announcement":   "route_post_admin_create_announcement",
     "/api/admin/publish-announcement":  "route_post_admin_publish_announcement",

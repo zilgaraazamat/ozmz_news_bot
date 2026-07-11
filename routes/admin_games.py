@@ -9,6 +9,7 @@ from storage import (
     create_game, get_all_games, get_game, cancel_game, delete_game, mark_game_completed,
     create_game_template, get_game_templates, update_game_template, delete_game_template,
     get_signups, confirm_signup, move_team_member, get_team_members,
+    complete_match, settle_completed_games_xp,
 )
 
 
@@ -233,6 +234,43 @@ class AdminGamesRoutesMixin:
             self._json({"ok": True})
         except Exception as e:
             print(f"  [WARN] complete-game: {e}")
+            self.send_response(400); self.end_headers()
+
+    def route_post_admin_complete_match(self, body):
+        """Единый флоу «Завершить матч»: статус игры, статистика каждого
+        игрока (голы + MVP) и прогрессия — одним действием админа, вместо
+        разрозненных кнопок/шагов. См. storage/match_completion.py."""
+        try:
+            data = json.loads(body)
+            admin_id = str(data.get("user_id", ""))
+            if admin_id not in ADMIN_IDS:
+                self._json({"ok": False, "error": "Нет прав администратора"})
+                return
+            game_id = data.get("game_id")
+            game = get_game(game_id)
+            if not game:
+                self._json({"ok": False, "error": "Игра не найдена"})
+                return
+
+            # доверяем только реально подтверждённым участникам этой игры —
+            # что бы ни пришло в теле запроса, чужой/произвольный user_id
+            # статистику получить не может
+            confirmed_ids = {str(s["user_id"]) for s in get_signups(game_id) if s.get("status") == "confirmed"}
+            submitted = data.get("players") or []
+            clean_players = [p for p in submitted if str(p.get("user_id")) in confirmed_ids]
+
+            complete_match(game_id, clean_players)
+
+            # Прогрессия (XP/уровень/OVR) — отдельная, уже реализованная и
+            # протестированная забота (progression.py); settle идемпотентен,
+            # поэтому его безопасно звать сразу для всех подтверждённых
+            # участников, а не только тех, кому вписали статистику.
+            for uid in confirmed_ids:
+                settle_completed_games_xp(uid)
+
+            self._json({"ok": True, "players": clean_players})
+        except Exception as e:
+            print(f"  [WARN] complete-match: {e}")
             self.send_response(400); self.end_headers()
 
 

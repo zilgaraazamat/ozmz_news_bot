@@ -74,8 +74,10 @@ from .announcements import (
 from .match_stats import (
     STAT_FIELDS,
     record_match_stat, get_match_stats, get_player_match_stats,
-    get_player_stat_in_match, delete_match_stats,
+    get_player_stat_in_match, delete_match_stats, get_career_totals,
 )
+
+from .match_completion import complete_match
 
 __all__ = [
     "init_db",
@@ -103,5 +105,6 @@ __all__ = [
     "get_all_announcements", "delete_announcement",
     "STAT_FIELDS",
     "record_match_stat", "get_match_stats", "get_player_match_stats",
-    "get_player_stat_in_match", "delete_match_stats",
+    "get_player_stat_in_match", "delete_match_stats", "get_career_totals",
+    "complete_match",
 ]

@@ -118,6 +118,23 @@ def delete_match_stats(game_id):
         c.execute("DELETE FROM match_player_stats WHERE game_id=?", (int(game_id),))
 
 
+def get_career_totals(user_id):
+    """Карьерная статистика игрока — total_goals и mvp_count намеренно НЕ
+    хранятся отдельными счётчиками нигде: они вычисляются прямо из
+    match_player_stats (единственного источника правды), поэтому физически
+    не могут разойтись с данными по отдельным матчам. Один раз сохранил
+    статистику матча (record_match_stat / complete_match) — эти цифры сразу
+    актуальны, обновлять их отдельно не нужно."""
+    with _lock, _conn() as c:
+        row = c.execute(
+            "SELECT COUNT(*), COALESCE(SUM(goals), 0), COALESCE(SUM(is_mvp), 0) "
+            "FROM match_player_stats WHERE user_id=?",
+            (str(user_id),)
+        ).fetchone()
+    matches, total_goals, mvp_count = row
+    return {"matches_recorded": matches, "total_goals": total_goals, "mvp_count": mvp_count}
+
+
 def _row_to_dict(row):
     keys = ["id", "game_id", "user_id", *STAT_FIELDS, "created_at"]
     d = dict(zip(keys, row))

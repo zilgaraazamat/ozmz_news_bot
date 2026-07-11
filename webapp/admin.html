@@ -142,6 +142,19 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#5E6AD2;backgr
 .mini-btn-success{border-color:#BBF0CE;background:#ECFDF3;color:#15803D}
 .mini-btn-danger{border-color:#FCA5A5;background:#FEF2F2;color:#B91C1C}
 
+/* ── завершить матч: сводка игры + голы/MVP на игрока ── */
+.cm-meta{background:#F9FAFB;border:1px solid #EEF0F2;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#334155;font-weight:600}
+.cm-player-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid #EEF0F2;flex-wrap:wrap}
+.cm-player-row:first-of-type{border-top:none}
+.cm-player-name{font-size:13.5px;font-weight:600;color:#0F172A;flex:1;min-width:120px}
+.cm-player-fields{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.cm-goals-label{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#64748B;font-weight:600}
+.cm-goals-input{width:52px;padding:7px 8px;border:1px solid #DDE1E8;border-radius:8px;font-size:14px;text-align:center;color:#0F172A}
+.cm-goals-input:focus{outline:none;border-color:#5E6AD2}
+.cm-mvp-label{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#B45309;font-weight:700;cursor:pointer;padding:6px 10px;border-radius:100px;background:#FFFBEB;border:1px solid #FDE4C7}
+.cm-mvp-label input{margin:0;cursor:pointer}
+.cm-mvp-label:has(input:checked){background:#FEF3C7;border-color:#F59E0B;color:#92400E}
+
 /* ── новости: карточки ── */
 .news-card{background:#fff;border:1px solid #E4E7EC;border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 2px rgba(16,24,40,.03)}
 .news-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
@@ -273,6 +286,19 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#5E6AD2;backgr
       </div>
     </div>
     <div id="games-manage-list"></div>
+  </div>
+
+  <!-- ═══ ЗАВЕРШИТЬ МАТЧ: голы + MVP на каждого игрока, одним действием ═══ -->
+  <div id="screen-complete-match" class="screen hidden">
+    <div class="screen-sub">Впиши голы и отметь MVP для каждого подтверждённого участника. По кнопке ниже игра будет отмечена завершённой, статистика сохранится, а прогресс игроков обновится — всё одним действием.</div>
+    <div id="complete-match-error-banner"></div>
+    <div class="cm-meta" id="complete-match-meta"></div>
+    <div class="section-card" id="complete-match-players"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="showScreen('games-manage')">Отмена</button>
+      <button class="btn btn-primary" id="complete-match-submit-btn" onclick="submitCompleteMatch()">✅ Завершить матч</button>
+    </div>
+    <div class="saved" id="complete-match-saved-msg">✅ Матч завершён</div>
   </div>
 
   <!-- ═══ ШАБЛОНЫ ИГР: СПИСОК ═══ -->
@@ -523,6 +549,7 @@ const SCREEN_TITLES = {
   "games-manage": "Управление играми",
   "templates-list": "Шаблоны игр",
   "template-edit": "Шаблон игры",
+  "complete-match": "Завершить матч",
   "news-create": "Создать новость",
   "news-manage": "Управление новостями",
   "players-list": "Игроки",
@@ -847,7 +874,7 @@ function renderGameCardBody(g, past) {
   const gameActions = cancelled
     ? `<button class="mini-btn mini-btn-danger" style="width:100%;margin-top:14px" onclick="deleteGame(${g.id})">🗑 Удалить игру</button>`
     : `<div class="game-actions-row">
-         ${(past && g.status === "active") ? `<button class="mini-btn mini-btn-success" onclick="completeGame(${g.id})">✅ Завершить</button>` : ""}
+         ${(past && g.status === "active") ? `<button class="mini-btn mini-btn-success" onclick="openCompleteMatchModal(${g.id})">✅ Завершить</button>` : ""}
          <button class="mini-btn mini-btn-warning" onclick="cancelGame(${g.id})">❌ Отменить</button>
          <button class="mini-btn mini-btn-danger" onclick="deleteGame(${g.id})">🗑 Удалить</button>
        </div>`;
@@ -878,16 +905,105 @@ async function cancelGame(gameId) {
   } catch (e) {}
 }
 
-async function completeGame(gameId) {
-  if (!confirm("Отметить игру завершённой? Подтверждённым игрокам сразу засчитается сыгранная игра.")) return;
+// ── Завершить матч: голы + MVP на каждого игрока одним действием ──────────
+// Раньше «Завершить» просто помечало игру завершённой без сбора статистики,
+// а голы/MVP было негде вписать в принципе. Теперь это один экран и один
+// вызов API (/api/admin/complete-match), который атомарно: помечает игру
+// завершённой, сохраняет голы/MVP каждого игрока и обновляет их прогресс.
+let completeMatchGameId = null;
+let completeMatchRoster = [];
+
+// Один пользователь может быть в записях дважды (основная запись + доп.
+// игроки, добавленные тем же user_id) — но статистику ведём на человека,
+// а не на запись, поэтому дедуплицируем по user_id.
+function dedupeConfirmedRoster(signups) {
+  const byId = new Map();
+  (signups || []).filter(s => s.status === "confirmed").forEach(s => {
+    if (!byId.has(s.user_id)) {
+      byId.set(s.user_id, { user_id: s.user_id, name: s.name, player: s.player });
+    }
+  });
+  return Array.from(byId.values());
+}
+
+function openCompleteMatchModal(gameId) {
+  const games = window.__allManageGames || [];
+  const g = games.find(x => x.id === gameId);
+  if (!g) return;
+
+  completeMatchGameId = gameId;
+  completeMatchRoster = dedupeConfirmedRoster(g.signups);
+
+  document.getElementById("complete-match-error-banner").innerHTML = "";
+  document.getElementById("complete-match-meta").innerHTML =
+    `📅 ${formatGameDate(g)} · 🕐 ${g.time} — ${g.location}`;
+
+  const playersEl = document.getElementById("complete-match-players");
+  const submitBtn = document.getElementById("complete-match-submit-btn");
+
+  if (!completeMatchRoster.length) {
+    playersEl.innerHTML = `<div class="list-empty">Нет подтверждённых участников — завершать нечего.</div>`;
+    submitBtn.setAttribute("disabled", "true");
+  } else {
+    submitBtn.removeAttribute("disabled");
+    playersEl.innerHTML = completeMatchRoster.map(p => {
+      const label = p.player ? ` (${p.player})` : "";
+      return `
+        <div class="cm-player-row">
+          <div class="cm-player-name">${p.name}${label}</div>
+          <div class="cm-player-fields">
+            <label class="cm-goals-label">Голы
+              <input type="number" min="0" class="cm-goals-input" data-uid="${p.user_id}" value="0">
+            </label>
+            <label class="cm-mvp-label">
+              <input type="radio" name="cm-mvp" class="cm-mvp-radio" value="${p.user_id}"> MVP
+            </label>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  showScreen("complete-match");
+}
+
+async function submitCompleteMatch() {
+  if (!completeMatchGameId || !completeMatchRoster.length) return;
+
+  const mvpRadio = document.querySelector('.cm-mvp-radio:checked');
+  const mvpId = mvpRadio ? mvpRadio.value : null;
+
+  const players = completeMatchRoster.map(p => {
+    const input = document.querySelector(`.cm-goals-input[data-uid="${p.user_id}"]`);
+    const goals = Math.max(0, parseInt((input && input.value) || "0", 10) || 0);
+    return { user_id: p.user_id, goals, is_mvp: mvpId !== null && String(p.user_id) === String(mvpId) };
+  });
+
+  const btn = document.getElementById("complete-match-submit-btn");
+  btn.setAttribute("disabled", "true");
   try {
-    const res = await fetch("/api/admin/complete-game", {
+    const res = await fetch("/api/admin/complete-match", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, game_id: gameId })
+      body: JSON.stringify({ user_id: userId, game_id: completeMatchGameId, players })
     }).then(r => r.json());
-    if (res.ok) loadManageGames();
-    else showError(res.error || "Не удалось завершить игру");
-  } catch (e) {}
+
+    if (res.ok) {
+      const saved = document.getElementById("complete-match-saved-msg");
+      saved.classList.add("show");
+      setTimeout(() => {
+        saved.classList.remove("show");
+        completeMatchGameId = null;
+        completeMatchRoster = [];
+        showScreen("games-manage");
+      }, 900);
+    } else {
+      document.getElementById("complete-match-error-banner").innerHTML =
+        `<div class="error-banner">⚠️ ${res.error || "Не удалось завершить матч"}</div>`;
+    }
+  } catch (e) {
+    document.getElementById("complete-match-error-banner").innerHTML =
+      `<div class="error-banner">⚠️ Ошибка сети — попробуй ещё раз</div>`;
+  }
+  btn.removeAttribute("disabled");
 }
 
 async function deleteGame(gameId) {
