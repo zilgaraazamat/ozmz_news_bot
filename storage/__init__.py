@@ -54,7 +54,7 @@ from .signups import (
 )
 
 from .progression import (
-    DEFAULT_LEVEL, DEFAULT_XP, DEFAULT_OVR, XP_PER_COMPLETED_GAME,
+    DEFAULT_LEVEL, DEFAULT_XP, XP_PER_COMPLETED_GAME,
     xp_required_for_level, get_progression, award_xp, settle_completed_games_xp,
 )
 
@@ -79,6 +79,10 @@ from .match_stats import (
 
 from .match_completion import complete_match
 
+from .player_stats import get_player_stats, get_players_stats_bulk
+
+from .ovr import calculate_ovr, BASE_OVR
+
 __all__ = [
     "init_db",
     "get_role", "set_role", "get_roles_bulk", "get_all_roles",
@@ -97,7 +101,7 @@ __all__ = [
     "update_game_template", "delete_game_template",
     "signup_for_game", "get_signups", "get_my_signups", "mark_payment_claimed",
     "get_my_signup", "cancel_signup", "confirm_signup",
-    "DEFAULT_LEVEL", "DEFAULT_XP", "DEFAULT_OVR", "XP_PER_COMPLETED_GAME",
+    "DEFAULT_LEVEL", "DEFAULT_XP", "XP_PER_COMPLETED_GAME",
     "xp_required_for_level", "get_progression", "award_xp", "settle_completed_games_xp",
     "get_team_members", "clear_game_teams", "add_team_member", "move_team_member",
     "is_registered_for_game", "add_chat_message", "get_chat_messages",
@@ -107,4 +111,6 @@ __all__ = [
     "record_match_stat", "get_match_stats", "get_player_match_stats",
     "get_player_stat_in_match", "delete_match_stats", "get_career_totals",
     "complete_match",
+    "get_player_stats", "get_players_stats_bulk",
+    "calculate_ovr", "BASE_OVR",
 ]

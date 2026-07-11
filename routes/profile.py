@@ -4,8 +4,9 @@ import json
 
 from config import ADMIN_IDS
 from storage import (
-    get_profile, set_nickname, set_jersey_number, get_role, get_games_played_count,
+    get_profile, set_nickname, set_jersey_number, get_role,
     get_progression, settle_completed_games_xp, display_name_from_profile, get_history_games,
+    get_player_stats,
 )
 
 
@@ -49,7 +50,7 @@ class ProfileRoutesMixin:
         user_id = (q.get("user_id") or [""])[0]
         profile = get_profile(user_id)
         role = get_role(user_id)
-        games_played = get_games_played_count(user_id) if user_id else 0
+        stats = get_player_stats(user_id) if user_id else {"games_played": 0, "goals": 0, "mvp_count": 0, "ovr": 60}
         if user_id:
             settle_completed_games_xp(user_id)  # начислить XP за игры, завершившиеся с прошлого визита
         progression = get_progression(user_id)
@@ -58,10 +59,12 @@ class ProfileRoutesMixin:
             "nickname": profile["nickname"] if profile else None,
             "jersey_number": profile["jersey_number"] if profile else None,
             "role": role,
-            "games_played": games_played,
+            "games_played": stats["games_played"],
+            "goals": stats["goals"],
+            "mvp_count": stats["mvp_count"],
             "level": progression["level"],
             "xp": progression["xp"],
-            "ovr": progression["ovr"],
+            "ovr": stats["ovr"],
             "xp_for_next_level": progression["xp_for_next_level"],
             "xp_progress_pct": progression["xp_progress_pct"],
         })
@@ -81,17 +84,20 @@ class ProfileRoutesMixin:
             } for g in recent]
             settle_completed_games_xp(target_id)  # начислить XP за игры, завершившиеся с прошлого визита
             progression = get_progression(target_id)
+            stats = get_player_stats(target_id)
             self._json({
                 "user_id": target_id,
                 "name": display_name,
                 "role": role,
-                "games_played": get_games_played_count(target_id),
+                "games_played": stats["games_played"],
+                "goals": stats["goals"],
+                "mvp_count": stats["mvp_count"],
                 "recent_matches": recent_out,
                 "level": progression["level"],
                 "xp": progression["xp"],
-                "ovr": progression["ovr"],
+                "ovr": stats["ovr"],
                 "xp_for_next_level": progression["xp_for_next_level"],
                 "xp_progress_pct": progression["xp_progress_pct"],
-                "mvp_implemented": False,
+                "mvp_implemented": True,
                 "achievements_implemented": False,
             })

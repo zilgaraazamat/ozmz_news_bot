@@ -5,11 +5,11 @@ import json
 from api import tg_post
 from config import ADMIN_IDS, CHAT_ID
 from storage import (
-    get_profile, get_all_users, get_games_played_count, get_username,
+    get_profile, get_all_users, get_username,
     create_game, get_all_games, get_game, cancel_game, delete_game, mark_game_completed,
     create_game_template, get_game_templates, update_game_template, delete_game_template,
     get_signups, confirm_signup, move_team_member, get_team_members,
-    complete_match, settle_completed_games_xp,
+    complete_match, settle_completed_games_xp, get_player_stats,
 )
 
 
@@ -319,5 +319,9 @@ class AdminGamesRoutesMixin:
         else:
             users = get_all_users()
             for u in users:
-                u["games_played"] = get_games_played_count(u["user_id"])
+                stats = get_player_stats(u["user_id"])
+                u["games_played"] = stats["games_played"]
+                u["goals"] = stats["goals"]
+                u["mvp_count"] = stats["mvp_count"]
+                u["ovr"] = stats["ovr"]
             self._json({"users": users})
