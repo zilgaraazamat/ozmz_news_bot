@@ -9,6 +9,7 @@ from storage import (
     signup_for_game, get_signups, get_my_signup, get_my_signups, cancel_signup, mark_payment_claimed,
     is_registered_for_game, add_chat_message, get_chat_messages,
     get_team_members, get_leaderboard, LEADERBOARD_CATEGORIES,
+    get_player_stat_in_match,
 )
 from .helpers import _recompute_teams
 
@@ -148,6 +149,10 @@ class GamesRoutesMixin:
             g["my_status"] = get_my_signup(g["id"], user_id) if user_id else None
             g["my_signups"] = get_my_signups(g["id"], user_id) if user_id else []
             g["teams"] = get_team_members(g["id"])
+            # Статистика игрока конкретно в этом матче (голы/MVP) — для карточки
+            # завершённой игры, состояние «Матч завершён» (см. games.html).
+            # None, если по этому матчу статистика ещё не заводилась.
+            g["my_match_stats"] = get_player_stat_in_match(g["id"], user_id) if user_id else None
         self._json({"games": games})
 
     def route_get_games_chat(self, q):
