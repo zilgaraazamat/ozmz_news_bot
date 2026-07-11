@@ -39,7 +39,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .hero-gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .hero-ovr-num{font-family:'Oswald',-apple-system,sans-serif;font-size:52px;font-weight:700;color:#F5F6F7;line-height:1;letter-spacing:-.5px}
 .hero-ovr-label{font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:600;letter-spacing:2px;color:#8B93F5;margin-top:4px}
+.hero-level-badge{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);z-index:2;background:#5E6AD2;color:#fff;font-family:'Oswald',-apple-system,sans-serif;font-size:12px;font-weight:700;letter-spacing:.4px;padding:4px 14px;border-radius:20px;box-shadow:0 4px 12px rgba(94,106,210,.45);border:2px solid #14151A;white-space:nowrap}
+.hero-xp-row{position:relative;z-index:1;max-width:260px;margin:8px auto 16px}
+.hero-xp-track{height:8px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden}
+.hero-xp-fill{height:100%;width:0%;border-radius:6px;background:linear-gradient(90deg,#8B93F5,#5E6AD2);transition:width 1s cubic-bezier(.2,.8,.2,1)}
+.hero-xp-label{font-size:11px;color:#6B7280;margin-top:7px;text-align:center;font-variant-numeric:tabular-nums}
 .hero-desc{position:relative;z-index:1;font-size:13px;color:#9BA1AC;line-height:1.5;max-width:280px;margin:0 auto}
+.hero-streak-badge{position:absolute;top:16px;right:16px;z-index:2;display:flex;align-items:center;gap:4px;background:rgba(255,159,10,.14);border:1px solid rgba(255,159,10,.35);border-radius:100px;padding:5px 11px;font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:700;color:#FF9F0A}
 
 .toast-soon{position:fixed;left:50%;bottom:96px;transform:translate(-50%,10px);opacity:0;background:#23262D;border:1px solid rgba(255,255,255,.1);color:#F5F6F7;font-size:13px;font-weight:600;padding:12px 18px;border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.4);z-index:200;transition:opacity .25s,transform .25s;white-space:nowrap}
 .toast-soon.show{opacity:1;transform:translate(-50%,0)}
@@ -47,16 +53,16 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 /* ── лидерборд ── */
 .leaderboard-card{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:16px 16px 6px;margin-bottom:24px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 12px 30px rgba(0,0,0,.35);opacity:0;animation:reveal-up .45s ease .1s forwards}
 .lb-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px}
-.lb-tabs{display:flex;gap:4px;background:#101116;border-radius:12px;padding:4px;flex-shrink:0}
-.lb-tab{font-family:'Oswald',-apple-system,sans-serif;padding:7px 13px;border-radius:9px;font-size:12.5px;font-weight:600;letter-spacing:.2px;color:#9BA1AC;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s}
+.lb-tabs{display:flex;gap:4px;background:#101116;border-radius:12px;padding:4px;flex-shrink:0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+.lb-tabs::-webkit-scrollbar{display:none}
+.lb-tab{font-family:'Oswald',-apple-system,sans-serif;padding:7px 11px;border-radius:9px;font-size:12.5px;font-weight:600;letter-spacing:.2px;color:#9BA1AC;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .2s,color .2s}
 .lb-tab.active{background:#5E6AD2;color:#fff}
-.lb-view-all{font-family:'Oswald',-apple-system,sans-serif;font-size:12px;font-weight:600;letter-spacing:.2px;color:#8B93F5;cursor:pointer;white-space:nowrap;padding:6px 2px;flex-shrink:0}
 .lb-list{display:flex;flex-direction:column;min-height:64px}
 .lb-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);opacity:0;transform:translateY(6px);animation:lb-row-in .3s ease forwards;cursor:pointer;transition:opacity .15s}
 .lb-row:active{opacity:.6}
 .lb-row:last-child{border-bottom:none}
 @keyframes lb-row-in{to{opacity:1;transform:translateY(0)}}
-.lb-rank{width:16px;flex-shrink:0;font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:#6B7280;text-align:center}
+.lb-rank{width:20px;flex-shrink:0;font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:#6B7280;text-align:center}
 .lb-rank.top{color:#8B93F5}
 .lb-avatar{width:34px;height:34px;border-radius:50%;background:#23262D;border:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#F5F6F7;flex-shrink:0}
 .lb-name{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:#F5F6F7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -165,10 +171,43 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .card h1{font-family:'Oswald',-apple-system,sans-serif;font-size:21px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;text-align:center;margin-bottom:4px}
 .sub{text-align:center;font-size:13px;color:#6B7280;margin-bottom:20px}
 .role-badge{display:flex;align-items:center;gap:10px;background:rgba(94,106,210,.1);border:1px solid rgba(94,106,210,.28);border-radius:12px;padding:12px 14px;margin-bottom:18px}
-.stats-row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.04);border-radius:12px;padding:12px 14px;margin-bottom:18px}
-.stats-ic{font-size:22px}
-.stats-num{font-size:18px;font-weight:900;color:#8B93F5}
-.stats-label{font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px}
+/* ── прогрессия игрока на экране профиля (теперь только Level / XP —
+   OVR и остальная статистика переехали в .stat-cards ниже) ── */
+.progression-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+.progression-top{display:flex;align-items:center;justify-content:center;gap:22px;margin-bottom:12px}
+.progression-stat{text-align:center}
+.progression-stat-num{font-family:'Oswald',-apple-system,sans-serif;font-size:24px;font-weight:700;color:#F5F6F7;line-height:1}
+.progression-stat-label{font-size:10.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.6px;margin-top:3px}
+.progression-xp-track{height:7px;border-radius:5px;background:rgba(255,255,255,.08);overflow:hidden}
+.progression-xp-fill{height:100%;width:0%;border-radius:5px;background:linear-gradient(90deg,#8B93F5,#5E6AD2);transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.progression-xp-label{font-size:11px;color:#6B7280;margin-top:8px;text-align:center;font-variant-numeric:tabular-nums}
+
+/* ── статистика игрока (Player Statistics service): OVR как заглавная
+   карточка + 4 основные метрики в сетке 2×2 ── */
+.stat-cards{margin-bottom:18px}
+.stat-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:16px 10px;text-align:center}
+.stat-card-featured{background:linear-gradient(135deg,rgba(94,106,210,.18),rgba(139,147,245,.06));border:1px solid rgba(94,106,210,.3);padding:18px 10px;margin-bottom:10px}
+.stat-card-icon{font-size:20px;line-height:1;margin-bottom:6px}
+.stat-card-featured .stat-card-icon{font-size:24px}
+.stat-card-num{font-family:'Oswald',-apple-system,sans-serif;font-size:24px;font-weight:700;color:#F5F6F7;line-height:1;font-variant-numeric:tabular-nums}
+.stat-card-featured .stat-card-num{font-size:34px;color:#8B93F5}
+.stat-card-label{font-size:10.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;margin-top:5px;font-weight:600}
+.stat-cards-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+
+/* ── достижения игрока (Achievements system) ── */
+.achievements-section{margin-bottom:18px}
+.achievements-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.achievements-title{font-family:'Oswald',-apple-system,sans-serif;font-size:12px;font-weight:600;letter-spacing:.8px;color:#F5F6F7;text-transform:uppercase}
+.achievements-count{font-size:12px;color:#6B7280;font-weight:600;font-variant-numeric:tabular-nums}
+.achievements-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ach-badge{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:10px 5px 8px;text-align:center}
+.ach-badge.unlocked{background:linear-gradient(135deg,rgba(94,106,210,.16),rgba(139,147,245,.05));border-color:rgba(94,106,210,.35)}
+.ach-badge-icon{font-size:20px;line-height:1;margin-bottom:5px;filter:grayscale(1);opacity:.35}
+.ach-badge.unlocked .ach-badge-icon{filter:none;opacity:1}
+.ach-badge-label{font-size:9px;color:#6B7280;line-height:1.25;font-weight:600;min-height:22px;display:flex;align-items:center;justify-content:center}
+.ach-badge.unlocked .ach-badge-label{color:#9BA1AC}
+.ach-badge-progress{height:3px;border-radius:2px;background:rgba(255,255,255,.08);margin-top:6px;overflow:hidden}
+.ach-badge-progress-fill{height:100%;background:linear-gradient(90deg,#8B93F5,#5E6AD2);border-radius:2px}
 .role-badge .ic{font-size:22px}
 .role-badge .txt div:first-child{font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px}
 .role-badge .txt div:last-child{font-size:14px;font-weight:800;color:#8B93F5}
@@ -255,6 +294,7 @@ input:focus{outline:none;border-color:#5E6AD2}
     </div>
 
     <div class="hero-card" id="hero-card">
+      <div class="hero-streak-badge hidden" id="hero-streak-badge" title="Недельная серия">🔥 <span id="hero-streak-num">0</span></div>
       <div class="hero-eyebrow">Твой потенциал</div>
       <div class="hero-gauge-wrap">
         <svg class="hero-gauge" viewBox="0 0 160 160">
@@ -271,6 +311,11 @@ input:focus{outline:none;border-color:#5E6AD2}
           <div class="hero-ovr-num" id="hero-ovr-num">60</div>
           <div class="hero-ovr-label">OVR</div>
         </div>
+        <div class="hero-level-badge" id="hero-level-badge">Ур. 1</div>
+      </div>
+      <div class="hero-xp-row">
+        <div class="hero-xp-track"><div class="hero-xp-fill" id="hero-xp-fill"></div></div>
+        <div class="hero-xp-label" id="hero-xp-label">0 / 100 XP до след. уровня</div>
       </div>
       <div class="hero-desc">Играй матчи, проходи тесты и побеждай в баттлах, чтобы повысить свой рейтинг.</div>
     </div>
@@ -307,9 +352,10 @@ input:focus{outline:none;border-color:#5E6AD2}
       <div class="lb-head">
         <div class="lb-tabs" id="lb-tabs">
           <div class="lb-tab active" data-tab="games" onclick="switchLeaderboardTab('games')">🏟 Игры</div>
-          <div class="lb-tab" data-tab="mvp" onclick="switchLeaderboardTab('mvp')">⭐ MVP</div>
+          <div class="lb-tab" data-tab="goals" onclick="switchLeaderboardTab('goals')">⚽ Голы</div>
+          <div class="lb-tab" data-tab="mvp" onclick="switchLeaderboardTab('mvp')">👑 MVP</div>
+          <div class="lb-tab" data-tab="ovr" onclick="switchLeaderboardTab('ovr')">⭐ OVR</div>
         </div>
-        <div class="lb-view-all" onclick="comingSoon()">Все →</div>
       </div>
       <div class="lb-list" id="lb-list"></div>
     </div>
@@ -338,8 +384,58 @@ input:focus{outline:none;border-color:#5E6AD2}
       <div class="sub" id="profile-sub">Ник виден другим в батлах и постах команды</div>
 
       <div id="error-banner"></div>
+
+      <div class="progression-card" id="progression-card">
+        <div class="progression-top">
+          <div class="progression-stat">
+            <div class="progression-stat-num" id="pf-level-num">1</div>
+            <div class="progression-stat-label">Уровень</div>
+          </div>
+        </div>
+        <div class="progression-xp-track"><div class="progression-xp-fill" id="pf-xp-fill"></div></div>
+        <div class="progression-xp-label" id="pf-xp-label">0 / 100 XP до уровня 2</div>
+      </div>
+
+      <!-- ═══ Статистика игрока — из Player Statistics service (/api/profile) ═══ -->
+      <div class="stat-cards" id="stat-cards">
+        <div class="stat-card stat-card-featured">
+          <div class="stat-card-icon">⭐</div>
+          <div class="stat-card-num" id="sc-ovr">60</div>
+          <div class="stat-card-label">OVR</div>
+        </div>
+        <div class="stat-cards-grid">
+          <div class="stat-card">
+            <div class="stat-card-icon">🏟</div>
+            <div class="stat-card-num" id="sc-games">0</div>
+            <div class="stat-card-label">Игр сыграно</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">⚽</div>
+            <div class="stat-card-num" id="sc-goals">0</div>
+            <div class="stat-card-label">Голы</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">👑</div>
+            <div class="stat-card-num" id="sc-mvp">0</div>
+            <div class="stat-card-label">MVP</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">🔥</div>
+            <div class="stat-card-num" id="sc-streak">0</div>
+            <div class="stat-card-label">Серия</div>
+          </div>
+        </div>
+      </div>
+
       <div id="role-block"></div>
-      <div id="stats-block"></div>
+
+      <div class="achievements-section" id="achievements-section">
+        <div class="achievements-header">
+          <div class="achievements-title">🏆 Достижения</div>
+          <div class="achievements-count" id="achievements-count">0 / 8</div>
+        </div>
+        <div class="achievements-grid" id="achievements-grid"></div>
+      </div>
 
       <div class="saved" id="saved-msg">✅ Сохранено</div>
 
@@ -716,28 +812,117 @@ async function loadNews() {
     });
   } catch (e) {}
 }
-// ── Hero: рейтинг игрока (OVR) ──────────────────────────────────────────────
-// Пока статичное значение 60 для всех — на следующем шаге подключим реальный
-// рейтинг пользователя с бэкенда. Функция уже общая, менять верстку не придётся.
-function renderHeroOVR(value, max) {
+// ── Hero: прогрессия игрока (Level / XP / OVR) ──────────────────────────────
+// Данные приходят из /api/profile — единственного источника правды для
+// прогрессии на бэкенде (см. get_progression()/award_xp() в storage.py).
+// renderHeroProgression() ничего не знает о том, ОТКУДА взялись данные —
+// её можно переиспользовать для любой будущей механики, дающей XP/уровни.
+function renderHeroProgression(p) {
   const fillEl = document.getElementById("hero-gauge-fill");
   const numEl = document.getElementById("hero-ovr-num");
+  const levelEl = document.getElementById("hero-level-badge");
+  const xpFillEl = document.getElementById("hero-xp-fill");
+  const xpLabelEl = document.getElementById("hero-xp-label");
+  const streakBadgeEl = document.getElementById("hero-streak-badge");
+  const streakNumEl = document.getElementById("hero-streak-num");
   if (!fillEl || !numEl) return;
+
+  const ovr = p.ovr ?? 60;
+  const level = p.level ?? 1;
+  const xp = p.xp ?? 0;
+  const xpForNext = p.xp_for_next_level ?? 100;
+  const xpPct = p.xp_progress_pct ?? 0;
+  const streak = p.weekly_streak ?? 0;
+
   const r = 70;
   const circumference = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(1, value / max));
+  const pct = Math.max(0, Math.min(1, ovr / 99));
   fillEl.style.strokeDasharray = `${circumference}`;
   fillEl.style.strokeDashoffset = `${circumference}`;
-  numEl.textContent = value;
+  numEl.textContent = ovr;
+  if (levelEl) levelEl.textContent = `Ур. ${level}`;
+  if (xpLabelEl) xpLabelEl.textContent = `${xp} / ${xpForNext} XP до след. уровня`;
+  // Бейдж серии показываем только когда есть чем гордиться — 0 недель подряд
+  // не несёт пользы на экране и выглядит как ошибка, а не достижение.
+  if (streakBadgeEl) streakBadgeEl.classList.toggle("hidden", streak <= 0);
+  if (streakNumEl) streakNumEl.textContent = streak;
   setTimeout(() => {
     fillEl.style.strokeDashoffset = `${circumference * (1 - pct)}`;
+    if (xpFillEl) xpFillEl.style.width = `${xpPct}%`;
   }, 400);
 }
-renderHeroOVR(60, 99);
+
+async function loadHeroProgression() {
+  if (!userId) { renderHeroProgression({}); return; }
+  try {
+    const r = await fetch(`/api/profile?user_id=${userId}`).then(r => r.json());
+    renderHeroProgression(r);
+  } catch (e) {
+    renderHeroProgression({});
+  }
+}
+loadHeroProgression();
+
+// Level/XP — из /api/profile, отдельно от статистики результатов (см.
+// renderStatCards ниже). Переиспользует те же данные, что и Home.
+function renderProgressionCard(p) {
+  const levelEl = document.getElementById("pf-level-num");
+  const xpFillEl = document.getElementById("pf-xp-fill");
+  const xpLabelEl = document.getElementById("pf-xp-label");
+  if (!levelEl) return;
+
+  const level = p.level ?? 1;
+  const xp = p.xp ?? 0;
+  const xpForNext = p.xp_for_next_level ?? 100;
+  const xpPct = p.xp_progress_pct ?? 0;
+
+  levelEl.textContent = level;
+  if (xpLabelEl) xpLabelEl.textContent = `${xp} / ${xpForNext} XP до уровня ${level + 1}`;
+  if (xpFillEl) setTimeout(() => { xpFillEl.style.width = `${xpPct}%`; }, 200);
+}
+
+// Пять карточек статистики экрана профиля — OVR, игры, голы, MVP, серия.
+// Все пять значений приходят из ОДНОГО ответа /api/profile, который на
+// бэкенде собирается сервисом статистики игрока (get_player_stats(),
+// storage/player_stats.py) — это единственный источник этих чисел,
+// экран просто их отображает, ничего сам не считает.
+function renderStatCards(p) {
+  const ovrEl = document.getElementById("sc-ovr");
+  if (!ovrEl) return;
+  ovrEl.textContent = p.ovr ?? 60;
+  document.getElementById("sc-games").textContent = p.games_played ?? 0;
+  document.getElementById("sc-goals").textContent = p.goals ?? 0;
+  document.getElementById("sc-mvp").textContent = p.mvp_count ?? 0;
+  document.getElementById("sc-streak").textContent = p.weekly_streak ?? 0;
+}
+
+// Достижения — тоже целиком из /api/profile (поле achievements), которое на
+// бэкенде строит storage/achievements.py поверх той же статистики игрока —
+// ни процент прогресса, ни факт разблокировки экран не считает сам.
+function renderAchievements(list) {
+  const grid = document.getElementById("achievements-grid");
+  const countEl = document.getElementById("achievements-count");
+  if (!grid) return;
+  const items = list || [];
+  const unlocked = items.filter(a => a.unlocked).length;
+  if (countEl) countEl.textContent = `${unlocked} / ${items.length}`;
+  grid.innerHTML = items.map(a => `
+    <div class="ach-badge ${a.unlocked ? "unlocked" : ""}" title="${a.label}">
+      <div class="ach-badge-icon">${a.icon}</div>
+      <div class="ach-badge-label">${a.label}</div>
+      ${a.unlocked ? "" : `<div class="ach-badge-progress"><div class="ach-badge-progress-fill" style="width:${a.progress_pct}%"></div></div>`}
+    </div>`).join("");
+}
 
 // ── Лидерборд ────────────────────────────────────────────────────────────────
+// Данные для всех 4 категорий приходят из /api/leaderboard, который на
+// бэкенде строится ИСКЛЮЧИТЕЛЬНО через Player Statistics service
+// (get_leaderboard(), storage/leaderboards.py) — тот же сервис, что отдаёт
+// цифры для профиля и карточек статистики. Фронтенд не хардкодит категории:
+// подписи и иконки берутся из ответа сервера (data.label/data.icon), так что
+// добавление новой категории на бэкенде не потребует правок здесь.
 let currentLbTab = "games";
-let lbCache = { games: null, mvp: null }; // null = ещё не загружено
+let lbCache = { games: null, goals: null, mvp: null, ovr: null }; // null = ещё не загружено
 
 function avatarLetter(name) {
   return ((name || "?").trim().charAt(0) || "?").toUpperCase();
@@ -752,7 +937,7 @@ function renderLeaderboardList() {
     return;
   }
   if (!data.implemented) {
-    list.innerHTML = `<div class="lb-empty">MVP ещё не отслеживается — скоро добавим ⭐</div>`;
+    list.innerHTML = `<div class="lb-empty">Эта категория скоро появится</div>`;
     return;
   }
   if (!data.leaderboard || data.leaderboard.length === 0) {
@@ -760,19 +945,19 @@ function renderLeaderboardList() {
     return;
   }
 
-  const unit = currentLbTab === "mvp" ? "MVP" : "игр";
-  list.innerHTML = data.leaderboard.slice(0, 5).map((p, i) => `
-    <div class="lb-row" style="animation-delay:${i * 0.05}s" onclick="openPlayer('${p.user_id}')">
+  const icon = data.icon || "🏟";
+  list.innerHTML = data.leaderboard.map((p, i) => `
+    <div class="lb-row" style="animation-delay:${i * 0.04}s" onclick="openPlayer('${p.user_id}')">
       <div class="lb-rank ${i === 0 ? "top" : ""}">${i + 1}</div>
       <div class="lb-avatar">${avatarLetter(p.name)}</div>
       <div class="lb-name">${p.name}</div>
-      <div class="lb-stat">${p.count} ${unit}</div>
+      <div class="lb-stat">${icon} ${p.value}</div>
     </div>`).join("");
 }
 
 async function loadLeaderboardTab(tab) {
   try {
-    const r = await fetch(`/api/leaderboard?type=${tab}`).then(r => r.json());
+    const r = await fetch(`/api/leaderboard?type=${tab}&limit=10`).then(r => r.json());
     lbCache[tab] = r;
   } catch (e) {
     lbCache[tab] = { leaderboard: [], implemented: true };
@@ -835,6 +1020,7 @@ function showMenu() {
   setActiveTab("home");
   if (window.Telegram && Telegram.WebApp) Telegram.WebApp.BackButton.hide();
   if (newsCarousel) newsCarousel.refresh();
+  loadHeroProgression();
 }
 
 function showProfile() {
@@ -924,16 +1110,9 @@ async function loadProfile() {
         </div>`;
     }
 
-    const statsBlock = document.getElementById("stats-block");
-    const played = r.games_played || 0;
-    statsBlock.innerHTML = `
-      <div class="stats-row">
-        <div class="stats-ic">🎮</div>
-        <div class="stats-txt">
-          <div class="stats-num">${played}</div>
-          <div class="stats-label">${played === 1 ? "игра сыграна" : "игр сыграно"}</div>
-        </div>
-      </div>`;
+    renderStatCards(r);
+    renderProgressionCard(r);
+    renderAchievements(r.achievements);
 
     if (r.nickname) {
       document.getElementById("display-name").textContent = r.nickname;

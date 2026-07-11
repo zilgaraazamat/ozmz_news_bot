@@ -8,7 +8,7 @@ from storage import (
     get_active_games, get_history_games, get_game,
     signup_for_game, get_signups, get_my_signup, get_my_signups, cancel_signup, mark_payment_claimed,
     is_registered_for_game, add_chat_message, get_chat_messages,
-    get_team_members, get_leaderboard_most_games,
+    get_team_members, get_leaderboard, LEADERBOARD_CATEGORIES,
 )
 from .helpers import _recompute_teams
 
@@ -160,10 +160,20 @@ class GamesRoutesMixin:
             self._json({"messages": get_chat_messages(game_id, since_id)})
 
     def route_get_leaderboard(self, q):
-        lb_type = (q.get("type") or ["games"])[0]
-        if lb_type == "mvp":
-            # MVP пока не отслеживается в базе — отдаём пустой список,
-            # фронтенд покажет "скоро" вместо того чтобы выдумывать данные.
+        category = (q.get("type") or ["games"])[0]
+        try:
+            limit = max(1, min(50, int((q.get("limit") or ["10"])[0])))
+        except (TypeError, ValueError):
+            limit = 10
+
+        if category not in LEADERBOARD_CATEGORIES:
             self._json({"leaderboard": [], "implemented": False})
-        else:
-            self._json({"leaderboard": get_leaderboard_most_games(5), "implemented": True})
+            return
+
+        meta = LEADERBOARD_CATEGORIES[category]
+        self._json({
+            "leaderboard": get_leaderboard(category, limit),
+            "implemented": True,
+            "label": meta["label"],
+            "icon": meta["icon"],
+        })

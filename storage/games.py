@@ -3,7 +3,6 @@
 from ._db import _lock, _conn
 from .game_status import is_match_completed
 from .progression import settle_completed_games_xp
-from .users import display_name_from_profile
 
 def mark_game_completed(game_id):
     """Админ вручную отмечает матч завершённым — сразу засчитывает игру всем
@@ -22,10 +21,13 @@ def mark_game_completed(game_id):
         settle_completed_games_xp(uid)
 
 
-def get_games_played_count(user_id):
-    """Считает матчи, которые реально завершились (см. is_match_completed) и в которых
-    у игрока была подтверждённая регистрация, не отменённая им до начала игры.
-    Один матч — максимум +1, даже если у игрока несколько записей на него (напр. основная + доп. игроки)."""
+def _get_completed_confirmed_games(user_id):
+    """Общий helper: подтверждённые записи пользователя на РЕАЛЬНО завершившиеся
+    матчи (см. is_match_completed), без дублей на один и тот же матч (даже если
+    у игрока несколько записей на него — основная + доп. игроки). Используется
+    и для подсчёта количества игр, и для расчёта дат (см. get_completed_match_dates,
+    storage/streak.py) — чтобы фильтр «что считается сыгранной игрой» жил
+    в одном месте и не разошёлся между двумя похожими подсчётами."""
     user_id = str(user_id)
     with _lock, _conn() as c:
         rows = c.execute("""
@@ -34,47 +36,28 @@ def get_games_played_count(user_id):
             WHERE s.user_id=? AND s.status='confirmed'
         """, (user_id,)).fetchall()
 
-    count = 0
+    completed = []
     for game_id, d, t, status in rows:
-        if is_match_completed({"date": d, "time": t, "status": status}):
-            count += 1
-    return count
+        game = {"id": game_id, "date": d, "time": t, "status": status}
+        if is_match_completed(game):
+            completed.append(game)
+    return completed
 
 
-def get_leaderboard_most_games(limit=5):
-    """Топ игроков по числу реально завершённых матчей — тот же принцип, что и
-    get_games_played_count, сразу для всех игроков. Дедуплицирует по game_id, чтобы
-    несколько записей одного игрока на один и тот же матч не считались как несколько игр."""
-    with _lock, _conn() as c:
-        rows = c.execute("""
-            SELECT DISTINCT s.user_id, g.id, g.game_date, g.game_time, g.status FROM game_signups s
-            JOIN games g ON g.id = s.game_id
-            WHERE s.status='confirmed' AND s.user_id IS NOT NULL AND s.user_id != ''
-        """).fetchall()
+def get_games_played_count(user_id):
+    """Считает матчи, которые реально завершились (см. is_match_completed) и в которых
+    у игрока была подтверждённая регистрация, не отменённая им до начала игры.
+    Один матч — максимум +1, даже если у игрока несколько записей на него (напр. основная + доп. игроки)."""
+    return len(_get_completed_confirmed_games(user_id))
 
-    counts = {}
-    for user_id, game_id, d, t, status in rows:
-        if is_match_completed({"date": d, "time": t, "status": status}):
-            counts[user_id] = counts.get(user_id, 0) + 1
 
-    if not counts:
-        return []
+def get_completed_match_dates(user_id):
+    """Даты (строки "YYYY-MM-DD") реально завершившихся подтверждённых матчей
+    игрока — сырые данные для любых расчётов по календарным периодам
+    (сейчас: недельная серия, storage/streak.py). Тот же набор игр, что
+    считает get_games_played_count — просто отдаёт даты, а не количество."""
+    return [g["date"] for g in _get_completed_confirmed_games(user_id) if g["date"]]
 
-    with _lock, _conn() as c:
-        placeholders = ",".join("?" for _ in counts)
-        profile_rows = c.execute(
-            f"SELECT user_id, name, nickname, username FROM users WHERE user_id IN ({placeholders})",
-            list(counts.keys())
-        ).fetchall()
-    profiles = {r[0]: {"name": r[1], "nickname": r[2], "username": r[3]} for r in profile_rows}
-
-    board = []
-    for user_id, count in counts.items():
-        display = display_name_from_profile(profiles.get(user_id))
-        board.append({"user_id": user_id, "name": display, "count": count})
-
-    board.sort(key=lambda x: -x["count"])
-    return board[:limit]
 
 def create_game(game_date, game_time, location, num_players, num_teams,
                  players_per_team, price, extra_info, created_by, payment_link=None, image=None):

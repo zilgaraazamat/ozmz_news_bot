@@ -6,7 +6,7 @@ from config import ADMIN_IDS
 from storage import (
     get_profile, set_nickname, set_jersey_number, get_role,
     get_progression, settle_completed_games_xp, display_name_from_profile, get_history_games,
-    get_player_stats,
+    get_player_stats, get_player_achievements, get_achievements_summary,
 )
 
 
@@ -50,10 +50,11 @@ class ProfileRoutesMixin:
         user_id = (q.get("user_id") or [""])[0]
         profile = get_profile(user_id)
         role = get_role(user_id)
-        stats = get_player_stats(user_id) if user_id else {"games_played": 0, "goals": 0, "mvp_count": 0, "ovr": 60}
+        stats = get_player_stats(user_id) if user_id else {"games_played": 0, "goals": 0, "mvp_count": 0, "ovr": 60, "weekly_streak": 0}
         if user_id:
             settle_completed_games_xp(user_id)  # начислить XP за игры, завершившиеся с прошлого визита
         progression = get_progression(user_id)
+        achievements = get_player_achievements(user_id) if user_id else []
         self._json({
             "name": profile["name"] if profile else None,
             "nickname": profile["nickname"] if profile else None,
@@ -62,11 +63,15 @@ class ProfileRoutesMixin:
             "games_played": stats["games_played"],
             "goals": stats["goals"],
             "mvp_count": stats["mvp_count"],
+            "weekly_streak": stats["weekly_streak"],
             "level": progression["level"],
             "xp": progression["xp"],
             "ovr": stats["ovr"],
             "xp_for_next_level": progression["xp_for_next_level"],
             "xp_progress_pct": progression["xp_progress_pct"],
+            "achievements": achievements,
+            "achievements_unlocked": sum(1 for a in achievements if a["unlocked"]),
+            "achievements_total": len(achievements),
         })
 
     def route_get_player_profile(self, q):
@@ -85,6 +90,7 @@ class ProfileRoutesMixin:
             settle_completed_games_xp(target_id)  # начислить XP за игры, завершившиеся с прошлого визита
             progression = get_progression(target_id)
             stats = get_player_stats(target_id)
+            achievements = get_player_achievements(target_id)
             self._json({
                 "user_id": target_id,
                 "name": display_name,
@@ -92,6 +98,7 @@ class ProfileRoutesMixin:
                 "games_played": stats["games_played"],
                 "goals": stats["goals"],
                 "mvp_count": stats["mvp_count"],
+                "weekly_streak": stats["weekly_streak"],
                 "recent_matches": recent_out,
                 "level": progression["level"],
                 "xp": progression["xp"],
@@ -99,5 +106,8 @@ class ProfileRoutesMixin:
                 "xp_for_next_level": progression["xp_for_next_level"],
                 "xp_progress_pct": progression["xp_progress_pct"],
                 "mvp_implemented": True,
-                "achievements_implemented": False,
+                "achievements": achievements,
+                "achievements_count": sum(1 for a in achievements if a["unlocked"]),
+                "achievements_total": len(achievements),
+                "achievements_implemented": True,
             })

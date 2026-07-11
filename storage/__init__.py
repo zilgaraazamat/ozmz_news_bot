@@ -38,10 +38,12 @@ from .game_status import (
 )
 
 from .games import (
-    mark_game_completed, get_games_played_count, get_leaderboard_most_games,
+    mark_game_completed, get_games_played_count,
     create_game, get_all_games, cancel_game, delete_game, get_active_games,
-    get_history_games, get_game,
+    get_history_games, get_game, get_completed_match_dates,
 )
+
+from .leaderboards import get_leaderboard, CATEGORIES as LEADERBOARD_CATEGORIES
 
 from .game_templates import (
     create_game_template, get_game_templates, get_game_template,
@@ -83,6 +85,12 @@ from .player_stats import get_player_stats, get_players_stats_bulk
 
 from .ovr import calculate_ovr, BASE_OVR
 
+from .streak import calculate_weekly_streak, get_weekly_streak
+
+from .achievements import (
+    ACHIEVEMENTS, calculate_achievements, get_player_achievements, get_achievements_summary,
+)
+
 __all__ = [
     "init_db",
     "get_role", "set_role", "get_roles_bulk", "get_all_roles",
@@ -94,9 +102,10 @@ __all__ = [
     "display_name_from_profile", "get_display_name",
     "set_nickname", "set_jersey_number", "save_username", "get_username",
     "MATCH_DURATION_HOURS", "is_match_completed",
-    "mark_game_completed", "get_games_played_count", "get_leaderboard_most_games",
+    "mark_game_completed", "get_games_played_count",
     "create_game", "get_all_games", "cancel_game", "delete_game", "get_active_games",
-    "get_history_games", "get_game",
+    "get_history_games", "get_game", "get_completed_match_dates",
+    "get_leaderboard", "LEADERBOARD_CATEGORIES",
     "create_game_template", "get_game_templates", "get_game_template",
     "update_game_template", "delete_game_template",
     "signup_for_game", "get_signups", "get_my_signups", "mark_payment_claimed",
@@ -113,4 +122,6 @@ __all__ = [
     "complete_match",
     "get_player_stats", "get_players_stats_bulk",
     "calculate_ovr", "BASE_OVR",
+    "calculate_weekly_streak", "get_weekly_streak",
+    "ACHIEVEMENTS", "calculate_achievements", "get_player_achievements", "get_achievements_summary",
 ]
