@@ -1,52 +1,91 @@
-import os
-import json
+"""HTTP-сервер приложения: собирает Handler из route-миксинов (routes/*) и
+диспетчеризует запросы по словарям путь → имя метода. Сама бизнес-логика
+эндпоинтов живёт в routes/* — этот файл только связывает всё воедино и
+поднимает сервер (см. run()/start_background(), которые вызывает bot.py)."""
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-from api import now_astana, tg_post, claude_vision
-from config import PORT, PLAYER_CATEGORIES, ADMIN_IDS, CHAT_ID
-from storage import (
-    get_quiz_history, add_quiz_history, get_all_users, get_all_roles,
-    get_profile, set_nickname, set_jersey_number, get_role, set_role, get_games_played_count, get_leaderboard_most_games,
-    display_name_from_profile,
-    create_game, get_all_games, get_active_games, get_history_games, get_game, cancel_game, delete_game,
-    mark_game_completed,
-    create_game_template, get_game_templates, get_game_template, update_game_template, delete_game_template,
-    signup_for_game, get_signups, get_my_signup, get_my_signups, confirm_signup, cancel_signup, mark_payment_claimed,
-    is_registered_for_game, add_chat_message, get_chat_messages,
-    get_username,
-    get_team_members, clear_game_teams, add_team_member, move_team_member,
-    create_announcement, get_active_announcements, get_all_announcements, delete_announcement, publish_announcement,
-)
-from predict import get_stats as predict_stats, announce_result
-from battle import create_battle, join_battle, get_state, submit_answer, list_open_battles
-from teams import auto_assign_teams
+from config import PORT
+from routes.base import BaseRoutesMixin
+from routes.quiz import QuizRoutesMixin
+from routes.predict import PredictRoutesMixin
+from routes.battle import BattleRoutesMixin
+from routes.profile import ProfileRoutesMixin
+from routes.games import GamesRoutesMixin
+from routes.admin_games import AdminGamesRoutesMixin
+from routes.announcements import AnnouncementsRoutesMixin
+from routes.scanner import ScannerRoutesMixin
+from routes.static_pages import StaticRoutesMixin
 
 
-def _display_name(user_id):
-    profile = get_profile(user_id)
-    if profile and profile.get("nickname"):
-        return profile["nickname"]
-    if profile and profile.get("name"):
-        return profile["name"]
-    return "Игрок"
+# путь → имя метода на Handler'е. Смысл и поведение каждого эндпоинта не
+# менялись при разбиении server.py на модули — только расположение кода.
+POST_ROUTES = {
+    "/api/quiz-result":                 "route_post_quiz_result",
+    "/api/predict-result":              "route_post_predict_result",
+    "/api/battle/create":               "route_post_battle_create",
+    "/api/battle/join":                 "route_post_battle_join",
+    "/api/battle/answer":               "route_post_battle_answer",
+    "/api/profile":                     "route_post_profile",
+    "/api/admin/create-game":           "route_post_admin_create_game",
+    "/api/admin/create-game-template":  "route_post_admin_create_game_template",
+    "/api/admin/update-game-template":  "route_post_admin_update_game_template",
+    "/api/admin/delete-game-template":  "route_post_admin_delete_game_template",
+    "/api/games/signup":                "route_post_games_signup",
+    "/api/games/cancel-signup":         "route_post_games_cancel_signup",
+    "/api/games/claim-payment":         "route_post_games_claim_payment",
+    "/api/scanner/analyze":             "route_post_scanner_analyze",
+    "/api/games/chat/send":             "route_post_games_chat_send",
+    "/api/admin/confirm-signup":        "route_post_admin_confirm_signup",
+    "/api/admin/move-team-member":      "route_post_admin_move_team_member",
+    "/api/admin/cancel-game":           "route_post_admin_cancel_game",
+    "/api/admin/complete-game":         "route_post_admin_complete_game",
+    "/api/admin/delete-game":           "route_post_admin_delete_game",
+    "/api/admin/create-announcement":   "route_post_admin_create_announcement",
+    "/api/admin/publish-announcement":  "route_post_admin_publish_announcement",
+    "/api/admin/delete-announcement":   "route_post_admin_delete_announcement",
+}
+
+GET_ROUTES = {
+    "/app":                     "route_get_app_page",
+    "/quiz":                    "route_get_quiz_page",
+    "/battle":                  "route_get_battle_page",
+    "/admin":                   "route_get_admin_page",
+    "/games":                   "route_get_games_page",
+    "/scanner":                 "route_get_scanner_page",
+    "/player":                  "route_get_player_page",
+    "/api/is-admin":            "route_get_is_admin",
+    "/api/announcements":       "route_get_announcements",
+    "/api/admin/announcements": "route_get_admin_announcements",
+    "/api/games":               "route_get_games",
+    "/api/games/chat":          "route_get_games_chat",
+    "/api/admin/game-templates":"route_get_admin_game_templates",
+    "/api/admin/games":         "route_get_admin_games",
+    "/api/admin/users":         "route_get_admin_users",
+    "/logo.jpg":                "route_get_logo",
+    "/api/stats":               "route_get_stats",
+    "/api/battle/list":         "route_get_battle_list",
+    "/api/battle/state":        "route_get_battle_state",
+    "/api/profile":             "route_get_profile",
+    "/api/player-profile":      "route_get_player_profile",
+    "/api/leaderboard":         "route_get_leaderboard",
+    "/":                        "route_get_root_admin_html",
+}
 
 
-def _recompute_teams(game_id):
-    """Автоматически пересчитывает и сохраняет распределение по командам
-    сразу при любой записи/отмене — без ручного запуска админом."""
-    game = get_game(game_id)
-    if not game:
-        return
-    signups = get_signups(game_id)
-    teams = auto_assign_teams(game, signups)
-    clear_game_teams(game_id)
-    for team_idx, members in enumerate(teams):
-        for m in members:
-            add_team_member(game_id, m["user_id"], m["name"], m["player"], team_idx, m["is_guest"])
-
-
-class Handler(BaseHTTPRequestHandler):
+class Handler(
+    BaseRoutesMixin,
+    QuizRoutesMixin,
+    PredictRoutesMixin,
+    BattleRoutesMixin,
+    ProfileRoutesMixin,
+    GamesRoutesMixin,
+    AdminGamesRoutesMixin,
+    AnnouncementsRoutesMixin,
+    ScannerRoutesMixin,
+    StaticRoutesMixin,
+    BaseHTTPRequestHandler,
+):
     def log_message(self, *args):
         pass
 
@@ -63,575 +102,9 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         body   = self.rfile.read(length)
 
-        if path == "/api/quiz-result":
-            try:
-                data = json.loads(body)
-                name = data.get("name", "Аноним")
-                player = data.get("player", "Неизвестно")
-                user_id = data.get("user_id") or None
-
-                add_quiz_history(name, player, now_astana().strftime("%d.%m.%Y %H:%M"), user_id or "web")
-
-                if user_id:
-                    category = PLAYER_CATEGORIES.get(player, "Центр")
-                    set_role(user_id, name, player, category)
-
-                print(f"  [WEB QUIZ] {name} → {player} (uid={user_id})")
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] quiz-result: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/predict-result":
-            # POST {"score": "2:1"} → объявить итоги конкурса
-            try:
-                data  = json.loads(body)
-                score = data.get("score", "")
-                if score:
-                    announce_result(score)
-                    self._json({"ok": True})
-                else:
-                    self._json({"ok": False, "error": "no score"})
-            except Exception as e:
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/battle/create":
-            try:
-                data = json.loads(body)
-                user_id = str(data.get("user_id", ""))
-                title = (data.get("title") or "").strip()
-                if not user_id:
-                    self._json({"error": "no_uid"})
-                    return
-                name = _display_name(user_id)
-                battle_id = create_battle(title, user_id, name)
-                self._json({"battle_id": battle_id})
-            except Exception as e:
-                print(f"  [WARN] battle/create: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/battle/join":
-            try:
-                data = json.loads(body)
-                user_id = str(data.get("user_id", ""))
-                battle_id = str(data.get("battle_id", ""))
-                if not user_id or not battle_id:
-                    self._json({"error": "bad_request"})
-                    return
-                name = _display_name(user_id)
-                error = join_battle(battle_id, user_id, name)
-                self._json({"error": error} if error else {"ok": True})
-            except Exception as e:
-                print(f"  [WARN] battle/join: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/battle/answer":
-            try:
-                data      = json.loads(body)
-                battle_id = str(data.get("battle_id", ""))
-                user_id   = str(data.get("user_id", ""))
-                answer    = data.get("answer", "")
-                result = submit_answer(battle_id, user_id, answer)
-                self._json(result if result else {"error": "invalid"})
-            except Exception as e:
-                print(f"  [WARN] battle/answer: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/profile":
-            try:
-                data     = json.loads(body)
-                user_id  = str(data.get("user_id", ""))
-                has_nickname = "nickname" in data
-                has_jersey   = "jersey_number" in data
-                if not user_id or not (has_nickname or has_jersey):
-                    self._json({"ok": False, "error": "bad_request"})
-                    return
-                if has_nickname:
-                    nickname = (data.get("nickname") or "").strip()[:24]
-                    if not nickname:
-                        self._json({"ok": False, "error": "bad_request"})
-                        return
-                    set_nickname(user_id, nickname)
-                if has_jersey:
-                    try:
-                        jersey_number = int(data.get("jersey_number"))
-                    except (TypeError, ValueError):
-                        self._json({"ok": False, "error": "invalid_number"})
-                        return
-                    if jersey_number < 0 or jersey_number > 99:
-                        self._json({"ok": False, "error": "invalid_number"})
-                        return
-                    set_jersey_number(user_id, jersey_number)
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] profile: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/create-game":
-            try:
-                data = json.loads(body)
-                user_id = str(data.get("user_id", ""))
-                if user_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-
-                game_date = (data.get("date") or "").strip()
-                game_time = (data.get("time") or "").strip()
-                location  = (data.get("location") or "").strip()
-                num_players = data.get("num_players") or None
-                if not game_date or not game_time or not location:
-                    self._json({"ok": False, "error": "Заполни дату, время и место"})
-                    return
-
-                num_teams        = data.get("num_teams") or None
-                players_per_team = data.get("players_per_team") or None
-                price            = (data.get("price") or "").strip()
-                extra_info       = (data.get("extra_info") or "").strip()
-                payment_link     = (data.get("payment_link") or "").strip() or None
-
-                image = data.get("image") or None
-                if image and "," in image and image.strip().startswith("data:"):
-                    image = image.split(",", 1)[1]
-                if image and len(image) > 900_000:
-                    self._json({"ok": False, "error": "Фото слишком большое, выбери другое"})
-                    return
-
-                game_id = create_game(game_date, game_time, location, num_players, num_teams,
-                                       players_per_team, price, extra_info, user_id, payment_link, image)
-
-                lines = [
-                    "⚽ <b>НОВАЯ ИГРА!</b>",
-                    "",
-                    f"📅 {game_date} | 🕐 {game_time}",
-                    f"📍 {location}",
-                ]
-                if num_players:
-                    lines.append(f"👥 Игроков: {num_players}" + (f" ({num_teams} команды по {players_per_team})" if num_teams and players_per_team else ""))
-                if price:
-                    lines.append(f"💰 {price}")
-                if extra_info:
-                    lines.append(f"\nℹ️ {extra_info}")
-                lines.append("\n👉 Приходи и играй с нами! @football_igraem_astana")
-
-                tg_post(CHAT_ID, "sendMessage", text="\n".join(lines), parse_mode="HTML")
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] create-game: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/create-game-template":
-            try:
-                data = json.loads(body)
-                admin_id = str(data.get("user_id", ""))
-                if admin_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-
-                name  = (data.get("name") or "").strip()
-                field = (data.get("field") or "").strip()
-                if not name or not field:
-                    self._json({"ok": False, "error": "Заполни минимум название и поле"})
-                    return
-
-                address      = (data.get("address") or "").strip() or None
-                default_time = (data.get("default_time") or "").strip() or None
-                price        = (data.get("price") or "").strip() or None
-                max_players  = data.get("max_players") or None
-                duration     = data.get("duration") or None
-                description  = (data.get("description") or "").strip() or None
-                payment_link = (data.get("payment_link") or "").strip() or None
-
-                image = data.get("image") or None
-                if image and "," in image and image.strip().startswith("data:"):
-                    image = image.split(",", 1)[1]
-                if image and len(image) > 900_000:
-                    self._json({"ok": False, "error": "Фото слишком большое, выбери другое"})
-                    return
-
-                template_id = create_game_template(name, field, address, default_time, price,
-                                                     max_players, duration, description, payment_link,
-                                                     image, admin_id)
-                self._json({"ok": True, "id": template_id})
-            except Exception as e:
-                print(f"  [WARN] create-game-template: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/update-game-template":
-            try:
-                data = json.loads(body)
-                admin_id = str(data.get("user_id", ""))
-                if admin_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-
-                template_id = data.get("id")
-                name  = (data.get("name") or "").strip()
-                field = (data.get("field") or "").strip()
-                if not template_id or not name or not field:
-                    self._json({"ok": False, "error": "Заполни минимум название и поле"})
-                    return
-
-                address      = (data.get("address") or "").strip() or None
-                default_time = (data.get("default_time") or "").strip() or None
-                price        = (data.get("price") or "").strip() or None
-                max_players  = data.get("max_players") or None
-                duration     = data.get("duration") or None
-                description  = (data.get("description") or "").strip() or None
-                payment_link = (data.get("payment_link") or "").strip() or None
-
-                image = data.get("image") or None
-                if image and "," in image and image.strip().startswith("data:"):
-                    image = image.split(",", 1)[1]
-                if image and len(image) > 900_000:
-                    self._json({"ok": False, "error": "Фото слишком большое, выбери другое"})
-                    return
-
-                update_game_template(template_id, name, field, address, default_time, price,
-                                      max_players, duration, description, payment_link, image)
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] update-game-template: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/delete-game-template":
-            try:
-                data = json.loads(body)
-                admin_id = str(data.get("user_id", ""))
-                if admin_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-                delete_game_template(data.get("id"))
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] delete-game-template: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/games/signup":
-            try:
-                data = json.loads(body)
-                user_id = str(data.get("user_id", ""))
-                game_id = data.get("game_id")
-                guests_count = int(data.get("guests_count") or 0)
-                is_addition = bool(data.get("is_addition"))
-                if not user_id or not game_id:
-                    self._json({"ok": False, "error": "bad_request"})
-                    return
-                if guests_count < 0 or guests_count > 20:
-                    self._json({"ok": False, "error": "Некорректное число людей"})
-                    return
-                if is_addition and guests_count < 1:
-                    self._json({"ok": False, "error": "Укажи хотя бы одного человека"})
-                    return
-
-                game = get_game(game_id)
-                new_people = guests_count if is_addition else 1 + guests_count
-                if game and game.get("num_players"):
-                    existing = get_signups(game_id)
-                    current_total = sum(
-                        (s["guests_count"] if s.get("is_addition") else 1 + (s.get("guests_count") or 0))
-                        for s in existing
-                    )
-                    limit = int(game["num_players"])
-                    if current_total + new_people > limit:
-                        free = max(0, limit - current_total)
-                        self._json({"ok": False, "error": f"На игру заявлено {limit} мест, свободно: {free}"})
-                        return
-
-                profile = get_profile(user_id)
-                role = get_role(user_id)
-                name = display_name_from_profile(profile)
-                player = role["player"] if role else None
-
-                signup_for_game(game_id, user_id, name, player, guests_count, None, is_addition)
-                _recompute_teams(game_id)
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] games/signup: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/games/cancel-signup":
-            try:
-                data = json.loads(body)
-                user_id = str(data.get("user_id", ""))
-                entry_id = data.get("entry_id")
-                game_id = data.get("game_id")
-                if not user_id or not entry_id or not game_id:
-                    self._json({"ok": False, "error": "bad_request"})
-                    return
-                cancelled = cancel_signup(entry_id, user_id)
-                if not cancelled:
-                    self._json({"ok": False, "error": "Матч уже завершён — отменить запись нельзя"})
-                    return
-                _recompute_teams(game_id)
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] games/cancel-signup: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/games/claim-payment":
-            try:
-                data = json.loads(body)
-                user_id = str(data.get("user_id", ""))
-                game_id = data.get("game_id")
-                entry_id = data.get("entry_id")
-                if not user_id or not game_id or not entry_id:
-                    self._json({"ok": False, "error": "bad_request"})
-                    return
-
-                signups = get_signups(game_id)
-                mine = next((s for s in signups if s["id"] == entry_id and s["user_id"] == user_id), None)
-                if not mine:
-                    self._json({"ok": False, "error": "Запись не найдена"})
-                    return
-
-                mark_payment_claimed(entry_id)
-
-                game = get_game(game_id)
-                name = mine["name"]
-                total_people = mine["guests_count"] if mine.get("is_addition") else 1 + (mine.get("guests_count") or 0)
-                when = f"{game['date']} {game['time']}" if game else ""
-                admin_text = (
-                    f"💰 <b>Заявка на оплату!</b>\n\n"
-                    f"👤 {name} ({total_people} чел.) отметил(а), что оплатил(а) за игру\n"
-                    f"📅 {when} | 📍 {game['location'] if game else ''}\n\n"
-                    f"Проверь перевод и подтверди в панели /admin"
-                )
-                for admin_id in ADMIN_IDS:
-                    tg_post(admin_id, "sendMessage", text=admin_text, parse_mode="HTML")
-
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] games/claim-payment: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/scanner/analyze":
-            try:
-                data = json.loads(body)
-                image_b64 = data.get("image") or ""
-                if "," in image_b64 and image_b64.strip().startswith("data:"):
-                    image_b64 = image_b64.split(",", 1)[1]
-                if not image_b64:
-                    self._json({"ok": False, "error": "Нет изображения"})
-                    return
-
-                prompt = (
-                    "Ты — эксперт по футбольным мячам (Adidas, Nike, Puma, Select, Mikasa и другие). "
-                    "Внимательно рассмотри фото и определи модель мяча.\n\n"
-                    "Верни ТОЛЬКО валидный JSON, без markdown-обрамления, строго в такой структуре:\n"
-                    '{"found": true, "confidence": 90, "name": "Adidas Teamgeist", '
-                    '"model": "Teamgeist Berlin", "year": "2006", '
-                    '"usage": "короткая фраза, 3-6 слов", '
-                    '"tournaments": ["Турнир"], '
-                    '"fun_fact": "одно короткое яркое предложение", '
-                    '"design": "короткая фраза про дизайн, 3-8 слов"}\n\n'
-                    "ВАЖНЫЕ правила:\n"
-                    "- Пиши МАКСИМАЛЬНО кратко. Каждое поле — короткая фраза, не абзац. Без воды "
-                    "и общих слов.\n"
-                    "- НЕ утверждай, что мяч 'официальный' или 'оригинальный', если это не считывается "
-                    "явно и однозначно с фото (чёткие официальные логотипы турнира на самом мяче). "
-                    "Обычный реплика/сувенирный/любительский мяч — не выдавай за официальный. Если "
-                    "сомневаешься в статусе — пиши мягко: 'дизайн в стиле...', 'похож на...', без "
-                    "утвердительных заявлений о подлинности.\n"
-                    "- tournaments заполняй, ТОЛЬКО если реально узнаёшь конкретный турнир по дизайну "
-                    "мяча. Если не уверен — пустой массив [].\n"
-                    "- usage — если не можешь определить точное использование, просто укажи тип мяча "
-                    "(тренировочный / любительский / реплика / коллекционный и т.п.), без выдумок.\n"
-                    "- Если на фото не похоже на футбольный мяч или совсем нечётко — верни "
-                    '{"found": false, "confidence": null, "name": null, "model": null, "year": null, '
-                    '"usage": null, "tournaments": [], "fun_fact": null, "design": null}.\n'
-                    "- Если мяч виден, но не уверен в точной модели — всё равно дай лучшую догадку "
-                    "(found: true) и честный процент уверенности confidence, не завышай.\n"
-                    "- Пиши по-русски, без ссылок и markdown."
-                )
-                raw = claude_vision(image_b64, "image/jpeg", prompt, max_tokens=500)
-                cleaned = raw.replace("```json", "").replace("```", "").strip()
-                try:
-                    result = json.loads(cleaned)
-                except Exception:
-                    result = {"found": False, "confidence": None}
-
-                self._json({"ok": True, "result": result})
-            except Exception as e:
-                print(f"  [WARN] scanner/analyze: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/games/chat/send":
-            try:
-                data = json.loads(body)
-                user_id = str(data.get("user_id", ""))
-                game_id = data.get("game_id")
-                text = (data.get("text") or "").strip()
-                if not user_id or not game_id or not text:
-                    self._json({"ok": False, "error": "bad_request"})
-                    return
-                if not is_registered_for_game(game_id, user_id) and user_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Чат доступен только записавшимся на игру"})
-                    return
-
-                profile = get_profile(user_id)
-                name = display_name_from_profile(profile)
-
-                add_chat_message(game_id, user_id, name, text)
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] games/chat/send: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/confirm-signup":
-            try:
-                data = json.loads(body)
-                admin_id = str(data.get("user_id", ""))
-                if admin_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-                entry_id = data.get("entry_id")
-                confirm_signup(entry_id)
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] confirm-signup: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/move-team-member":
-            try:
-                data = json.loads(body)
-                admin_id = str(data.get("user_id", ""))
-                if admin_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-                member_id = int(data.get("member_id"))
-                new_team_index = int(data.get("team_index"))
-                move_team_member(member_id, new_team_index)
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] move-team-member: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/cancel-game":
-            try:
-                data = json.loads(body)
-                admin_id = str(data.get("user_id", ""))
-                if admin_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-                game_id = data.get("game_id")
-                game = get_game(game_id)
-                if not game:
-                    self._json({"ok": False, "error": "Игра не найдена"})
-                    return
-
-                cancel_game(game_id)
-
-                text = (
-                    f"❌ <b>ИГРА ОТМЕНЕНА</b>\n\n"
-                    f"📅 {game['date']} | 🕐 {game['time']}\n"
-                    f"📍 {game['location']}\n\n"
-                    f"Приносим извинения за неудобства 🙏"
-                )
-                tg_post(CHAT_ID, "sendMessage", text=text, parse_mode="HTML")
-
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] cancel-game: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/complete-game":
-            try:
-                data = json.loads(body)
-                admin_id = str(data.get("user_id", ""))
-                if admin_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-                game_id = data.get("game_id")
-                game = get_game(game_id)
-                if not game:
-                    self._json({"ok": False, "error": "Игра не найдена"})
-                    return
-
-                mark_game_completed(game_id)
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] complete-game: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/delete-game":
-            try:
-                data = json.loads(body)
-                admin_id = str(data.get("user_id", ""))
-                if admin_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-                game_id = data.get("game_id")
-                delete_game(game_id)
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] delete-game: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/create-announcement":
-            try:
-                data = json.loads(body)
-                admin_id = str(data.get("user_id", ""))
-                if admin_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-                title = (data.get("title") or "").strip()
-                text = (data.get("text") or "").strip()
-                category = (data.get("category") or "Анонс").strip()
-                event_date = (data.get("event_date") or "").strip() or None
-                published = data.get("published", True)
-                image = data.get("image") or None
-                if image and "," in image and image.strip().startswith("data:"):
-                    image = image.split(",", 1)[1]
-                if image and len(image) > 900_000:
-                    self._json({"ok": False, "error": "Фото слишком большое, выбери другое"})
-                    return
-                if not title or not text:
-                    self._json({"ok": False, "error": "Заполни заголовок и текст"})
-                    return
-
-                create_announcement(title, text, admin_id, image, category, event_date, published)
-
-                if published:
-                    group_text = f"📢 <b>{category}: {title}</b>\n\n{text}"
-                    tg_post(CHAT_ID, "sendMessage", text=group_text, parse_mode="HTML")
-
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] create-announcement: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/publish-announcement":
-            try:
-                data = json.loads(body)
-                admin_id = str(data.get("user_id", ""))
-                if admin_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-                ann_id = data.get("id")
-                items = [a for a in get_all_announcements() if a["id"] == ann_id]
-                publish_announcement(ann_id)
-                if items:
-                    a = items[0]
-                    group_text = f"📢 <b>{a['category'] or 'Анонс'}: {a['title']}</b>\n\n{a['text']}"
-                    tg_post(CHAT_ID, "sendMessage", text=group_text, parse_mode="HTML")
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] publish-announcement: {e}")
-                self.send_response(400); self.end_headers()
-
-        elif path == "/api/admin/delete-announcement":
-            try:
-                data = json.loads(body)
-                admin_id = str(data.get("user_id", ""))
-                if admin_id not in ADMIN_IDS:
-                    self._json({"ok": False, "error": "Нет прав администратора"})
-                    return
-                delete_announcement(data.get("id"))
-                self._json({"ok": True})
-            except Exception as e:
-                print(f"  [WARN] delete-announcement: {e}")
-                self.send_response(400); self.end_headers()
-
+        handler_name = POST_ROUTES.get(path)
+        if handler_name:
+            getattr(self, handler_name)(body)
         else:
             self.send_response(404); self.end_headers()
 
@@ -641,301 +114,11 @@ class Handler(BaseHTTPRequestHandler):
         path = parsed.path
         q = parse_qs(parsed.query)
 
-        if path == "/app":
-            self._file("webapp/app.html", "text/html; charset=utf-8")
-        elif path == "/quiz":
-            self._file("webapp/index.html", "text/html; charset=utf-8")
-        elif path == "/battle":
-            self._file("webapp/battle.html", "text/html; charset=utf-8")
-        elif path == "/admin":
-            self._file("webapp/admin.html", "text/html; charset=utf-8")
-        elif path == "/games":
-            self._file("webapp/games.html", "text/html; charset=utf-8")
-        elif path == "/scanner":
-            self._file("webapp/scanner.html", "text/html; charset=utf-8")
-        elif path == "/player":
-            self._file("webapp/player.html", "text/html; charset=utf-8")
-        elif path == "/api/is-admin":
-            user_id = (q.get("user_id") or [""])[0]
-            self._json({"is_admin": user_id in ADMIN_IDS})
-        elif path == "/api/announcements":
-            self._json({"announcements": get_active_announcements(10)})
-        elif path == "/api/admin/announcements":
-            user_id = (q.get("user_id") or [""])[0]
-            if user_id not in ADMIN_IDS:
-                self._json({"error": "forbidden"})
-            else:
-                self._json({"announcements": get_all_announcements()})
-        elif path == "/api/games":
-            user_id = (q.get("user_id") or [""])[0]
-            games = get_active_games()
-            if user_id:
-                games = games + get_history_games(user_id)
-            for g in games:
-                g["signups"] = get_signups(g["id"])
-                g["my_status"] = get_my_signup(g["id"], user_id) if user_id else None
-                g["my_signups"] = get_my_signups(g["id"], user_id) if user_id else []
-                g["teams"] = get_team_members(g["id"])
-            self._json({"games": games})
-        elif path == "/api/games/chat":
-            user_id = (q.get("user_id") or [""])[0]
-            game_id = (q.get("game_id") or [""])[0]
-            since_id = int((q.get("since_id") or ["0"])[0] or 0)
-            if not is_registered_for_game(game_id, user_id) and user_id not in ADMIN_IDS:
-                self._json({"error": "forbidden"})
-            else:
-                self._json({"messages": get_chat_messages(game_id, since_id)})
-        elif path == "/api/admin/game-templates":
-            user_id = (q.get("user_id") or [""])[0]
-            if user_id not in ADMIN_IDS:
-                self._json({"error": "forbidden"})
-            else:
-                self._json({"templates": get_game_templates()})
-        elif path == "/api/admin/games":
-            user_id = (q.get("user_id") or [""])[0]
-            if user_id not in ADMIN_IDS:
-                self._json({"error": "forbidden"})
-            else:
-                games = get_all_games()
-                for g in games:
-                    signups = get_signups(g["id"])
-                    for s in signups:
-                        s["username"] = get_username(s["user_id"])
-                        profile = get_profile(s["user_id"])
-                        s["phone"] = profile["phone"] if profile else None
-                    g["signups"] = signups
-                    g["teams"] = get_team_members(g["id"])
-                self._json({"games": games})
-        elif path == "/api/admin/users":
-            user_id = (q.get("user_id") or [""])[0]
-            if user_id not in ADMIN_IDS:
-                self._json({"error": "forbidden"})
-            else:
-                users = get_all_users()
-                for u in users:
-                    u["games_played"] = get_games_played_count(u["user_id"])
-                self._json({"users": users})
-        elif path == "/logo.jpg":
-            self._file("webapp/logo.jpg", "image/jpeg")
-        elif path == "/api/stats":
-            stats = predict_stats()
-            self._json(stats)
-        elif path == "/api/battle/list":
-            self._json({"battles": list_open_battles()})
-        elif path == "/api/battle/state":
-            battle_id = (q.get("battle_id") or [""])[0]
-            user_id = (q.get("user_id") or [""])[0]
-            state = get_state(battle_id, user_id)
-            self._json(state if state else {"error": "not_found"})
-        elif path == "/api/profile":
-            user_id = (q.get("user_id") or [""])[0]
-            profile = get_profile(user_id)
-            role = get_role(user_id)
-            games_played = get_games_played_count(user_id) if user_id else 0
-            self._json({
-                "name": profile["name"] if profile else None,
-                "nickname": profile["nickname"] if profile else None,
-                "jersey_number": profile["jersey_number"] if profile else None,
-                "role": role,
-                "games_played": games_played,
-            })
-        elif path == "/api/player-profile":
-            # Публичный профиль — доступен всем, без проверки владения.
-            target_id = (q.get("user_id") or [""])[0]
-            if not target_id:
-                self._json({"error": "user_id required"})
-            else:
-                profile = get_profile(target_id)
-                role = get_role(target_id)
-                display_name = display_name_from_profile(profile)
-                recent = get_history_games(target_id)[:5]
-                recent_out = [{
-                    "id": g["id"], "date": g["date"], "time": g["time"], "location": g["location"],
-                } for g in recent]
-                self._json({
-                    "user_id": target_id,
-                    "name": display_name,
-                    "role": role,
-                    "games_played": get_games_played_count(target_id),
-                    "recent_matches": recent_out,
-                    "ovr": 60,  # заглушка — общая система рейтинга ещё не реализована (см. Hero на Home)
-                    "mvp_implemented": False,
-                    "achievements_implemented": False,
-                })
-        elif path == "/api/leaderboard":
-            lb_type = (q.get("type") or ["games"])[0]
-            if lb_type == "mvp":
-                # MVP пока не отслеживается в базе — отдаём пустой список,
-                # фронтенд покажет "скоро" вместо того чтобы выдумывать данные.
-                self._json({"leaderboard": [], "implemented": False})
-            else:
-                self._json({"leaderboard": get_leaderboard_most_games(5), "implemented": True})
-        elif path == "/":
-            self._admin_html()
+        handler_name = GET_ROUTES.get(path)
+        if handler_name:
+            getattr(self, handler_name)(q)
         else:
             self.send_response(404); self.end_headers()
-
-    # ── helpers ───────────────────────────────────────────────────────────────
-
-    def _json(self, data):
-        body = json.dumps(data, ensure_ascii=False).encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        self.wfile.write(body)
-
-    def _file(self, rel_path, content_type):
-        full = os.path.join(os.path.dirname(__file__), rel_path)
-        try:
-            with open(full, "rb") as f:
-                data = f.read()
-            self.send_response(200)
-            self.send_header("Content-Type", content_type)
-            if content_type.startswith("text/html"):
-                self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
-            else:
-                self.send_header("Cache-Control", "public, max-age=86400")
-
-            if content_type.startswith("text/") and "gzip" in self.headers.get("Accept-Encoding", ""):
-                import gzip
-                data = gzip.compress(data, compresslevel=6)
-                self.send_header("Content-Encoding", "gzip")
-
-            self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
-        except FileNotFoundError:
-            self.send_response(404); self.end_headers()
-
-    def _admin_html(self):
-        quiz_history = get_quiz_history()
-        total   = len(quiz_history)
-        players = {}
-        for h in quiz_history:
-            players[h["player"]] = players.get(h["player"], 0) + 1
-        top_player = max(players, key=players.get) if players else "—"
-
-        users = get_all_users()
-        roles = get_all_roles()
-
-        def mask_phone(p):
-            return f"•••{p[-4:]}" if p and len(p) >= 4 else (p or "—")
-
-        ps = predict_stats()
-        predict_block = ""
-        if ps["active"] and ps["match"]:
-            m = ps["match"]
-            predict_block = f"""
-<div class="section">
-  <h2>🎯 Конкурс прогнозов — {m['home']} vs {m['away']} ({m['time']})</h2>
-  <p style="color:#9BA1AC;margin:8px 0">Участников: <b style="color:#8B93F5">{ps['total_predictions']}</b></p>
-  <div style="display:flex;gap:8px;margin-top:12px">
-    <input id="score-input" placeholder="2:1" style="padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#23262D;color:#F5F6F7;font-size:14px">
-    <button onclick="announceResult()" style="padding:8px 16px;background:#5E6AD2;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">Объявить итог</button>
-  </div>
-</div>
-<script>
-function announceResult(){{
-  const score = document.getElementById('score-input').value.trim();
-  if(!score)return;
-  fetch('/api/predict-result',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{score}})}})
-    .then(r=>r.json()).then(d=>alert(d.ok?'✅ Итоги объявлены!':'❌ '+d.error));
-}}
-</script>"""
-
-        rows = "".join(
-            f"<tr><td>{i}</td><td>{display_name_from_profile(get_profile(h['user_id'])) if h.get('user_id') else (h['name'] or 'Игрок')}</td>"
-            f"<td><span class='badge'>{h['player']}</span></td>"
-            f"<td>{h['date']}</td></tr>"
-            for i, h in enumerate(reversed(quiz_history), 1)
-        ) or '<tr><td colspan="4" class="empty">Тестов ещё не было 🎮</td></tr>'
-
-        users_rows = "".join(
-            f"<tr><td>{i}</td><td>{display_name_from_profile(u)}</td>"
-            f"<td>{('@' + u['username']) if u.get('username') else '—'}</td>"
-            f"<td>{mask_phone(u['phone'])}</td><td>{u['joined_at']}</td></tr>"
-            for i, u in enumerate(users, 1)
-        ) or '<tr><td colspan="5" class="empty">Пока никто не заходил 👀</td></tr>'
-
-        roles_rows = "".join(
-            f"<tr><td>{i}</td><td>{display_name_from_profile(get_profile(r['user_id'])) if r.get('user_id') else (r['name'] or 'Игрок')}</td>"
-            f"<td><span class='badge'>{r['player']}</span></td>"
-            f"<td>{r['category']}</td></tr>"
-            for i, r in enumerate(roles, 1)
-        ) or '<tr><td colspan="4" class="empty">Ролей ещё нет 🎮</td></tr>'
-
-        html = f"""<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>⚽ Панель Админа — OZMZ</title>
-<style>
-*{{box-sizing:border-box;margin:0;padding:0}}
-body{{font-family:-apple-system,sans-serif;background:#0B0D10;color:#F5F6F7;min-height:100vh;padding:24px}}
-.header{{display:flex;align-items:center;gap:12px;margin-bottom:28px}}
-.header h1{{font-size:22px;font-weight:700}}
-.stats{{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}}
-.stat{{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:16px}}
-.stat-num{{font-size:30px;font-weight:700;color:#8B93F5}}
-.stat-label{{font-size:13px;color:#9BA1AC;margin-top:4px}}
-.section{{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:16px;margin-bottom:16px}}
-.section h2{{font-size:15px;color:#8B93F5;margin-bottom:4px}}
-.table-wrap{{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:16px;overflow:hidden}}
-table{{width:100%;border-collapse:collapse}}
-th{{background:rgba(94,106,210,.1);padding:10px 14px;text-align:left;font-size:11px;color:#8B93F5;letter-spacing:1px;text-transform:uppercase}}
-td{{padding:10px 14px;border-top:1px solid rgba(255,255,255,.05);font-size:13px;color:#D7D9DC}}
-tr:hover td{{background:rgba(255,255,255,.03)}}
-.badge{{background:rgba(94,106,210,.15);color:#8B93F5;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:600}}
-.empty{{text-align:center;padding:40px;color:#6B7280}}
-.refresh{{margin-top:14px;text-align:center}}
-.refresh a{{color:#8B93F5;text-decoration:none;font-size:13px}}
-</style>
-</head>
-<body>
-<div class="header">
-  <img src="/logo.jpg" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #5E6AD2">
-  <h1>Панель Админа — OZMZ Football</h1>
-</div>
-<div class="stats">
-  <div class="stat"><div class="stat-num">{len(users)}</div><div class="stat-label">Пользователей</div></div>
-  <div class="stat"><div class="stat-num">{total}</div><div class="stat-label">Тестов пройдено</div></div>
-  <div class="stat"><div class="stat-num">{len(players)}</div><div class="stat-label">Разных футболистов</div></div>
-  <div class="stat"><div class="stat-num">{now_astana().strftime('%H:%M')}</div><div class="stat-label">Время (AST)</div></div>
-</div>
-{predict_block}
-
-<div class="section"><h2>📱 Пользователи (номера скрыты, кроме последних 4 цифр)</h2></div>
-<div class="table-wrap" style="margin-bottom:16px">
-  <table>
-    <thead><tr><th>#</th><th>Игрок</th><th>Username</th><th>Телефон</th><th>Дата регистрации</th></tr></thead>
-    <tbody>{users_rows}</tbody>
-  </table>
-</div>
-
-<div class="section"><h2>🏆 Роли игроков (для /teams)</h2></div>
-<div class="table-wrap" style="margin-bottom:16px">
-  <table>
-    <thead><tr><th>#</th><th>Игрок</th><th>Футболист</th><th>Категория</th></tr></thead>
-    <tbody>{roles_rows}</tbody>
-  </table>
-</div>
-
-<div class="section"><h2>🎮 История квизов</h2></div>
-<div class="table-wrap">
-  <table>
-    <thead><tr><th>#</th><th>Игрок</th><th>Футболист</th><th>Дата и время</th></tr></thead>
-    <tbody>{rows}</tbody>
-  </table>
-</div>
-<div class="refresh"><a href="/">↻ Обновить</a></div>
-</body></html>"""
-
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.end_headers()
-        self.wfile.write(html.encode("utf-8"))
 
 
 def run():
