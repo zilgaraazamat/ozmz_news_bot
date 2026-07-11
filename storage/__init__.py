@@ -71,6 +71,12 @@ from .announcements import (
     get_all_announcements, delete_announcement,
 )
 
+from .match_stats import (
+    STAT_FIELDS,
+    record_match_stat, get_match_stats, get_player_match_stats,
+    get_player_stat_in_match, delete_match_stats,
+)
+
 __all__ = [
     "init_db",
     "get_role", "set_role", "get_roles_bulk", "get_all_roles",
@@ -95,4 +101,7 @@ __all__ = [
     "is_registered_for_game", "add_chat_message", "get_chat_messages",
     "create_announcement", "publish_announcement", "get_active_announcements",
     "get_all_announcements", "delete_announcement",
+    "STAT_FIELDS",
+    "record_match_stat", "get_match_stats", "get_player_match_stats",
+    "get_player_stat_in_match", "delete_match_stats",
 ]

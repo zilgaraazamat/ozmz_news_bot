@@ -207,6 +207,23 @@ def init_db():
             is_guest   INTEGER DEFAULT 0
         )""")
 
+        # Статистика игроков по завершённым матчам — единый источник правды
+        # для футбольной статистики (см. storage/match_stats.py). Одна строка =
+        # один игрок в одном матче. Сейчас: голы + MVP. Чтобы добавить новую
+        # статистику в будущем (передачи, жёлтые/красные карточки и т.д.):
+        #   1. добавить колонку сюда через ALTER TABLE ADD COLUMN
+        #   2. дописать её имя в STAT_FIELDS в storage/match_stats.py
+        # Остальной код (upsert/чтение) продолжит работать без изменений.
+        c.execute("""CREATE TABLE IF NOT EXISTS match_player_stats(
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            game_id    INTEGER NOT NULL,
+            user_id    TEXT NOT NULL,
+            goals      INTEGER DEFAULT 0,
+            is_mvp     INTEGER DEFAULT 0,
+            created_at TEXT,
+            UNIQUE(game_id, user_id)
+        )""")
+
         c.execute("""CREATE TABLE IF NOT EXISTS game_chat(
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             game_id    INTEGER,
