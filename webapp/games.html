@@ -45,16 +45,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .gc-stat-divider{width:1px;background:rgba(255,255,255,.07);margin:1px 0}
 .gc-progress{height:5px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden;margin-bottom:10px}
 .gc-progress-fill{height:100%;background:linear-gradient(90deg,#5E6AD2,#8B93F5);border-radius:4px;transition:width .3s}
-.roster{background:#1D2027;border-radius:12px;padding:8px;margin-bottom:8px}
-.roster-title{font-size:11px;font-weight:700;color:#9BA1AC;margin-bottom:4px}
-.roster-row{display:flex;align-items:center;gap:8px;font-size:12px;padding:2px 0;color:#D7D9DC}
-.roster-row-tappable{cursor:pointer;transition:opacity .15s}
-.roster-row-tappable:active{opacity:.6}
-.roster-more{font-size:11px;color:#6B7280;padding:2px 0 0 15px}
-.roster-row .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.dot.confirmed{background:#30D158}
-.dot.pending{background:#E5A93C}
+.roster{background:#1D2027;border-radius:12px;padding:10px;margin-bottom:8px}
+.roster-title{font-size:11px;font-weight:700;color:#9BA1AC;margin-bottom:8px}
 .roster-empty{font-size:12px;color:#565A61}
+.roster-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.player-card{background:#23262D;border-radius:12px;padding:9px 6px 8px;text-align:center;cursor:pointer;transition:transform .12s,background .12s}
+.player-card:active{transform:scale(.95);background:#282B33}
+.player-card-avatar{width:34px;height:34px;margin:0 auto 5px;border-radius:50%;background:rgba(94,106,210,.16);color:#8B93F5;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;border:2px solid transparent}
+.player-card-avatar.confirmed{border-color:#30D158}
+.player-card-avatar.pending{border-color:#E5A93C}
+.player-card-name{font-size:11.5px;font-weight:700;color:#F5F6F7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
+.player-card-guests{color:#6B7280;font-weight:600}
+.player-card-ovr{font-size:10px;color:#8B93F5;font-weight:700;margin-top:2px}
+.player-card-stats{font-size:9.5px;color:#6B7280;margin-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.roster-more-btn{width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px dashed rgba(255,255,255,.12);background:transparent;color:#8B93F5;font-size:12px;font-weight:700;cursor:pointer;text-align:center}
+.roster-more-btn:active{background:rgba(94,106,210,.08)}
 .guests-label{font-size:12px;color:#6B7280;display:block;margin-bottom:6px}
 .guests-input{width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#23262D;color:#F5F6F7;font-size:16px;margin-bottom:10px}
 .guests-input:focus{outline:none;border-color:#5E6AD2}
@@ -324,26 +329,71 @@ function openPlayer(targetUserId) {
   location.href = "/player?" + params.toString();
 }
 
-function rosterHtml(signups) {
-  const list = signups || [];
-  if (list.length === 0) {
+function avatarLetter(name) {
+  return ((name || "?").trim().charAt(0) || "?").toUpperCase();
+}
+
+// Один реальный человек может встречаться в записях несколько раз — основная
+// запись + отдельно добавленные им же гости под тем же user_id. Схлопываем
+// это в одну карточку на человека (а не на запись), суммируя гостей и считая
+// человека подтверждённым, если подтверждена хотя бы одна из его записей.
+function dedupeRoster(signups) {
+  const byId = new Map();
+  (signups || []).forEach(s => {
+    if (!s.user_id) return; // без аккаунта — отдельной карточкой не показываем
+    if (!byId.has(s.user_id)) {
+      byId.set(s.user_id, {
+        user_id: s.user_id, name: s.name, guests: 0, confirmed: false,
+        ovr: s.ovr, games_played: s.games_played, goals: s.goals,
+      });
+    }
+    const entry = byId.get(s.user_id);
+    entry.guests += (s.guests_count || 0);
+    if (s.status === "confirmed") entry.confirmed = true;
+  });
+  return Array.from(byId.values());
+}
+
+function playerCardHtml(p) {
+  const statusCls = p.confirmed ? "confirmed" : "pending";
+  const guestsBadge = p.guests > 0 ? `<span class="player-card-guests"> +${p.guests}</span>` : "";
+  return `
+    <div class="player-card" onclick="openPlayer('${p.user_id}')">
+      <div class="player-card-avatar ${statusCls}">${avatarLetter(p.name)}</div>
+      <div class="player-card-name">${p.name}${guestsBadge}</div>
+      <div class="player-card-ovr">OVR ${p.ovr ?? "—"}</div>
+      <div class="player-card-stats">🎮 ${p.games_played ?? 0} ⚽ ${p.goals ?? 0}</div>
+    </div>`;
+}
+
+let rosterExpanded = {};
+
+function toggleRosterExpanded(gameId) {
+  rosterExpanded[gameId] = !rosterExpanded[gameId];
+  renderGames(window.__lastGames || []);
+}
+
+// Показываем первых 6 компактными карточками (аватар, ник, OVR, игры,
+// голы) — этого достаточно, чтобы окинуть состав взглядом. Остальные
+// открываются по тапу на "+N ещё игроков", не уходя с экрана игры.
+function rosterHtml(gameId, signups) {
+  const players = dedupeRoster(signups);
+  if (players.length === 0) {
     return `<div class="roster-empty">Пока никто не записался</div>`;
   }
-  const shown = list.slice(0, 2);
-  const extra = list.length - shown.length;
-  const rows = shown.map(s => {
-    const cls = s.status === "confirmed" ? "confirmed" : "pending";
-    const click = s.user_id ? ` onclick="openPlayer('${s.user_id}')"` : "";
-    const tappable = s.user_id ? " roster-row-tappable" : "";
-    if (s.is_addition) {
-      return `<div class="roster-row${tappable}"${click}><span class="dot ${cls}"></span><span>${s.name} — доп. игроки ×${s.guests_count}</span></div>`;
-    }
-    const label = s.player ? ` (${s.player})` : "";
-    const guests = s.guests_count > 0 ? ` +${s.guests_count}` : "";
-    return `<div class="roster-row${tappable}"${click}><span class="dot ${cls}"></span><span>${s.name}${label}${guests}</span></div>`;
-  }).join("");
-  const more = extra > 0 ? `<div class="roster-more">+${extra} ещё</div>` : "";
-  return rows + more;
+
+  const expanded = !!rosterExpanded[gameId];
+  const shown = expanded ? players : players.slice(0, 6);
+  const extra = players.length - shown.length;
+
+  const grid = `<div class="roster-grid">${shown.map(playerCardHtml).join("")}</div>`;
+  let moreBtn = "";
+  if (extra > 0) {
+    moreBtn = `<button class="roster-more-btn" onclick="toggleRosterExpanded(${gameId})">+${extra} ещё игроков</button>`;
+  } else if (expanded && players.length > 6) {
+    moreBtn = `<button class="roster-more-btn" onclick="toggleRosterExpanded(${gameId})">Свернуть ▲</button>`;
+  }
+  return grid + moreBtn;
 }
 
 function entryPeopleCount(s) {
@@ -414,7 +464,7 @@ function gameRosterWidget(g, totalCount) {
   return `
     <div class="roster">
       <div class="roster-title">👥 Участники (${totalCount})</div>
-      ${rosterHtml(g.signups)}
+      ${rosterHtml(g.id, g.signups)}
     </div>`;
 }
 

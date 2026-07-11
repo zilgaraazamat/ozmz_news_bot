@@ -9,7 +9,7 @@ from storage import (
     signup_for_game, get_signups, get_my_signup, get_my_signups, cancel_signup, mark_payment_claimed,
     is_registered_for_game, add_chat_message, get_chat_messages,
     get_team_members, get_leaderboard, LEADERBOARD_CATEGORIES,
-    get_player_stat_in_match,
+    get_player_stat_in_match, get_players_stats_bulk,
 )
 from .helpers import _recompute_teams
 
@@ -153,6 +153,21 @@ class GamesRoutesMixin:
             # завершённой игры, состояние «Матч завершён» (см. games.html).
             # None, если по этому матчу статистика ещё не заводилась.
             g["my_match_stats"] = get_player_stat_in_match(g["id"], user_id) if user_id else None
+
+        # Карточки игроков в списке "Участники" показывают OVR/игры/голы —
+        # берём их одним общим вызовом Player Statistics service на все игры
+        # разом (не по одному запросу на игрока), чтобы не дублировать расчёт
+        # статистики и не заваливать БД повторными запросами.
+        all_ids = {s["user_id"] for g in games for s in g["signups"] if s.get("user_id")}
+        stats_by_id = get_players_stats_bulk(all_ids) if all_ids else {}
+        for g in games:
+            for s in g["signups"]:
+                stats = stats_by_id.get(str(s.get("user_id")))
+                if stats:
+                    s["ovr"] = stats["ovr"]
+                    s["games_played"] = stats["games_played"]
+                    s["goals"] = stats["goals"]
+
         self._json({"games": games})
 
     def route_get_games_chat(self, q):
