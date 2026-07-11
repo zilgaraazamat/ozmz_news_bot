@@ -37,14 +37,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .gc-thumb-placeholder span{font-size:20px;opacity:.5;position:relative;z-index:1}
 
 /* ── строка ключевых цифр: цена / записано / свободно — сканируется за долю секунды ── */
-.gc-stats-row{display:flex;align-items:stretch;background:#101116;border-radius:12px;padding:9px 4px;margin-bottom:8px}
-.gc-stat{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;min-width:0}
-.gc-stat-value{font-size:14px;font-weight:800;color:#F5F6F7;font-variant-numeric:tabular-nums;white-space:nowrap}
-.gc-stat-value.free{color:#30D158}
-.gc-stat-label{font-size:9.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
-.gc-stat-divider{width:1px;background:rgba(255,255,255,.07);margin:1px 0}
-.gc-progress{height:5px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden;margin-bottom:10px}
-.gc-progress-fill{height:100%;background:linear-gradient(90deg,#5E6AD2,#8B93F5);border-radius:4px;transition:width .3s}
+.gc-price-chip{display:inline-flex;align-items:center;gap:5px;background:#101116;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:13px;font-weight:800;color:#F5F6F7}
+
+/* ── визуальный индикатор заполненности: сегментированная полоса + счёт +
+   сообщение о свободных местах. При ≤5 местах — подсвечиваем тревожным
+   цветом, чтобы создать ощущение срочности ── */
+.gc-capacity{margin-bottom:10px}
+.gc-capacity-bar{display:flex;gap:3px;margin-bottom:7px}
+.gc-capacity-seg{flex:1;height:8px;border-radius:3px;background:rgba(255,255,255,.07)}
+.gc-capacity-seg.filled{background:linear-gradient(90deg,#5E6AD2,#8B93F5)}
+.gc-capacity-seg.filled.urgent{background:linear-gradient(90deg,#E5533D,#FF7A5C)}
+.gc-capacity-meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gc-capacity-count{font-size:12.5px;font-weight:700;color:#C7CAD1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.gc-capacity-spots{font-size:12px;font-weight:700;color:#6B7280;white-space:nowrap}
+.gc-capacity-spots.urgent{color:#FF7A5C}
+.gc-capacity-spots.full{color:#565A61}
 .roster{background:#1D2027;border-radius:12px;padding:10px;margin-bottom:8px}
 .roster-title{font-size:11px;font-weight:700;color:#9BA1AC;margin-bottom:8px}
 .roster-empty{font-size:12px;color:#565A61}
@@ -439,35 +446,54 @@ function gameHeaderWidget(g) {
     </div>`;
 }
 
-// Три ключевые цифры в один взгляд: цена / записано (X из максимума) /
-// свободно — плюс тонкая полоса заполненности под ними. Раньше это были три
-// отдельных блока (цена, текстовая строка занятости, прогресс-бар) — теперь
-// один компактный ряд.
-function gameStatsWidget(g, confirmedCount) {
+// Русское склонение "место/места/мест" по числу (1 место, 2-4 места, 5+ мест).
+function pluralSpots(n) {
+  const mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "место";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "места";
+  return "мест";
+}
+
+// Визуальный индикатор заполненности: сегментированная полоса (10 делений,
+// как в примере из ТЗ — "████████░░"), счёт "16 / 20 игроков" и отдельным
+// сообщением "Осталось всего N мест". Когда свободных мест ≤5 — полоса и
+// сообщение подсвечиваются тревожным цветом, создавая ощущение срочности.
+function gameCapacityWidget(g, confirmedCount) {
   const max = g.num_players || null;
-  const freeSpots = max ? Math.max(0, max - confirmedCount) : null;
-  const occPct = max ? Math.min(100, Math.round((confirmedCount / max) * 100)) : 0;
+  const priceChip = g.price ? `<div class="gc-price-chip">💰 ${g.price}</div>` : "";
+
+  if (!max) {
+    // Лимит не задан — просто показываем, сколько человек уже записалось,
+    // без полосы/сообщения о местах (их в принципе не может не хватить).
+    return `${priceChip}<div class="gc-capacity-meta"><span class="gc-capacity-count">👥 ${confirmedCount} игроков записано</span></div>`;
+  }
+
+  const freeSpots = Math.max(0, max - confirmedCount);
+  const urgent = freeSpots > 0 && freeSpots <= 5;
+  const full = freeSpots === 0;
+
+  const totalSegments = 10;
+  const filledSegments = Math.round(Math.min(1, confirmedCount / max) * totalSegments);
+  const segmentsHtml = Array.from({ length: totalSegments }, (_, i) =>
+    `<div class="gc-capacity-seg${i < filledSegments ? ` filled${urgent ? " urgent" : ""}` : ""}"></div>`
+  ).join("");
+
+  let spotsText;
+  if (full) spotsText = "Мест нет";
+  else if (freeSpots === 1) spotsText = "Остался всего 1 спот!";
+  else if (urgent) spotsText = `Осталось всего ${freeSpots} ${pluralSpots(freeSpots)}!`;
+  else spotsText = `${freeSpots} своб. мест`;
+  const spotsCls = full ? "full" : urgent ? "urgent" : "";
 
   return `
-    <div class="gc-stats-row">
-      ${g.price ? `
-      <div class="gc-stat">
-        <div class="gc-stat-value">💰 ${g.price}</div>
-        <div class="gc-stat-label">Цена</div>
+    ${priceChip}
+    <div class="gc-capacity">
+      <div class="gc-capacity-bar">${segmentsHtml}</div>
+      <div class="gc-capacity-meta">
+        <span class="gc-capacity-count">👥 ${confirmedCount} / ${max} игроков</span>
+        <span class="gc-capacity-spots ${spotsCls}">${spotsText}</span>
       </div>
-      <div class="gc-stat-divider"></div>` : ""}
-      <div class="gc-stat">
-        <div class="gc-stat-value">👥 ${confirmedCount}${max ? `/${max}` : ""}</div>
-        <div class="gc-stat-label">Записано</div>
-      </div>
-      ${freeSpots !== null ? `
-      <div class="gc-stat-divider"></div>
-      <div class="gc-stat">
-        <div class="gc-stat-value free">${freeSpots}</div>
-        <div class="gc-stat-label">Свободно</div>
-      </div>` : ""}
-    </div>
-    ${max ? `<div class="gc-progress"><div class="gc-progress-fill" style="width:${occPct}%"></div></div>` : ""}`;
+    </div>`;
 }
 
 function gameRosterWidget(g, totalCount) {
@@ -525,7 +551,7 @@ function gameCardWidget(g, index) {
   return `
     <div class="game-card" style="animation-delay:${delay}s">
       ${gameHeaderWidget(g)}
-      ${gameStatsWidget(g, confirmedCount)}
+      ${gameCapacityWidget(g, confirmedCount)}
       ${gameRosterWidget(g, totalCount)}
       ${gameRegistrationStatusWidget(g)}
       ${gameAddFormWidget(g, mySignups)}
