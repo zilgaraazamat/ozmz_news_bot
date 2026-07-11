@@ -19,22 +19,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .game-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#5E6AD2,#8B93F5,transparent)}
 @keyframes gc-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── компактная "билетная" шапка карточки: заголовок, поле, дата/время
-   слева, фото площадки (если есть) — прижато в правый верхний угол ── */
-.gc-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
-.gc-header-info{flex:1;min-width:0}
-.gc-title{font-size:13px;font-weight:700;color:#8B93F5;letter-spacing:.2px;margin-bottom:4px}
-.gc-field{font-size:15px;font-weight:800;color:#F5F6F7;letter-spacing:-.1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
+/* ── информационная иерархия карточки, сверху вниз: заголовок → фото поля
+   (если есть) → поле/адрес → дата+день недели → время → цена → прогресс
+   записи → кнопка действия → участники. Ощущение бронирования события,
+   а не заполнения формы — фото, когда оно есть, идёт баннером сразу под
+   заголовком, а не мелкой иконкой сбоку. ── */
+.gc-title{font-size:13px;font-weight:700;color:#8B93F5;letter-spacing:.2px;margin-bottom:6px}
+.gc-photo-banner{width:100%;height:112px;border-radius:14px;overflow:hidden;margin-bottom:10px;background:#20232B}
+.gc-photo-banner img{width:100%;height:100%;object-fit:cover;display:block}
+.gc-field-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.gc-field{flex:1;min-width:0;font-size:14px;font-weight:700;color:#C7CAD1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gc-field-addr{color:#6B7280;font-weight:500}
-.gc-datetime-row{display:flex;align-items:center;gap:6px;margin-top:6px}
+.gc-datetime-row{display:flex;align-items:center;gap:6px;margin-bottom:8px}
 .gc-date-chip,.gc-time-chip{font-size:12px;font-weight:700;padding:3px 9px;border-radius:7px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .gc-date-chip{background:rgba(94,106,210,.14);color:#8B93F5}
 .gc-time-chip{background:rgba(255,255,255,.06);color:#C7CAD1}
-.gc-thumb{width:64px;height:64px;flex-shrink:0;border-radius:14px;overflow:hidden;position:relative;background:#20232B}
-.gc-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.gc-thumb-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#20232B,#181A1F);position:relative;overflow:hidden}
-.gc-thumb-placeholder::before{content:'';position:absolute;inset:-20%;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 2px,transparent 2px 14px)}
-.gc-thumb-placeholder span{font-size:20px;opacity:.5;position:relative;z-index:1}
 
 /* ── строка ключевых цифр: цена / записано / свободно — сканируется за долю секунды ── */
 .gc-price-chip{display:inline-flex;align-items:center;gap:5px;background:#101116;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:13px;font-weight:800;color:#F5F6F7}
@@ -105,7 +104,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .reg-extra-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:12px;color:#9BA1AC}
 .reg-extra-cancel-btn{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,69,58,.3);background:rgba(255,69,58,.08);color:#FF6961;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 
-.gc-location-btn{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#C7CAD1;font-size:12.5px;font-weight:700;cursor:pointer;text-decoration:none}
+.gc-location-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#8B93F5;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
 .gc-location-btn:active{background:rgba(255,255,255,.08)}
 .reg-stats-row{display:flex;gap:8px;margin-top:4px}
 .reg-stat-badge{flex:1;background:#101116;border-radius:10px;padding:10px 6px;text-align:center}
@@ -412,38 +411,50 @@ function entryPeopleCount(s) {
 
 // ── карточка игры: переиспользуемые виджеты ──────────────────────────────────
 
-function gameThumbWidget(g) {
-  const inner = g.image
-    ? `<img src="data:image/jpeg;base64,${g.image}" alt="${g.location}">`
-    : `<div class="gc-thumb-placeholder"><span>⚽</span></div>`;
-  return `<div class="gc-thumb">${inner}</div>`;
-}
-
 function mapsUrl(g) {
   const query = g.location + (g.extra_info ? `, ${g.extra_info}` : "");
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
-// Компактная "билетная" шапка: заголовок, поле (+ адрес одной строкой, если
-// есть), дата с днём недели и время — слева; фото площадки (если админ его
-// загрузил) — прижато в правый верхний угол с закруглением, иначе плейсхолдер
-// с мячом. Кнопка "Открыть локацию" — ссылка на карту, доступна всегда,
-// независимо от статуса записи.
-function gameHeaderWidget(g) {
+// 1. Заголовок матча — первое, что видно.
+function gameTitleWidget(g) {
+  return `<div class="gc-title">⚽ Футбольный матч</div>`;
+}
+
+// 2. Фото поля — если админ его загрузил, показываем баннером на всю
+// ширину карточки сразу под заголовком (ощущение бронирования события —
+// сначала картинка места, а не мелкая иконка сбоку). Если фото нет, просто
+// не резервируем под него место — лишний пустой блок только добавил бы
+// прокрутки без всякой пользы.
+function gamePhotoBannerWidget(g) {
+  if (!g.image) return "";
+  return `<div class="gc-photo-banner"><img src="data:image/jpeg;base64,${g.image}" alt="${g.location}"></div>`;
+}
+
+// 3. Поле/адрес — подпись места проведения, компактной строкой, с быстрой
+// ссылкой на карту рядом.
+function gameFieldWidget(g) {
   const addr = g.extra_info ? ` <span class="gc-field-addr">· ${g.extra_info}</span>` : "";
   return `
-    <div class="gc-header">
-      <div class="gc-header-info">
-        <div class="gc-title">⚽ Футбольный матч</div>
-        <div class="gc-field">📍 ${g.location}${addr}</div>
-        <div class="gc-datetime-row">
-          <span class="gc-date-chip">${shortDate(g)}</span>
-          <span class="gc-time-chip">🕐 ${g.time}</span>
-        </div>
-        <a class="gc-location-btn" href="${mapsUrl(g)}" target="_blank" onclick="event.stopPropagation()">📍 Открыть локацию</a>
-      </div>
-      ${gameThumbWidget(g)}
+    <div class="gc-field-row">
+      <div class="gc-field">📍 ${g.location}${addr}</div>
+      <a class="gc-location-btn" href="${mapsUrl(g)}" target="_blank" onclick="event.stopPropagation()">Открыть</a>
     </div>`;
+}
+
+// 4-5. Дата (+день недели) и время.
+function gameDateTimeWidget(g) {
+  return `
+    <div class="gc-datetime-row">
+      <span class="gc-date-chip">${shortDate(g)}</span>
+      <span class="gc-time-chip">🕐 ${g.time}</span>
+    </div>`;
+}
+
+// 6. Цена.
+function gamePriceWidget(g) {
+  if (!g.price) return "";
+  return `<div class="gc-price-chip">💰 ${g.price}</div>`;
 }
 
 // Русское склонение "место/места/мест" по числу (1 место, 2-4 места, 5+ мест).
@@ -454,18 +465,18 @@ function pluralSpots(n) {
   return "мест";
 }
 
-// Визуальный индикатор заполненности: сегментированная полоса (10 делений,
-// как в примере из ТЗ — "████████░░"), счёт "16 / 20 игроков" и отдельным
-// сообщением "Осталось всего N мест". Когда свободных мест ≤5 — полоса и
-// сообщение подсвечиваются тревожным цветом, создавая ощущение срочности.
+// 7 (часть 1). Прогресс записи — визуальный индикатор заполненности:
+// сегментированная полоса (10 делений, как в примере из ТЗ —
+// "████████░░"), счёт "16 / 20 игроков" и сообщение "Осталось всего N мест".
+// Когда свободных мест ≤5 — полоса и сообщение подсвечиваются тревожным
+// цветом, создавая ощущение срочности.
 function gameCapacityWidget(g, confirmedCount) {
   const max = g.num_players || null;
-  const priceChip = g.price ? `<div class="gc-price-chip">💰 ${g.price}</div>` : "";
 
   if (!max) {
     // Лимит не задан — просто показываем, сколько человек уже записалось,
     // без полосы/сообщения о местах (их в принципе не может не хватить).
-    return `${priceChip}<div class="gc-capacity-meta"><span class="gc-capacity-count">👥 ${confirmedCount} игроков записано</span></div>`;
+    return `<div class="gc-capacity-meta"><span class="gc-capacity-count">👥 ${confirmedCount} игроков записано</span></div>`;
   }
 
   const freeSpots = Math.max(0, max - confirmedCount);
@@ -486,7 +497,6 @@ function gameCapacityWidget(g, confirmedCount) {
   const spotsCls = full ? "full" : urgent ? "urgent" : "";
 
   return `
-    ${priceChip}
     <div class="gc-capacity">
       <div class="gc-capacity-bar">${segmentsHtml}</div>
       <div class="gc-capacity-meta">
@@ -542,6 +552,10 @@ function gameSecondaryWidget(g, mySignups) {
     </div>`;
 }
 
+// Порядок сборки карточки — это и есть иерархия важности информации:
+// заголовок → фото поля → поле/адрес → дата+день недели → время → цена →
+// прогресс записи → кнопка действия → участники. Экран должен читаться как
+// бронирование события сверху вниз, а не как разрозненная форма.
 function gameCardWidget(g, index) {
   const confirmedCount = totalPeople(g.signups, "confirmed");
   const totalCount = totalPeople(g.signups, null);
@@ -550,11 +564,15 @@ function gameCardWidget(g, index) {
 
   return `
     <div class="game-card" style="animation-delay:${delay}s">
-      ${gameHeaderWidget(g)}
+      ${gameTitleWidget(g)}
+      ${gamePhotoBannerWidget(g)}
+      ${gameFieldWidget(g)}
+      ${gameDateTimeWidget(g)}
+      ${gamePriceWidget(g)}
       ${gameCapacityWidget(g, confirmedCount)}
-      ${gameRosterWidget(g, totalCount)}
       ${gameRegistrationStatusWidget(g)}
       ${gameAddFormWidget(g, mySignups)}
+      ${gameRosterWidget(g, totalCount)}
       ${gameSecondaryWidget(g, mySignups)}
     </div>`;
 }
