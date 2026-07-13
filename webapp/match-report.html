@@ -36,14 +36,30 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .mr-scoreboard{position:relative;overflow:hidden;background:linear-gradient(160deg,#1B1E26 0%,#14151A 65%,#101116 100%);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:20px 16px;margin-bottom:16px;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 20px 46px rgba(0,0,0,.45);opacity:0;animation:reveal-up .4s ease .05s forwards}
 .mr-scoreboard::after{content:'';position:absolute;top:-40%;right:-20%;width:70%;height:70%;background:radial-gradient(circle,rgba(94,106,210,.16),transparent 70%);pointer-events:none}
 .mr-scoreboard-title{position:relative;z-index:1;font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#9BA1AC;text-align:center;margin-bottom:16px}
-.mr-team-row{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.03);margin-bottom:8px;border:1px solid transparent}
-.mr-team-row:last-of-type{margin-bottom:0}
+.mr-team-block{position:relative;z-index:1;margin-bottom:14px}
+.mr-team-block:last-of-type{margin-bottom:0}
+.mr-team-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.03);margin-bottom:6px;border:1px solid transparent}
 .mr-team-row.winner{background:linear-gradient(90deg,rgba(255,193,7,.14),rgba(255,193,7,.04));border-color:rgba(255,193,7,.35)}
 .mr-team-name{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700;color:#E5E6E8;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mr-team-row.winner .mr-team-name{color:#FFD866}
 .mr-team-crown{flex-shrink:0;font-size:13px}
 .mr-team-score{font-family:'Oswald',-apple-system,sans-serif;font-size:22px;font-weight:700;color:#F5F6F7;font-variant-numeric:tabular-nums;flex-shrink:0}
 .mr-team-row.winner .mr-team-score{color:#FFD866}
+
+/* ── состав команды под её счётом: ровно тот состав, с которым сыграли,
+   голы/MVP — из тех же данных, что и командный счёт выше ── */
+.mr-roster{display:flex;flex-direction:column;gap:3px}
+.mr-player-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px}
+.mr-player-row.viewer{background:rgba(94,106,210,.14);border:1px solid rgba(94,106,210,.3)}
+.mr-player-avatar{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.06);color:#9BA1AC;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;flex-shrink:0}
+.mr-player-row.viewer .mr-player-avatar{background:#5E6AD2;color:#fff}
+.mr-player-name{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:#C7CAD1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mr-player-row.viewer .mr-player-name{color:#F5F6F7;font-weight:700}
+.mr-player-you{color:#8B93F5;font-weight:700}
+.mr-player-extra{flex-shrink:0;display:flex;align-items:center;gap:6px}
+.mr-player-goals{font-size:12px;letter-spacing:1px;white-space:nowrap}
+.mr-player-mvp{display:inline-flex;align-items:center;gap:3px;background:rgba(255,193,7,.14);color:#FFD866;border-radius:100px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap}
+
 .mr-result-badge{position:relative;z-index:1;display:block;margin:16px auto 0;width:fit-content;padding:9px 20px;border-radius:100px;font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
 .mr-result-badge.victory{background:rgba(48,209,88,.14);color:#30D158;border:1px solid rgba(48,209,88,.35)}
 .mr-result-badge.defeat{background:rgba(255,69,58,.12);color:#FF6961;border:1px solid rgba(255,69,58,.3)}
@@ -141,20 +157,53 @@ function pluralHours(n) {
   return "часов";
 }
 
-function resultBadgeHtml(result) {
-  if (result === "victory") return `<div class="mr-result-badge victory">✅ Победа</div>`;
-  if (result === "defeat")  return `<div class="mr-result-badge defeat">❌ Поражение</div>`;
-  if (result === "draw")    return `<div class="mr-result-badge draw">➖ Ничья</div>`;
-  return ""; // зритель не участвовал в этом матче — бейдж результата не показываем
+function avatarLetter(name) {
+  return ((name || "?").trim().charAt(0) || "?").toUpperCase();
+}
+
+// До 5 голов — россыпью мячей (как в примерах ТЗ: "Ruslan ⚽⚽⚽"), дальше —
+// один мяч и число, чтобы строка не расползалась на всю ширину карточки.
+function goalsEmoji(n) {
+  if (!n || n <= 0) return "";
+  if (n <= 5) return "⚽".repeat(n);
+  return `⚽ ×${n}`;
+}
+
+// "Только имя", если голов нет и не MVP; иначе голы и/или бейдж MVP —
+// ровно по примерам из ТЗ (Azamat / Bekzat ⚽ / Damir 🏆 MVP / Marat ⚽⚽ 🏆 MVP).
+function playerExtraHtml(p) {
+  const parts = [];
+  const ge = goalsEmoji(p.goals);
+  if (ge) parts.push(`<span class="mr-player-goals">${ge}</span>`);
+  if (p.is_mvp) parts.push(`<span class="mr-player-mvp">🏆 MVP</span>`);
+  return parts.join("");
+}
+
+// Состав команды — ровно как она играла (game_teams), уже отсортированный
+// сервером по голам (убыв.) и по алфавиту. Текущий залогиненный игрок
+// подсвечен (p.is_viewer).
+function teamRosterHtml(team) {
+  if (!team.players || !team.players.length) {
+    return `<div class="mr-player-row"><div class="mr-player-name" style="color:#565A61">Состав не указан</div></div>`;
+  }
+  return `<div class="mr-roster">${team.players.map(p => `
+    <div class="mr-player-row ${p.is_viewer ? "viewer" : ""}">
+      <div class="mr-player-avatar">${avatarLetter(p.name)}</div>
+      <div class="mr-player-name">${p.name}${p.is_viewer ? ` <span class="mr-player-you">(Ты)</span>` : ""}</div>
+      <div class="mr-player-extra">${playerExtraHtml(p)}</div>
+    </div>`).join("")}</div>`;
 }
 
 function renderReport(r) {
   const winningTeam = r.teams.find(t => t.is_winner);
 
   const teamsHtml = r.teams.map(t => `
-    <div class="mr-team-row ${t.is_winner ? "winner" : ""}">
-      <div class="mr-team-name">${t.dot} ${t.label}${t.is_winner ? ` <span class="mr-team-crown">👑</span>` : ""}</div>
-      <div class="mr-team-score">${t.goals}</div>
+    <div class="mr-team-block">
+      <div class="mr-team-row ${t.is_winner ? "winner" : ""}">
+        <div class="mr-team-name">${t.dot} ${t.label}${t.is_winner ? ` <span class="mr-team-crown">👑</span>` : ""}</div>
+        <div class="mr-team-score">${t.goals}</div>
+      </div>
+      ${teamRosterHtml(t)}
     </div>`).join("");
 
   document.getElementById("content").innerHTML = `
