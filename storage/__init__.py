@@ -77,6 +77,7 @@ from .match_stats import (
     STAT_FIELDS,
     record_match_stat, get_match_stats, get_player_match_stats,
     get_player_stat_in_match, delete_match_stats, get_career_totals,
+    normalize_player_stats, record_match_stats_bulk,
 )
 
 from .match_completion import complete_match
@@ -121,6 +122,7 @@ __all__ = [
     "STAT_FIELDS",
     "record_match_stat", "get_match_stats", "get_player_match_stats",
     "get_player_stat_in_match", "delete_match_stats", "get_career_totals",
+    "normalize_player_stats", "record_match_stats_bulk",
     "complete_match",
     "get_match_report",
     "get_player_stats", "get_players_stats_bulk",

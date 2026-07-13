@@ -10,6 +10,7 @@ from storage import (
     create_game_template, get_game_templates, update_game_template, delete_game_template,
     get_signups, confirm_signup, move_team_member, get_team_members,
     complete_match, settle_completed_games_xp, get_player_stats, get_games_awaiting_results,
+    record_match_stats_bulk, get_match_stats,
 )
 
 
@@ -273,6 +274,38 @@ class AdminGamesRoutesMixin:
             print(f"  [WARN] complete-match: {e}")
             self.send_response(400); self.end_headers()
 
+    def route_post_admin_save_match_stats(self, body):
+        """Сохранить голы/MVP ПО ХОДУ игры — не завершая её (в отличие от
+        «Завершить матч»). Чтобы админ мог отмечать голы сразу, как только
+        они забиты, а не пытаться вспомнить всё в конце. Игру это никак не
+        завершает — games.status не трогается; финальное завершение
+        по-прежнему делается отдельно через «Завершить матч», и оно
+        подхватит уже сохранённую здесь статистику как отправную точку.
+        См. storage/match_stats.py:record_match_stats_bulk."""
+        try:
+            data = json.loads(body)
+            admin_id = str(data.get("user_id", ""))
+            if admin_id not in ADMIN_IDS:
+                self._json({"ok": False, "error": "Нет прав администратора"})
+                return
+            game_id = data.get("game_id")
+            game = get_game(game_id)
+            if not game:
+                self._json({"ok": False, "error": "Игра не найдена"})
+                return
+
+            # та же защита, что и в «Завершить матч» — статистику может
+            # получить только реально подтверждённый участник этой игры
+            confirmed_ids = {str(s["user_id"]) for s in get_signups(game_id) if s.get("status") == "confirmed"}
+            submitted = data.get("players") or []
+            clean_players = [p for p in submitted if str(p.get("user_id")) in confirmed_ids]
+
+            saved = record_match_stats_bulk(game_id, clean_players)
+            self._json({"ok": True, "players": saved})
+        except Exception as e:
+            print(f"  [WARN] save-match-stats: {e}")
+            self.send_response(400); self.end_headers()
+
 
     def route_post_admin_delete_game(self, body):
         try:
@@ -310,6 +343,11 @@ class AdminGamesRoutesMixin:
                     s["phone"] = profile["phone"] if profile else None
                 g["signups"] = signups
                 g["teams"] = get_team_members(g["id"])
+                # Уже сохранённые голы/MVP (в том числе отмеченные вживую по
+                # ходу игры, ещё до официального завершения) — чтобы форма
+                # ввода статистики открывалась не с нулей, а с тем, что уже
+                # есть (см. record_match_stats_bulk, storage/match_stats.py).
+                g["match_stats"] = get_match_stats(g["id"])
             self._json({"games": games})
 
     def route_get_admin_users(self, q):
@@ -338,4 +376,5 @@ class AdminGamesRoutesMixin:
             games = get_games_awaiting_results()
             for g in games:
                 g["signups"] = get_signups(g["id"])
+                g["match_stats"] = get_match_stats(g["id"])
             self._json({"games": games})

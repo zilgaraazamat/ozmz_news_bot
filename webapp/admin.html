@@ -141,6 +141,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#5E6AD2;backgr
 .mini-btn-warning{border-color:#FDE4C7;background:#FFFBEB;color:#B45309}
 .mini-btn-success{border-color:#BBF0CE;background:#ECFDF3;color:#15803D}
 .mini-btn-danger{border-color:#FCA5A5;background:#FEF2F2;color:#B91C1C}
+.mini-btn-live{border-color:#C7D2FE;background:#EEF2FF;color:#4338CA}
 
 /* ── завершить матч: сводка игры + голы/MVP на игрока ── */
 .cm-meta{background:#F9FAFB;border:1px solid #EEF0F2;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#334155;font-weight:600}
@@ -300,7 +301,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#5E6AD2;backgr
 
   <!-- ═══ ЗАВЕРШИТЬ МАТЧ: голы + MVP на каждого игрока, одним действием ═══ -->
   <div id="screen-complete-match" class="screen hidden">
-    <div class="screen-sub">Впиши голы и отметь MVP для каждого подтверждённого участника. По кнопке ниже игра будет отмечена завершённой, статистика сохранится, а прогресс игроков обновится — всё одним действием.</div>
+    <div class="screen-sub" id="complete-match-sub">Впиши голы и отметь MVP для каждого подтверждённого участника. По кнопке ниже игра будет отмечена завершённой, статистика сохранится, а прогресс игроков обновится — всё одним действием.</div>
     <div id="complete-match-error-banner"></div>
     <div class="cm-meta" id="complete-match-meta"></div>
     <div class="section-card" id="complete-match-players"></div>
@@ -894,6 +895,7 @@ function renderGameCardBody(g, past) {
   const gameActions = cancelled
     ? `<button class="mini-btn mini-btn-danger" style="width:100%;margin-top:14px" onclick="deleteGame(${g.id})">🗑 Удалить игру</button>`
     : `<div class="game-actions-row">
+         ${g.status === "active" ? `<button class="mini-btn mini-btn-live" onclick="openCompleteMatchModal(${g.id}, null, null, 'live')">📝 Голы</button>` : ""}
          ${(past && g.status === "active") ? `<button class="mini-btn mini-btn-success" onclick="openCompleteMatchModal(${g.id})">✅ Завершить</button>` : ""}
          <button class="mini-btn mini-btn-warning" onclick="cancelGame(${g.id})">❌ Отменить</button>
          <button class="mini-btn mini-btn-danger" onclick="deleteGame(${g.id})">🗑 Удалить</button>
@@ -933,6 +935,7 @@ async function cancelGame(gameId) {
 let completeMatchGameId = null;
 let completeMatchRoster = [];
 let completeMatchReturnScreen = "games-manage"; // куда вернуться после завершения/отмены
+let completeMatchMode = "complete"; // "complete" — завершить матч; "live" — сохранить голы по ходу игры, не завершая
 
 // Один пользователь может быть в записях дважды (основная запись + доп.
 // игроки, добавленные тем же user_id) — но статистику ведём на человека,
@@ -947,18 +950,41 @@ function dedupeConfirmedRoster(signups) {
   return Array.from(byId.values());
 }
 
+const COMPLETE_MATCH_TEXT = {
+  complete: {
+    sub: "Впиши голы и отметь MVP для каждого подтверждённого участника. По кнопке ниже игра будет отмечена завершённой, статистика сохранится, а прогресс игроков обновится — всё одним действием.",
+    title: "Завершить матч",
+    submit: "✅ Завершить матч",
+    saved: "✅ Матч завершён",
+  },
+  live: {
+    sub: "Отмечай голы и MVP прямо по ходу игры — необязательно запоминать всё до конца. Матч при этом НЕ завершается: когда игра реально закончится, открой «Завершить матч» — уже введённые голы подхватятся сами.",
+    title: "Отметить голы",
+    submit: "💾 Сохранить",
+    saved: "💾 Сохранено",
+  },
+};
+
 // gamesList/returnScreen необязательны — по умолчанию поведение точно такое
 // же, как раньше (список игр из "Управления", возврат туда же). Раздел
 // «Ожидают результата» передаёт свой список и просит вернуть админа обратно
-// в него после завершения, а не в «Управление и записи».
-function openCompleteMatchModal(gameId, gamesList, returnScreen) {
+// в него после завершения, а не в «Управление и записи». mode="live" —
+// экран открывается для игры, которая ещё ИДЁТ: голы сохраняются на лету
+// через /api/admin/save-match-stats, а не завершают матч.
+function openCompleteMatchModal(gameId, gamesList, returnScreen, mode) {
   const games = gamesList || window.__allManageGames || [];
   const g = games.find(x => x.id === gameId);
   if (!g) return;
 
+  completeMatchMode = mode === "live" ? "live" : "complete";
   completeMatchReturnScreen = returnScreen || "games-manage";
   completeMatchGameId = gameId;
   completeMatchRoster = dedupeConfirmedRoster(g.signups);
+
+  const text = COMPLETE_MATCH_TEXT[completeMatchMode];
+  document.getElementById("complete-match-sub").textContent = text.sub;
+  document.getElementById("complete-match-submit-btn").textContent = text.submit;
+  document.getElementById("complete-match-saved-msg").textContent = text.saved;
 
   document.getElementById("complete-match-error-banner").innerHTML = "";
   document.getElementById("complete-match-meta").innerHTML =
@@ -967,22 +993,32 @@ function openCompleteMatchModal(gameId, gamesList, returnScreen) {
   const playersEl = document.getElementById("complete-match-players");
   const submitBtn = document.getElementById("complete-match-submit-btn");
 
+  // Уже сохранённая статистика (введённая раньше — вживую или при
+  // предыдущем открытии этого экрана) подставляется в поля сразу, чтобы
+  // ничего не вводить повторно — /api/admin/games и /api/admin/awaiting-results
+  // уже отдают g.match_stats вместе со списком игр.
+  const statsByUid = {};
+  (g.match_stats || []).forEach(s => { statsByUid[s.user_id] = s; });
+
   if (!completeMatchRoster.length) {
-    playersEl.innerHTML = `<div class="list-empty">Нет подтверждённых участников — завершать нечего.</div>`;
+    playersEl.innerHTML = `<div class="list-empty">Нет подтверждённых участников — вносить нечего.</div>`;
     submitBtn.setAttribute("disabled", "true");
   } else {
     submitBtn.removeAttribute("disabled");
     playersEl.innerHTML = completeMatchRoster.map(p => {
       const label = p.player ? ` (${p.player})` : "";
+      const existing = statsByUid[p.user_id];
+      const goalsValue = existing ? existing.goals : 0;
+      const mvpChecked = existing && existing.is_mvp ? "checked" : "";
       return `
         <div class="cm-player-row">
           <div class="cm-player-name">${p.name}${label}</div>
           <div class="cm-player-fields">
             <label class="cm-goals-label">Голы
-              <input type="number" min="0" class="cm-goals-input" data-uid="${p.user_id}" value="0">
+              <input type="number" min="0" class="cm-goals-input" data-uid="${p.user_id}" value="${goalsValue}">
             </label>
             <label class="cm-mvp-label">
-              <input type="radio" name="cm-mvp" class="cm-mvp-radio" value="${p.user_id}"> MVP
+              <input type="radio" name="cm-mvp" class="cm-mvp-radio" value="${p.user_id}" ${mvpChecked}> MVP
             </label>
           </div>
         </div>`;
@@ -990,6 +1026,9 @@ function openCompleteMatchModal(gameId, gamesList, returnScreen) {
   }
 
   showScreen("complete-match");
+  // showScreen сама подставляет заголовок из SCREEN_TITLES — для режима
+  // "live" перекрываем его сразу после, тем же способом, каким обновляется topbar везде.
+  document.getElementById("topbar-title").textContent = text.title;
 }
 
 async function submitCompleteMatch() {
@@ -1004,10 +1043,13 @@ async function submitCompleteMatch() {
     return { user_id: p.user_id, goals, is_mvp: mvpId !== null && String(p.user_id) === String(mvpId) };
   });
 
+  const endpoint = completeMatchMode === "live" ? "/api/admin/save-match-stats" : "/api/admin/complete-match";
+  const errorFallback = completeMatchMode === "live" ? "Не удалось сохранить статистику" : "Не удалось завершить матч";
+
   const btn = document.getElementById("complete-match-submit-btn");
   btn.setAttribute("disabled", "true");
   try {
-    const res = await fetch("/api/admin/complete-match", {
+    const res = await fetch(endpoint, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId, game_id: completeMatchGameId, players })
     }).then(r => r.json());
@@ -1023,7 +1065,7 @@ async function submitCompleteMatch() {
       }, 900);
     } else {
       document.getElementById("complete-match-error-banner").innerHTML =
-        `<div class="error-banner">⚠️ ${res.error || "Не удалось завершить матч"}</div>`;
+        `<div class="error-banner">⚠️ ${res.error || errorFallback}</div>`;
     }
   } catch (e) {
     document.getElementById("complete-match-error-banner").innerHTML =

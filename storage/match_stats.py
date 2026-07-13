@@ -29,6 +29,55 @@ STAT_FIELDS = ("goals", "is_mvp")
 _BOOL_FIELDS = {"is_mvp"}
 
 
+def normalize_player_stats(player_stats):
+    """Приводит список {"user_id": ..., "goals": ..., "is_mvp": ...} (как
+    угодно присланный клиентом) к безопасному виду:
+      - числовые поля не могут быть отрицательными (не число/мусор → 0);
+      - ровно один MVP на матч — если is_mvp=True пришёл у нескольких
+        игроков, оставляем первого, у остальных сбрасываем.
+    Общая точка входа и для complete_match() (storage/match_completion.py),
+    и для record_match_stats_bulk() ниже — оба флоу подчиняются одним и тем
+    же правилам, а не двум чуть разным копиям одной и той же проверки."""
+    normalized = []
+    seen_mvp = False
+    for p in player_stats:
+        entry = {"user_id": str(p["user_id"])}
+        for f in STAT_FIELDS:
+            if f not in p:
+                continue
+            if f in _BOOL_FIELDS:
+                entry[f] = bool(p[f])
+            else:
+                try:
+                    entry[f] = max(0, int(p[f] or 0))
+                except (TypeError, ValueError):
+                    entry[f] = 0
+        if entry.get("is_mvp"):
+            if seen_mvp:
+                entry["is_mvp"] = False
+            else:
+                seen_mvp = True
+        normalized.append(entry)
+    return normalized
+
+
+def record_match_stats_bulk(game_id, player_stats):
+    """Сохраняет голы/MVP сразу нескольких игроков — БЕЗ завершения матча
+    (в отличие от complete_match(), storage/match_completion.py). Для
+    случая, когда админ отмечает голы прямо по ходу игры, ещё до того как
+    она официально завершена: можно звать сколько угодно раз, каждый вызов
+    просто обновляет то, что уже есть (через record_match_stat — upsert по
+    UNIQUE(game_id, user_id)), никого не дублируя и не трогая games.status.
+    Когда матч реально закончится, обычный "Завершить матч" подхватит уже
+    сохранённые голы — их не нужно вводить заново."""
+    normalized = normalize_player_stats(player_stats)
+    for p in normalized:
+        fields = {k: v for k, v in p.items() if k in STAT_FIELDS}
+        if fields:
+            record_match_stat(game_id, p["user_id"], **fields)
+    return normalized
+
+
 def record_match_stat(game_id, user_id, **stats):
     """Создаёт или обновляет статистику игрока в конкретном матче.
 
