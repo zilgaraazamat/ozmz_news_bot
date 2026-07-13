@@ -110,6 +110,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .reg-stat-badge{flex:1;background:#101116;border-radius:10px;padding:10px 6px;text-align:center}
 .reg-stat-badge-value{font-size:17px;font-weight:800;color:#F5F6F7;font-variant-numeric:tabular-nums}
 .reg-stat-badge-label{font-size:9.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;margin-top:3px;font-weight:600}
+.reg-report-link{display:block;margin-top:12px;text-align:center;font-size:12.5px;font-weight:700;color:#8B93F5;text-decoration:none;padding:10px;border-radius:10px;background:rgba(94,106,210,.08);border:1px solid rgba(94,106,210,.2)}
+.reg-report-link:active{background:rgba(94,106,210,.16)}
 .atb-plus{font-size:16px;font-weight:800;line-height:1}
 .atb-chevron{font-size:9px;opacity:.8}
 .add-more-inline{display:flex;gap:8px;margin-top:8px}
@@ -682,6 +684,7 @@ function completedStateHtml(g) {
     <div class="reg-card completed">
       <div class="reg-headline">🏁 Матч завершён</div>
       ${statsHtml}
+      <a class="reg-report-link" href="/match-report?game_id=${g.id}${userId ? `&uid=${userId}` : ""}">📊 Отчёт о матче →</a>
     </div>`;
 }
 

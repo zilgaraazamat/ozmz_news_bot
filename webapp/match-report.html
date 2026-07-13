@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>Отчёт о матче — OZMZ</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0B0D10;color:#F5F6F7;min-height:100%;padding:24px 16px calc(40px + env(safe-area-inset-bottom));-webkit-hyphens:none;hyphens:none;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(600px circle at 50% -10%, rgba(94,106,210,.10), transparent 60%)}
+.wrap{width:100%;max-width:420px;margin:0 auto;position:relative;z-index:1}
+.hidden{display:none!important}
+
+.top-bar{display:flex;align-items:center;margin-bottom:18px}
+.back-link{display:flex;align-items:center;gap:6px;color:#9BA1AC;font-size:13px;font-weight:600;cursor:pointer}
+.back-link:active{opacity:.7}
+
+.loading{text-align:center;color:#6B7280;font-size:13px;padding:60px 10px}
+
+/* ── шапка: дата/время/поле/длительность/число игроков ── */
+.mr-header-card{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 10px 26px rgba(0,0,0,.35);opacity:0;animation:reveal-up .4s ease forwards}
+@keyframes reveal-up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.mr-header-title{font-family:'Oswald',-apple-system,sans-serif;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#8B93F5;margin-bottom:12px}
+.mr-header-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mr-header-item{min-width:0}
+.mr-header-item.span2{grid-column:1 / -1}
+.mr-header-label{font-size:10px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:3px}
+.mr-header-value{font-size:14px;font-weight:700;color:#F5F6F7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── премиальное табло с результатом ── */
+.mr-scoreboard{position:relative;overflow:hidden;background:linear-gradient(160deg,#1B1E26 0%,#14151A 65%,#101116 100%);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:20px 16px;margin-bottom:16px;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 20px 46px rgba(0,0,0,.45);opacity:0;animation:reveal-up .4s ease .05s forwards}
+.mr-scoreboard::after{content:'';position:absolute;top:-40%;right:-20%;width:70%;height:70%;background:radial-gradient(circle,rgba(94,106,210,.16),transparent 70%);pointer-events:none}
+.mr-scoreboard-title{position:relative;z-index:1;font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#9BA1AC;text-align:center;margin-bottom:16px}
+.mr-team-row{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.03);margin-bottom:8px;border:1px solid transparent}
+.mr-team-row:last-of-type{margin-bottom:0}
+.mr-team-row.winner{background:linear-gradient(90deg,rgba(255,193,7,.14),rgba(255,193,7,.04));border-color:rgba(255,193,7,.35)}
+.mr-team-name{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700;color:#E5E6E8;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mr-team-row.winner .mr-team-name{color:#FFD866}
+.mr-team-crown{flex-shrink:0;font-size:13px}
+.mr-team-score{font-family:'Oswald',-apple-system,sans-serif;font-size:22px;font-weight:700;color:#F5F6F7;font-variant-numeric:tabular-nums;flex-shrink:0}
+.mr-team-row.winner .mr-team-score{color:#FFD866}
+.mr-result-badge{position:relative;z-index:1;display:block;margin:16px auto 0;width:fit-content;padding:9px 20px;border-radius:100px;font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.mr-result-badge.victory{background:rgba(48,209,88,.14);color:#30D158;border:1px solid rgba(48,209,88,.35)}
+.mr-result-badge.defeat{background:rgba(255,69,58,.12);color:#FF6961;border:1px solid rgba(255,69,58,.3)}
+.mr-result-badge.draw{background:rgba(255,255,255,.06);color:#C7CAD1;border:1px solid rgba(255,255,255,.12)}
+
+/* ── итог: победившая команда + всего голов ── */
+.mr-summary-row{display:flex;gap:10px;margin-bottom:16px}
+.mr-summary-item{flex:1;background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px 10px;text-align:center;opacity:0;animation:reveal-up .4s ease .1s forwards}
+.mr-summary-label{font-size:10px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:5px}
+.mr-summary-value{font-family:'Oswald',-apple-system,sans-serif;font-size:17px;font-weight:700;color:#F5F6F7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-bar">
+    <div class="back-link" onclick="goBack()">‹ Назад</div>
+  </div>
+
+  <div id="content">
+    <div class="loading">Загрузка отчёта...</div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const gameId = params.get("game_id");
+let userId = params.get("uid");
+
+if (window.Telegram && Telegram.WebApp) {
+  Telegram.WebApp.ready();
+  Telegram.WebApp.expand();
+  // Отключаем свайп-вниз для закрытия/сворачивания приложения — он часто
+  // срабатывает случайно при обычном скролле контента. Скролл и
+  // pull-to-refresh внутри приложения при этом продолжают работать как
+  // обычно; закрыть можно только кнопкой «Закрыть» в шапке Telegram.
+  if (typeof Telegram.WebApp.disableVerticalSwipes === "function") {
+    Telegram.WebApp.disableVerticalSwipes();
+  }
+  if (!userId) {
+    const tgUser = Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+    if (tgUser && tgUser.id) userId = String(tgUser.id);
+  }
+  Telegram.WebApp.BackButton.show();
+  Telegram.WebApp.BackButton.onClick(goBack);
+}
+
+function goBack() {
+  location.href = "/games" + (userId ? ("?uid=" + userId) : "");
+}
+
+// Свайп вправо от левого края — тоже работает как "назад"
+(function () {
+  let startX = null, startY = null;
+  document.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    if (t.clientX < 24) { startX = t.clientX; startY = t.clientY; }
+  }, { passive: true });
+  document.addEventListener("touchend", e => {
+    if (startX === null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = Math.abs(t.clientY - startY);
+    if (dx > 70 && dy < 60) goBack();
+    startX = null;
+  }, { passive: true });
+})();
+
+function localeCode() {
+  const tw = window.Telegram && Telegram.WebApp;
+  const tgLang = tw && tw.initDataUnsafe && tw.initDataUnsafe.user && tw.initDataUnsafe.user.language_code;
+  return tgLang || navigator.language || "ru";
+}
+
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+// Дата матча — с днём недели, под язык пользователя (тот же подход, что и
+// на остальных экранах приложения).
+function formatMatchDate(dateStr) {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr || "—";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  const loc = localeCode();
+  const weekday = capitalize(new Intl.DateTimeFormat(loc, { weekday: "short" }).format(dt));
+  const dayMonth = new Intl.DateTimeFormat(loc, { day: "numeric", month: "short" }).format(dt).replace(/\.$/, "");
+  return `${weekday}, ${dayMonth}`;
+}
+
+// Русское склонение "час/часа/часов" по числу.
+function pluralHours(n) {
+  const mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "час";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "часа";
+  return "часов";
+}
+
+function resultBadgeHtml(result) {
+  if (result === "victory") return `<div class="mr-result-badge victory">✅ Победа</div>`;
+  if (result === "defeat")  return `<div class="mr-result-badge defeat">❌ Поражение</div>`;
+  if (result === "draw")    return `<div class="mr-result-badge draw">➖ Ничья</div>`;
+  return ""; // зритель не участвовал в этом матче — бейдж результата не показываем
+}
+
+function renderReport(r) {
+  const winningTeam = r.teams.find(t => t.is_winner);
+
+  const teamsHtml = r.teams.map(t => `
+    <div class="mr-team-row ${t.is_winner ? "winner" : ""}">
+      <div class="mr-team-name">${t.dot} ${t.label}${t.is_winner ? ` <span class="mr-team-crown">👑</span>` : ""}</div>
+      <div class="mr-team-score">${t.goals}</div>
+    </div>`).join("");
+
+  document.getElementById("content").innerHTML = `
+    <div class="mr-header-card">
+      <div class="mr-header-title">⚽ О матче</div>
+      <div class="mr-header-grid">
+        <div class="mr-header-item">
+          <div class="mr-header-label">Дата</div>
+          <div class="mr-header-value">${formatMatchDate(r.date)}</div>
+        </div>
+        <div class="mr-header-item">
+          <div class="mr-header-label">Время</div>
+          <div class="mr-header-value">🕐 ${r.time || "—"}</div>
+        </div>
+        <div class="mr-header-item span2">
+          <div class="mr-header-label">Поле</div>
+          <div class="mr-header-value">📍 ${r.location || "—"}</div>
+        </div>
+        <div class="mr-header-item">
+          <div class="mr-header-label">Длительность</div>
+          <div class="mr-header-value">${r.duration_hours} ${pluralHours(r.duration_hours)}</div>
+        </div>
+        <div class="mr-header-item">
+          <div class="mr-header-label">Игроков</div>
+          <div class="mr-header-value">👥 ${r.player_count}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mr-scoreboard">
+      <div class="mr-scoreboard-title">🏆 Итоговый счёт</div>
+      ${teamsHtml}
+      ${resultBadgeHtml(r.viewer_result)}
+    </div>
+
+    <div class="mr-summary-row">
+      <div class="mr-summary-item">
+        <div class="mr-summary-label">Победившая команда</div>
+        <div class="mr-summary-value">${winningTeam ? `${winningTeam.dot} ${winningTeam.label}` : "Ничья"}</div>
+      </div>
+      <div class="mr-summary-item">
+        <div class="mr-summary-label">Всего голов</div>
+        <div class="mr-summary-value">⚽ ${r.total_goals}</div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadReport() {
+  if (!gameId) {
+    document.getElementById("content").innerHTML = `<div class="loading">Не указан матч.</div>`;
+    return;
+  }
+  try {
+    const url = `/api/match-report?game_id=${encodeURIComponent(gameId)}` + (userId ? `&user_id=${encodeURIComponent(userId)}` : "");
+    const r = await fetch(url).then(r => r.json());
+    if (r.error) {
+      document.getElementById("content").innerHTML = `<div class="loading">Отчёт недоступен — матч не найден или ещё не завершён.</div>`;
+      return;
+    }
+    renderReport(r);
+  } catch (e) {
+    document.getElementById("content").innerHTML = `<div class="loading">Не удалось загрузить отчёт. Попробуй ещё раз.</div>`;
+  }
+}
+
+loadReport();
+</script>
+</body>
+</html>

@@ -16,6 +16,7 @@ from routes.admin_games import AdminGamesRoutesMixin
 from routes.announcements import AnnouncementsRoutesMixin
 from routes.scanner import ScannerRoutesMixin
 from routes.static_pages import StaticRoutesMixin
+from routes.match_report import MatchReportRoutesMixin
 
 
 # путь → имя метода на Handler'е. Смысл и поведение каждого эндпоинта не
@@ -63,6 +64,7 @@ GET_ROUTES = {
     "/api/admin/game-templates":"route_get_admin_game_templates",
     "/api/admin/games":         "route_get_admin_games",
     "/api/admin/users":         "route_get_admin_users",
+    "/api/admin/awaiting-results": "route_get_admin_awaiting_results",
     "/logo.jpg":                "route_get_logo",
     "/api/stats":               "route_get_stats",
     "/api/battle/list":         "route_get_battle_list",
@@ -70,6 +72,8 @@ GET_ROUTES = {
     "/api/profile":             "route_get_profile",
     "/api/player-profile":      "route_get_player_profile",
     "/api/leaderboard":         "route_get_leaderboard",
+    "/match-report":            "route_get_match_report_page",
+    "/api/match-report":        "route_get_match_report",
     "/":                        "route_get_root_admin_html",
 }
 
@@ -85,6 +89,7 @@ class Handler(
     AnnouncementsRoutesMixin,
     ScannerRoutesMixin,
     StaticRoutesMixin,
+    MatchReportRoutesMixin,
     BaseHTTPRequestHandler,
 ):
     def log_message(self, *args):

@@ -34,13 +34,13 @@ from .users import (
 )
 
 from .game_status import (
-    MATCH_DURATION_HOURS, is_match_completed,
+    MATCH_DURATION_HOURS, is_match_completed, is_awaiting_results,
 )
 
 from .games import (
     mark_game_completed, get_games_played_count,
     create_game, get_all_games, cancel_game, delete_game, get_active_games,
-    get_history_games, get_game, get_completed_match_dates,
+    get_history_games, get_game, get_completed_match_dates, get_games_awaiting_results,
 )
 
 from .leaderboards import get_leaderboard, CATEGORIES as LEADERBOARD_CATEGORIES
@@ -81,6 +81,8 @@ from .match_stats import (
 
 from .match_completion import complete_match
 
+from .match_report import get_match_report
+
 from .player_stats import get_player_stats, get_players_stats_bulk
 
 from .ovr import calculate_ovr, BASE_OVR
@@ -101,10 +103,10 @@ __all__ = [
     "has_phone", "save_phone", "get_user", "get_all_users", "get_profile",
     "display_name_from_profile", "get_display_name",
     "set_nickname", "set_jersey_number", "save_username", "get_username",
-    "MATCH_DURATION_HOURS", "is_match_completed",
+    "MATCH_DURATION_HOURS", "is_match_completed", "is_awaiting_results",
     "mark_game_completed", "get_games_played_count",
     "create_game", "get_all_games", "cancel_game", "delete_game", "get_active_games",
-    "get_history_games", "get_game", "get_completed_match_dates",
+    "get_history_games", "get_game", "get_completed_match_dates", "get_games_awaiting_results",
     "get_leaderboard", "LEADERBOARD_CATEGORIES",
     "create_game_template", "get_game_templates", "get_game_template",
     "update_game_template", "delete_game_template",
@@ -120,6 +122,7 @@ __all__ = [
     "record_match_stat", "get_match_stats", "get_player_match_stats",
     "get_player_stat_in_match", "delete_match_stats", "get_career_totals",
     "complete_match",
+    "get_match_report",
     "get_player_stats", "get_players_stats_bulk",
     "calculate_ovr", "BASE_OVR",
     "calculate_weekly_streak", "get_weekly_streak",
