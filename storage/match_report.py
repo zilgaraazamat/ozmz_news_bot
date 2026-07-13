@@ -137,4 +137,49 @@ def get_match_report(game_id, viewer_user_id=None):
         "is_tie": is_tie,
         "winning_team_index": winning_team_index,
         "viewer_result": viewer_result,
+        "awards": _compute_awards(teams_out),
     }
+
+
+def _compute_awards(teams_out):
+    """«Лучшие игроки матча» — MVP и лучший бомбардир. Не новая статистика:
+    и то, и другое уже посчитано в teams_out[*]["players"] (is_mvp — из
+    match_player_stats, goals — оттуда же), эта функция просто выбирает,
+    кому какая награда принадлежит.
+
+    Если один и тот же человек и MVP, и лучший бомбардир — у него будет
+    ОДНА запись в списке наград с обоими бейджами, а не две отдельные (см.
+    "badges" в возвращаемых записях). При ничьей по голам лучших
+    бомбардиров может быть несколько — тогда у каждого будет своя запись."""
+    all_players = [p for t in teams_out for p in t["players"]]
+
+    max_goals = max((p["goals"] for p in all_players), default=0)
+    top_scorers = [p for p in all_players if max_goals > 0 and p["goals"] == max_goals]
+    mvp_player = next((p for p in all_players if p["is_mvp"]), None)
+
+    def _key(p):
+        # Гости не имеют user_id — различаем их по имени, чтобы двух разных
+        # безымянных гостей случайно не схлопнуть в одну карточку награды.
+        return p["user_id"] or f"guest:{p['name']}"
+
+    awards_by_key = {}
+    if mvp_player:
+        k = _key(mvp_player)
+        awards_by_key[k] = {
+            "user_id": mvp_player["user_id"], "name": mvp_player["name"],
+            "goals": mvp_player["goals"], "is_viewer": mvp_player["is_viewer"],
+            "badges": ["mvp"],
+        }
+    for p in top_scorers:
+        k = _key(p)
+        if k in awards_by_key:
+            awards_by_key[k]["badges"].append("top_scorer")
+        else:
+            awards_by_key[k] = {
+                "user_id": p["user_id"], "name": p["name"],
+                "goals": p["goals"], "is_viewer": p["is_viewer"],
+                "badges": ["top_scorer"],
+            }
+
+    # MVP первым (если есть), дальше лучшие бомбардиры в порядке ростера.
+    return sorted(awards_by_key.values(), key=lambda a: "mvp" not in a["badges"])

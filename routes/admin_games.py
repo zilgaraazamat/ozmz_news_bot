@@ -9,7 +9,7 @@ from storage import (
     create_game, get_all_games, get_game, cancel_game, delete_game, mark_game_completed,
     create_game_template, get_game_templates, update_game_template, delete_game_template,
     get_signups, confirm_signup, move_team_member, get_team_members,
-    complete_match, settle_completed_games_xp, get_player_stats,
+    complete_match, settle_completed_games_xp, get_player_stats, get_games_awaiting_results,
 )
 
 
@@ -325,3 +325,17 @@ class AdminGamesRoutesMixin:
                 u["mvp_count"] = stats["mvp_count"]
                 u["ovr"] = stats["ovr"]
             self._json({"users": users})
+
+    def route_get_admin_awaiting_results(self, q):
+        """Игры, чьё расчётное время окончания уже прошло, но матч ещё не
+        отмечен завершённым — очередь для раздела «Ожидают результата»,
+        не затрагивает никакую другую логику (см. is_awaiting_results,
+        storage/game_status.py)."""
+        user_id = (q.get("user_id") or [""])[0]
+        if user_id not in ADMIN_IDS:
+            self._json({"error": "forbidden"})
+        else:
+            games = get_games_awaiting_results()
+            for g in games:
+                g["signups"] = get_signups(g["id"])
+            self._json({"games": games})

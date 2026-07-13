@@ -20,10 +20,26 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .back-link{display:flex;align-items:center;gap:6px;color:#9BA1AC;font-size:13px;font-weight:600;cursor:pointer}
 .back-link:active{opacity:.7}
 
-.loading{text-align:center;color:#6B7280;font-size:13px;padding:60px 10px}
+/* ── состояние загрузки: вращающийся мяч + карточки-скелетоны ── */
+.mr-loading{text-align:center;padding:50px 10px 20px}
+.mr-loading-ball{font-size:34px;display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.mr-loading-text{margin-top:14px;font-size:13px;color:#6B7280;font-weight:600}
+.mr-skeleton{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:18px;height:64px;margin-bottom:16px;overflow:hidden;position:relative}
+.mr-skeleton::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.05),transparent);animation:shimmer 1.4s infinite}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.mr-skeleton.tall{height:220px}
+
+/* ── пустое/ошибочное состояние ── */
+.mr-empty{text-align:center;background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:44px 20px;opacity:0;animation:reveal-up .4s ease forwards}
+.mr-empty-icon{font-size:38px;margin-bottom:14px;opacity:.7}
+.mr-empty-text{font-size:14px;color:#9BA1AC;line-height:1.5;margin-bottom:20px}
+.mr-empty-btn{display:inline-flex;align-items:center;gap:6px;background:#5E6AD2;color:#fff;font-size:13px;font-weight:700;padding:11px 22px;border-radius:12px;text-decoration:none;box-shadow:0 4px 14px rgba(94,106,210,.3)}
+.mr-empty-btn:active{transform:scale(.97)}
 
 /* ── шапка: дата/время/поле/длительность/число игроков ── */
-.mr-header-card{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 10px 26px rgba(0,0,0,.35);opacity:0;animation:reveal-up .4s ease forwards}
+.mr-header-card{position:relative;overflow:hidden;background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 10px 26px rgba(0,0,0,.35);opacity:0;animation:reveal-up .4s ease forwards}
+.mr-header-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#5E6AD2,#8B93F5,transparent)}
 @keyframes reveal-up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .mr-header-title{font-family:'Oswald',-apple-system,sans-serif;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#8B93F5;margin-bottom:12px}
 .mr-header-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -34,6 +50,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 
 /* ── премиальное табло с результатом ── */
 .mr-scoreboard{position:relative;overflow:hidden;background:linear-gradient(160deg,#1B1E26 0%,#14151A 65%,#101116 100%);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:20px 16px;margin-bottom:16px;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 20px 46px rgba(0,0,0,.45);opacity:0;animation:reveal-up .4s ease .05s forwards}
+.mr-scoreboard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#5E6AD2,#8B93F5,transparent);z-index:2}
 .mr-scoreboard::after{content:'';position:absolute;top:-40%;right:-20%;width:70%;height:70%;background:radial-gradient(circle,rgba(94,106,210,.16),transparent 70%);pointer-events:none}
 .mr-scoreboard-title{position:relative;z-index:1;font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#9BA1AC;text-align:center;margin-bottom:16px}
 .mr-team-block{position:relative;z-index:1;margin-bottom:14px}
@@ -65,11 +82,34 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .mr-result-badge.defeat{background:rgba(255,69,58,.12);color:#FF6961;border:1px solid rgba(255,69,58,.3)}
 .mr-result-badge.draw{background:rgba(255,255,255,.06);color:#C7CAD1;border:1px solid rgba(255,255,255,.12)}
 
+/* ── лучшие игроки матча: MVP / лучший бомбардир (могут совпасть в одном
+   человеке — тогда у него оба бейджа в одной карточке) ── */
+.mr-awards-card{position:relative;overflow:hidden;background:linear-gradient(160deg,#20190F 0%,#181410 60%,#14151A 100%);border:1px solid rgba(255,193,7,.18);border-radius:20px;padding:18px 16px;margin-bottom:16px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 16px 36px rgba(0,0,0,.4);opacity:0;animation:reveal-up .4s ease .08s forwards}
+.mr-awards-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#FFD866,#FF9F0A,transparent)}
+.mr-awards-title{font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#FFD866;text-align:center;margin-bottom:14px}
+.mr-awards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.mr-award-chip{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px 12px;text-align:center;opacity:0;animation:reveal-up .35s ease forwards}
+.mr-award-chip.viewer{background:rgba(94,106,210,.14);border-color:rgba(94,106,210,.35)}
+.mr-award-avatar{width:40px;height:40px;margin:0 auto 8px;border-radius:50%;background:rgba(255,193,7,.14);color:#FFD866;display:flex;align-items:center;justify-content:center;font-family:'Oswald',-apple-system,sans-serif;font-size:15px;font-weight:700;border:2px solid rgba(255,193,7,.3)}
+.mr-award-chip.viewer .mr-award-avatar{background:#5E6AD2;color:#fff;border-color:rgba(94,106,210,.5)}
+.mr-award-name{font-size:13px;font-weight:700;color:#F5F6F7;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mr-award-badges{display:flex;flex-direction:column;align-items:center;gap:5px}
+.mr-award-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-size:10.5px;font-weight:700;white-space:nowrap}
+.mr-award-badge.mvp{background:rgba(255,193,7,.16);color:#FFD866}
+.mr-award-badge.scorer{background:rgba(94,106,210,.16);color:#8B93F5}
+
 /* ── итог: победившая команда + всего голов ── */
 .mr-summary-row{display:flex;gap:10px;margin-bottom:16px}
 .mr-summary-item{flex:1;background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px 10px;text-align:center;opacity:0;animation:reveal-up .4s ease .1s forwards}
 .mr-summary-label{font-size:10px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:5px}
 .mr-summary-value{font-family:'Oswald',-apple-system,sans-serif;font-size:17px;font-weight:700;color:#F5F6F7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+@media (max-width:360px){
+  body{padding:20px 12px calc(36px + env(safe-area-inset-bottom))}
+  .mr-header-grid{gap:10px}
+  .mr-team-score{font-size:19px}
+  .mr-awards-grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -79,7 +119,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
   </div>
 
   <div id="content">
-    <div class="loading">Загрузка отчёта...</div>
+    <div class="mr-loading">
+      <span class="mr-loading-ball">⚽</span>
+      <div class="mr-loading-text">Загрузка отчёта...</div>
+    </div>
+    <div class="mr-skeleton"></div>
+    <div class="mr-skeleton tall"></div>
   </div>
 </div>
 
@@ -157,6 +202,13 @@ function pluralHours(n) {
   return "часов";
 }
 
+function resultBadgeHtml(result) {
+  if (result === "victory") return `<div class="mr-result-badge victory">✅ Победа</div>`;
+  if (result === "defeat")  return `<div class="mr-result-badge defeat">❌ Поражение</div>`;
+  if (result === "draw")    return `<div class="mr-result-badge draw">➖ Ничья</div>`;
+  return ""; // зритель не участвовал в этом матче — бейдж результата не показываем
+}
+
 function avatarLetter(name) {
   return ((name || "?").trim().charAt(0) || "?").toUpperCase();
 }
@@ -186,12 +238,35 @@ function teamRosterHtml(team) {
   if (!team.players || !team.players.length) {
     return `<div class="mr-player-row"><div class="mr-player-name" style="color:#565A61">Состав не указан</div></div>`;
   }
-  return `<div class="mr-roster">${team.players.map(p => `
-    <div class="mr-player-row ${p.is_viewer ? "viewer" : ""}">
+  return `<div class="mr-roster">${team.players.map((p, i) => `
+    <div class="mr-player-row ${p.is_viewer ? "viewer" : ""}" style="opacity:0;animation:reveal-up .3s ease ${Math.min(i, 10) * 0.03}s forwards">
       <div class="mr-player-avatar">${avatarLetter(p.name)}</div>
       <div class="mr-player-name">${p.name}${p.is_viewer ? ` <span class="mr-player-you">(Ты)</span>` : ""}</div>
       <div class="mr-player-extra">${playerExtraHtml(p)}</div>
     </div>`).join("")}</div>`;
+}
+
+// "Лучшие игроки матча" — MVP и лучший бомбардир (r.awards, уже посчитано
+// на бэкенде из тех же голов/MVP, что и ростер команд — см.
+// storage/match_report.py:_compute_awards). Если это один и тот же
+// человек, у него будет одна карточка с обоими бейджами — сервер уже
+// это гарантирует, здесь просто отрисовываем badges как есть.
+function renderAwards(awards) {
+  if (!awards || !awards.length) return ""; // никто не забил и MVP не выбран — секцию не показываем
+  const chips = awards.map((a, i) => `
+    <div class="mr-award-chip ${a.is_viewer ? "viewer" : ""}" style="animation-delay:${0.1 + i * 0.05}s">
+      <div class="mr-award-avatar">${avatarLetter(a.name)}</div>
+      <div class="mr-award-name">${a.name}${a.is_viewer ? " (Ты)" : ""}</div>
+      <div class="mr-award-badges">
+        ${a.badges.includes("mvp") ? `<span class="mr-award-badge mvp">🏆 MVP</span>` : ""}
+        ${a.badges.includes("top_scorer") ? `<span class="mr-award-badge scorer">⚽ Лучший бомбардир</span>` : ""}
+      </div>
+    </div>`).join("");
+  return `
+    <div class="mr-awards-card">
+      <div class="mr-awards-title">🏅 Лучшие игроки матча</div>
+      <div class="mr-awards-grid">${chips}</div>
+    </div>`;
 }
 
 function renderReport(r) {
@@ -239,6 +314,8 @@ function renderReport(r) {
       ${resultBadgeHtml(r.viewer_result)}
     </div>
 
+    ${renderAwards(r.awards)}
+
     <div class="mr-summary-row">
       <div class="mr-summary-item">
         <div class="mr-summary-label">Победившая команда</div>
@@ -252,21 +329,30 @@ function renderReport(r) {
   `;
 }
 
+function emptyStateHtml(icon, text) {
+  return `
+    <div class="mr-empty">
+      <div class="mr-empty-icon">${icon}</div>
+      <div class="mr-empty-text">${text}</div>
+      <a class="mr-empty-btn" href="/games${userId ? `?uid=${userId}` : ""}">‹ К играм</a>
+    </div>`;
+}
+
 async function loadReport() {
   if (!gameId) {
-    document.getElementById("content").innerHTML = `<div class="loading">Не указан матч.</div>`;
+    document.getElementById("content").innerHTML = emptyStateHtml("🚫", "Не указан матч.");
     return;
   }
   try {
     const url = `/api/match-report?game_id=${encodeURIComponent(gameId)}` + (userId ? `&user_id=${encodeURIComponent(userId)}` : "");
     const r = await fetch(url).then(r => r.json());
     if (r.error) {
-      document.getElementById("content").innerHTML = `<div class="loading">Отчёт недоступен — матч не найден или ещё не завершён.</div>`;
+      document.getElementById("content").innerHTML = emptyStateHtml("⚽", "Отчёт недоступен — матч не найден или ещё не завершён.");
       return;
     }
     renderReport(r);
   } catch (e) {
-    document.getElementById("content").innerHTML = `<div class="loading">Не удалось загрузить отчёт. Попробуй ещё раз.</div>`;
+    document.getElementById("content").innerHTML = emptyStateHtml("📡", "Не удалось загрузить отчёт. Попробуй ещё раз.");
   }
 }
 

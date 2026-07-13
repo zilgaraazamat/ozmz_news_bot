@@ -144,6 +144,14 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#5E6AD2;backgr
 
 /* ── завершить матч: сводка игры + голы/MVP на игрока ── */
 .cm-meta{background:#F9FAFB;border:1px solid #EEF0F2;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#334155;font-weight:600}
+
+/* ── «Ожидают результата»: компактные карточки матчей, у которых время
+   вышло, а «Завершить матч» ещё не проведён ── */
+.ar-card{background:#fff;border:1px solid #E4E7EC;border-radius:16px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.ar-card-title{font-size:13.5px;font-weight:700;color:#0F172A;margin-bottom:6px}
+.ar-card-meta{font-size:12px;color:#64748B;margin-bottom:4px;line-height:1.5}
+.ar-card-players{font-size:12px;color:#64748B;margin-bottom:10px}
+.ar-card-players b{color:#5E6AD2;font-weight:700}
 .cm-player-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid #EEF0F2;flex-wrap:wrap}
 .cm-player-row:first-of-type{border-top:none}
 .cm-player-name{font-size:13.5px;font-weight:600;color:#0F172A;flex:1;min-width:120px}
@@ -297,10 +305,17 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#5E6AD2;backgr
     <div class="cm-meta" id="complete-match-meta"></div>
     <div class="section-card" id="complete-match-players"></div>
     <div class="btn-row">
-      <button class="btn btn-secondary" onclick="showScreen('games-manage')">Отмена</button>
+      <button class="btn btn-secondary" onclick="showScreen(completeMatchReturnScreen)">Отмена</button>
       <button class="btn btn-primary" id="complete-match-submit-btn" onclick="submitCompleteMatch()">✅ Завершить матч</button>
     </div>
     <div class="saved" id="complete-match-saved-msg">✅ Матч завершён</div>
+  </div>
+
+  <!-- ═══ ОЖИДАЮТ РЕЗУЛЬТАТА: матчи, у которых время вышло, но «Завершить
+       матч» ещё не проведён — появляются здесь автоматически ═══ -->
+  <div id="screen-awaiting-results" class="screen hidden">
+    <div class="screen-sub">Время матча прошло, а результат ещё не внесён. Нажми «Завершить матч», чтобы вписать голы и MVP — игра сразу пропадёт из этого списка.</div>
+    <div id="awaiting-results-list"></div>
   </div>
 
   <!-- ═══ ШАБЛОНЫ ИГР: СПИСОК ═══ -->
@@ -552,6 +567,7 @@ const SCREEN_TITLES = {
   "templates-list": "Шаблоны игр",
   "template-edit": "Шаблон игры",
   "complete-match": "Завершить матч",
+  "awaiting-results": "Ожидают результата",
   "news-create": "Создать новость",
   "news-manage": "Управление новостями",
   "players-list": "Игроки",
@@ -570,6 +586,7 @@ function showScreen(id) {
   if (id === "games-create") { renderPhotoZone("f-photo-zone", "f-photo", selectedGamePhotoBase64); loadGameTemplatesForPicker(); }
   if (id === "news-create") { renderPhotoZone("an-photo-zone", "an-photo", selectedPhotoBase64); }
   if (id === "games-manage") loadManageGames();
+  if (id === "awaiting-results") loadAwaitingResults();
   if (id === "templates-list") loadTemplatesList();
   if (id === "news-manage") loadAnnouncements();
   if (id === "players-list") loadPlayers();
@@ -585,6 +602,7 @@ const MODULES = [
     { label: "Создать игру", screen: "games-create" },
     { label: "Шаблоны игр", screen: "templates-list" },
     { label: "Управление и записи", screen: "games-manage" },
+    { label: "Ожидают результата", screen: "awaiting-results" },
   ]},
   { icon: "📰", title: "Новости", items: [
     { label: "Создать новость", screen: "news-create" },
@@ -914,6 +932,7 @@ async function cancelGame(gameId) {
 // завершённой, сохраняет голы/MVP каждого игрока и обновляет их прогресс.
 let completeMatchGameId = null;
 let completeMatchRoster = [];
+let completeMatchReturnScreen = "games-manage"; // куда вернуться после завершения/отмены
 
 // Один пользователь может быть в записях дважды (основная запись + доп.
 // игроки, добавленные тем же user_id) — но статистику ведём на человека,
@@ -928,11 +947,16 @@ function dedupeConfirmedRoster(signups) {
   return Array.from(byId.values());
 }
 
-function openCompleteMatchModal(gameId) {
-  const games = window.__allManageGames || [];
+// gamesList/returnScreen необязательны — по умолчанию поведение точно такое
+// же, как раньше (список игр из "Управления", возврат туда же). Раздел
+// «Ожидают результата» передаёт свой список и просит вернуть админа обратно
+// в него после завершения, а не в «Управление и записи».
+function openCompleteMatchModal(gameId, gamesList, returnScreen) {
+  const games = gamesList || window.__allManageGames || [];
   const g = games.find(x => x.id === gameId);
   if (!g) return;
 
+  completeMatchReturnScreen = returnScreen || "games-manage";
   completeMatchGameId = gameId;
   completeMatchRoster = dedupeConfirmedRoster(g.signups);
 
@@ -995,7 +1019,7 @@ async function submitCompleteMatch() {
         saved.classList.remove("show");
         completeMatchGameId = null;
         completeMatchRoster = [];
-        showScreen("games-manage");
+        showScreen(completeMatchReturnScreen);
       }, 900);
     } else {
       document.getElementById("complete-match-error-banner").innerHTML =
@@ -1006,6 +1030,41 @@ async function submitCompleteMatch() {
       `<div class="error-banner">⚠️ Ошибка сети — попробуй ещё раз</div>`;
   }
   btn.removeAttribute("disabled");
+}
+
+// ── «Ожидают результата» — матчи, у которых расчётное время окончания уже
+// прошло, а «Завершить матч» ещё не проведён. Появляются здесь сами, без
+// какого-либо ручного шага — сервер сам решает, что пора завершать
+// (is_awaiting_results, storage/game_status.py). Как только матч завершён,
+// он пропадает из списка при следующей загрузке экрана.
+async function loadAwaitingResults() {
+  const el = document.getElementById("awaiting-results-list");
+  el.innerHTML = `<div class="list-empty">Загрузка…</div>`;
+  try {
+    const r = await fetch(`/api/admin/awaiting-results?user_id=${userId}`).then(r => r.json());
+    window.__awaitingResultsGames = r.games || [];
+  } catch (e) {
+    window.__awaitingResultsGames = [];
+  }
+  renderAwaitingResultsList(window.__awaitingResultsGames);
+}
+
+function renderAwaitingResultsList(games) {
+  const el = document.getElementById("awaiting-results-list");
+  if (!games.length) {
+    el.innerHTML = `<div class="list-empty">Нет матчей, ожидающих результата 🎉<br>Всё завершено вовремя.</div>`;
+    return;
+  }
+  el.innerHTML = games.map(g => {
+    const players = dedupeConfirmedRoster(g.signups).length;
+    return `
+      <div class="ar-card">
+        <div class="ar-card-title">⚽ Футбольный матч</div>
+        <div class="ar-card-meta">📅 ${formatGameDate(g)} &nbsp;·&nbsp; 🕐 ${g.time} &nbsp;·&nbsp; 📍 ${g.location}</div>
+        <div class="ar-card-players">👥 <b>${players}</b> ${players === 1 ? "игрок" : "игроков"}</div>
+        <button class="btn btn-primary" onclick="openCompleteMatchModal(${g.id}, window.__awaitingResultsGames, 'awaiting-results')">✅ Завершить матч</button>
+      </div>`;
+  }).join("");
 }
 
 async function deleteGame(gameId) {

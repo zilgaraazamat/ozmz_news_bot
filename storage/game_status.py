@@ -43,3 +43,19 @@ def is_match_completed(game):
     now = datetime.now(ASTANA_TZ).replace(tzinfo=None)
     return now >= end_dt
 
+
+def is_awaiting_results(game):
+    """Матч наступил и расчётное время окончания уже прошло, но админ ещё не
+    провёл «Завершить матч» (games.status всё ещё 'active', статистика по
+    игрокам ещё не сохранена — см. storage/match_completion.py). Это ровно
+    те игры, что должны появиться в админ-разделе «Ожидают результата».
+    Явно завершённые (status='completed') и отменённые сюда не попадают."""
+    if game.get("status") != "active":
+        return False
+    end_dt = _match_end_datetime(game)
+    if end_dt is None:
+        return False
+    from datetime import datetime
+    now = datetime.now(ASTANA_TZ).replace(tzinfo=None)
+    return now >= end_dt
+

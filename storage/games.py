@@ -1,7 +1,7 @@
 """CRUD и запросы по играм: создание, список, история, статистика посещаемости,
 завершение матчей."""
 from ._db import _lock, _conn
-from .game_status import is_match_completed
+from .game_status import is_match_completed, is_awaiting_results
 from .progression import settle_completed_games_xp
 
 def mark_game_completed(game_id):
@@ -80,6 +80,13 @@ def get_all_games():
     keys = ["id", "date", "time", "location", "num_players", "num_teams",
             "players_per_team", "price", "extra_info", "payment_link", "image", "created_by", "created_at", "status"]
     return [dict(zip(keys, r)) for r in rows]
+
+
+def get_games_awaiting_results():
+    """Игры, чьё расчётное время окончания уже прошло, но админ ещё не провёл
+    «Завершить матч» — очередь для админ-раздела «Ожидают результата»
+    (см. is_awaiting_results, storage/game_status.py)."""
+    return [g for g in get_all_games() if is_awaiting_results(g)]
 
 
 def cancel_game(game_id):
