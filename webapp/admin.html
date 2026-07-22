@@ -126,6 +126,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#5E6AD2;backgr
 .manage-no-username{font-size:11px;color:#94A3B8;white-space:nowrap}
 .manage-guests{font-size:11px;color:#D97706;font-weight:700}
 .manage-paid-claim{font-size:11px;color:#16A34A;font-weight:700}
+.manage-amount{font-size:11px;color:#5E6AD2;font-weight:700;white-space:nowrap}
 .manage-confirm-btn{padding:6px 12px;border:none;border-radius:100px;background:#5E6AD2;color:#fff;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
 .manage-confirmed-badge{font-size:13px}
 .manage-empty{font-size:12.5px;color:#94A3B8;padding:8px 0}
@@ -865,6 +866,8 @@ function renderGameCardBody(g, past) {
         const guests = s.is_addition
           ? ` <span class="manage-guests">➕ доп. игроки ×${s.guests_count}</span>`
           : (s.guests_count > 0 ? ` <span class="manage-guests">+${s.guests_count} чел.</span>` : "");
+        const amount = (typeof s.amount === "number" && s.amount > 0) ? s.amount : null;
+        const amountBadge = amount !== null ? ` <span class="manage-amount">💵 ${amount} ₸</span>` : "";
         const paidClaim = (s.payment_claimed && s.status !== "confirmed") ? ` <span class="manage-paid-claim">💰 заявил об оплате</span>` : "";
         const phoneDigits = s.phone ? s.phone.replace(/[^\d]/g, '') : '';
         const msgBtn = past ? "" : (s.username
@@ -874,13 +877,13 @@ function renderGameCardBody(g, past) {
                   : `<span class="manage-no-username">нет контакта</span>`));
         if (s.status === "confirmed") {
           return `<div class="manage-row">
-            <span class="manage-name">${s.name}${label}${guests}</span>
+            <span class="manage-name">${s.name}${label}${guests}${amountBadge}</span>
             <div class="manage-actions">${msgBtn}<span class="manage-confirmed-badge">✅</span></div>
           </div>`;
         }
         const confirmBtn = past ? "" : `<button class="manage-confirm-btn" onclick="confirmPlayer(${g.id}, ${s.id})">Подтвердить</button>`;
         return `<div class="manage-row">
-          <span class="manage-name">${s.name}${label}${guests}${paidClaim}</span>
+          <span class="manage-name">${s.name}${label}${guests}${amountBadge}${paidClaim}</span>
           <div class="manage-actions">${msgBtn}${confirmBtn}</div>
         </div>`;
       }).join("")

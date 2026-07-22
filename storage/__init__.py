@@ -37,6 +37,10 @@ from .game_status import (
     MATCH_DURATION_HOURS, is_match_completed, is_awaiting_results,
 )
 
+from .pricing import (
+    price_per_player, entry_amount,
+)
+
 from .games import (
     mark_game_completed, get_games_played_count,
     create_game, get_all_games, cancel_game, delete_game, get_active_games,

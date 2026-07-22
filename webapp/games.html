@@ -680,15 +680,17 @@ function totalPeople(signups, statusFilter) {
 // Игрок всегда видит один и тот же паттерн: заголовок → статус → главное
 // действие — и всегда понимает, что делать дальше.
 
-function extraEntryRow(gameId, s) {
+function extraEntryRow(g, s) {
   const count = entryPeopleCount(s);
+  const amount = entryAmount(g, s);
+  const amountLabel = amount !== null ? ` · ${formatTenge(amount)}` : "";
   const label = s.status === "confirmed" ? "🟢 Подтверждено"
     : s.payment_claimed ? "🟡 Ждём подтверждения" : "🟡 Ждёт оплаты";
   const warnNoRefund = s.status === "confirmed" || s.payment_claimed;
   return `
     <div class="reg-extra-row">
-      <span>+ Доп. игроки · ${count} чел. — ${label}</span>
-      <button class="reg-extra-cancel-btn" onclick="cancelEntry(${gameId}, ${s.id}, ${warnNoRefund})">❌ Отменить</button>
+      <span>+ Доп. игроки · ${count} чел.${amountLabel} — ${label}</span>
+      <button class="reg-extra-cancel-btn" onclick="cancelEntry(${g.id}, ${s.id}, ${warnNoRefund})">❌ Отменить</button>
     </div>`;
 }
 
@@ -697,6 +699,9 @@ function reservedStateHtml(g, mySignups) {
   const extra = mySignups.slice(1);
   const claimed = main.payment_claimed;
   const count = entryPeopleCount(main);
+  const amount = entryAmount(g, main);
+  const payLabel = amount !== null ? `💳 Оплатить ${formatTenge(amount)}` : "💳 Оплатить";
+  const amountLine = amount !== null ? ` · К оплате: <b>${formatTenge(amount)}</b>` : "";
 
   let actionsHtml;
   if (claimed) {
@@ -704,8 +709,8 @@ function reservedStateHtml(g, mySignups) {
     actionsHtml = `<button class="text-btn text-btn-danger" onclick="cancelEntry(${g.id}, ${main.id}, true)">❌ Отменить бронь</button>`;
   } else {
     const payBtn = g.payment_link
-      ? `<a class="text-btn text-btn-primary" href="${g.payment_link}" target="_blank">💳 Оплатить</a>`
-      : `<button class="text-btn text-btn-primary" onclick="claimPayment(${g.id}, ${main.id})">💳 Оплатить</button>`;
+      ? `<a class="text-btn text-btn-primary" href="${g.payment_link}" target="_blank">${payLabel}</a>`
+      : `<button class="text-btn text-btn-primary" onclick="claimPayment(${g.id}, ${main.id})">${payLabel}</button>`;
     const confirmBtn = g.payment_link
       ? `<button class="text-btn text-btn-secondary" onclick="claimPayment(${g.id}, ${main.id})">✅ Я оплатил(а)</button>`
       : "";
@@ -718,9 +723,9 @@ function reservedStateHtml(g, mySignups) {
   return `
     <div class="reg-card">
       <div class="reg-headline">📌 Место забронировано</div>
-      <div class="reg-status-line">Статус: <b>${claimed ? "Ждём подтверждения" : "Ждёт оплаты"}</b>${count > 1 ? ` · ${count} чел.` : ""}</div>
+      <div class="reg-status-line">Статус: <b>${claimed ? "Ждём подтверждения" : "Ждёт оплаты"}</b>${count > 1 ? ` · ${count} чел.` : ""}${amountLine}</div>
       <div class="reg-actions">${actionsHtml}</div>
-      ${extra.map(s => extraEntryRow(g.id, s)).join("")}
+      ${extra.map(s => extraEntryRow(g, s)).join("")}
     </div>`;
 }
 
@@ -729,15 +734,17 @@ function confirmedStateHtml(g, mySignups) {
   const main = confirmedEntries[0] || mySignups[0];
   const extra = mySignups.filter(s => s.id !== main.id);
   const count = entryPeopleCount(main);
+  const amount = entryAmount(g, main);
+  const amountLine = amount !== null ? ` · Оплачено: <b class="confirmed">${formatTenge(amount)}</b>` : "";
 
   return `
     <div class="reg-card confirmed">
       <div class="reg-headline">✅ Ты подтверждён на эту игру</div>
-      <div class="reg-status-line">Статус: <b class="confirmed">Подтверждено</b>${count > 1 ? ` · ${count} чел.` : ""}</div>
+      <div class="reg-status-line">Статус: <b class="confirmed">Подтверждено</b>${count > 1 ? ` · ${count} чел.` : ""}${amountLine}</div>
       <div class="reg-actions">
         <button class="text-btn text-btn-danger" onclick="cancelEntry(${g.id}, ${main.id}, true)">❌ Отменить регистрацию</button>
       </div>
-      ${extra.map(s => extraEntryRow(g.id, s)).join("")}
+      ${extra.map(s => extraEntryRow(g, s)).join("")}
     </div>`;
 }
 
@@ -859,14 +866,21 @@ let sheetSubmitting = false; // защита от двойного тапа во
 const SHEET_MIN_PEOPLE = 1;  // «Оплатить 2500 ₸» за одного тоже валидный случай
 const SHEET_MAX_PEOPLE = 20; // тот же потолок, что и у бэкенда (guests_count ≤ 20)
 
-// Цена за игрока из свободного текста поля price («2500 ₸», «2 500 тг» и т.п.):
-// первое число в строке. null — цена не задана или не распознана, тогда
-// денежные строки скрываются, а кнопка становится «Забронировать места».
+// Цена за игрока приходит ГОТОВЫМ числом с бэкенда (game.price_per_player,
+// см. routes/games.py + storage/pricing.py) — фронтенд текст цены не парсит
+// и никаких сумм не хардкодит. null — у игры нет распознаваемой цены.
 function pricePerPlayer(g) {
-  const m = String((g && g.price) || "").match(/\d[\d\s]*/);
-  if (!m) return null;
-  const n = parseInt(m[0].replace(/\s+/g, ""), 10);
-  return Number.isFinite(n) && n > 0 ? n : null;
+  const n = g && g.price_per_player;
+  return (typeof n === "number" && n > 0) ? n : null;
+}
+
+// Сумма конкретной партии записи: приоритет — amount, зафиксированный
+// бэкендом в момент записи; для старых записей без amount — пересчёт из
+// той же цены игры. null — сумма неизвестна (цены у игры нет).
+function entryAmount(g, s) {
+  if (s && typeof s.amount === "number" && s.amount > 0) return s.amount;
+  const per = pricePerPlayer(g);
+  return per === null ? null : per * entryPeopleCount(s);
 }
 
 function formatTenge(n) {

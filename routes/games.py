@@ -10,6 +10,7 @@ from storage import (
     is_registered_for_game, add_chat_message, get_chat_messages,
     get_team_members, get_leaderboard, LEADERBOARD_CATEGORIES,
     get_player_stat_in_match, get_players_stats_bulk,
+    price_per_player, entry_amount,
 )
 from .helpers import _recompute_teams
 
@@ -51,9 +52,14 @@ class GamesRoutesMixin:
             name = display_name_from_profile(profile)
             player = role["player"] if role else None
 
-            signup_for_game(game_id, user_id, name, player, guests_count, None, is_addition)
+            # Сумма оплаты партии считается ТОЛЬКО здесь, из цены игры на
+            # бэкенде: «сам» — за одного, «компания» — цена × число людей.
+            # Клиент сумму не присылает — подделать её из приложения нельзя.
+            amount = entry_amount(game, new_people)
+
+            signup_for_game(game_id, user_id, name, player, guests_count, None, is_addition, amount)
             _recompute_teams(game_id)
-            self._json({"ok": True})
+            self._json({"ok": True, "amount": amount})
         except Exception as e:
             print(f"  [WARN] games/signup: {e}")
             self.send_response(400); self.end_headers()
@@ -100,10 +106,17 @@ class GamesRoutesMixin:
             game = get_game(game_id)
             name = mine["name"]
             total_people = mine["guests_count"] if mine.get("is_addition") else 1 + (mine.get("guests_count") or 0)
+            # Сумма партии: сохранённая при записи; для старых записей без
+            # amount — пересчёт из цены игры тем же способом (storage/pricing.py).
+            amount = mine.get("amount")
+            if amount is None:
+                amount = entry_amount(game, total_people)
+            amount_line = f"💵 Сумма к оплате: <b>{amount} ₸</b>\n" if amount is not None else ""
             when = f"{game['date']} {game['time']}" if game else ""
             admin_text = (
                 f"💰 <b>Заявка на оплату!</b>\n\n"
                 f"👤 {name} ({total_people} чел.) отметил(а), что оплатил(а) за игру\n"
+                f"{amount_line}"
                 f"📅 {when} | 📍 {game['location'] if game else ''}\n\n"
                 f"Проверь перевод и подтверди в панели /admin"
             )
@@ -145,6 +158,10 @@ class GamesRoutesMixin:
         if user_id:
             games = games + get_history_games(user_id)
         for g in games:
+            # Числовая цена за игрока — единственный источник для всех денежных
+            # сумм на фронтенде (шит записи, кнопки оплаты). Парсится из
+            # свободного текста games.price только тут, на бэкенде.
+            g["price_per_player"] = price_per_player(g)
             g["signups"] = get_signups(g["id"])
             g["my_status"] = get_my_signup(g["id"], user_id) if user_id else None
             g["my_signups"] = get_my_signups(g["id"], user_id) if user_id else []

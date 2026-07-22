@@ -185,6 +185,14 @@ def init_db():
             c.execute("ALTER TABLE game_signups ADD COLUMN xp_awarded INTEGER DEFAULT 0")
         except sqlite3.OperationalError:
             pass
+        try:
+            # Сумма оплаты этой партии записи в тенге. Считается ТОЛЬКО на бэкенде
+            # в момент записи: price_per_player(игры) × число людей в партии
+            # (см. storage/pricing.py, routes/games.py → signup). NULL — у игры
+            # не была задана распознаваемая цена (или запись старая, до колонки).
+            c.execute("ALTER TABLE game_signups ADD COLUMN amount INTEGER")
+        except sqlite3.OperationalError:
+            pass
 
         c.execute("""CREATE TABLE IF NOT EXISTS game_slots(
             game_id    INTEGER,
