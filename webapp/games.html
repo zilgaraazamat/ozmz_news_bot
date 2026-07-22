@@ -89,7 +89,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .sheet-step-btn:active{transform:scale(.92);background:rgba(94,106,210,.22)}
 .sheet-step-btn[disabled]{opacity:.35;pointer-events:none}
 .sheet-step-value{min-width:64px;text-align:center;font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}
-.sheet-step-hint{text-align:center;font-size:12px;color:#6B7280;margin-bottom:14px}
+.sheet-price-rows{background:#101116;border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:4px 14px;margin-bottom:14px}
+.sheet-price-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0}
+.sheet-price-row-total{border-top:1px solid rgba(255,255,255,.07)}
+.sheet-price-label{font-size:13px;color:#9BA1AC;font-weight:600}
+.sheet-price-value{font-size:14px;font-weight:700;color:#F5F6F7;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sheet-price-total{font-size:18px;font-weight:800;color:#8B93F5}
+/* Пульс суммы при изменении количества игроков — класс вешается заново на
+   каждый пересчёт (см. sheetRenderCompany), поэтому анимация перезапускается */
+@keyframes price-pop{0%{transform:scale(1)}35%{transform:scale(1.16);color:#B4BAFF}100%{transform:scale(1)}}
+.price-pop{animation:price-pop .28s cubic-bezier(.2,.8,.2,1)}
+.sheet-footer{position:sticky;bottom:0;background:#181A1F;padding-top:10px;margin:0 -16px -1px;padding-left:16px;padding-right:16px}
+#sheet-confirm-btn{font-variant-numeric:tabular-nums}
 .btn{width:100%;padding:14px;border:none;border-radius:14px;font-weight:700;font-size:15px;cursor:pointer;background:#5E6AD2;color:#fff;transition:transform .15s,background .15s;box-shadow:0 4px 14px rgba(94,106,210,.3)}
 .btn:active{transform:scale(.97);background:#525DC4}
 .btn[disabled]{opacity:.5;pointer-events:none}
@@ -217,14 +228,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
   </div>
   <div id="sheet-view-company" class="hidden">
     <button class="sheet-back" onclick="sheetShowChoice()">‹ Назад</button>
-    <div class="sheet-title">Сколько вас всего придёт?</div>
+    <div class="sheet-title">Записать компанию</div>
     <div class="sheet-stepper">
       <button class="sheet-step-btn" id="sheet-step-minus" onclick="sheetStep(-1)">−</button>
       <div class="sheet-step-value" id="sheet-step-value">2</div>
       <button class="sheet-step-btn" id="sheet-step-plus" onclick="sheetStep(1)">+</button>
     </div>
-    <div class="sheet-step-hint">Вместе с тобой, максимум 20 человек</div>
-    <button class="btn" id="sheet-confirm-btn" onclick="sheetConfirmCompany()">⚽ Забронировать места</button>
+    <div class="sheet-price-rows" id="sheet-price-rows">
+      <div class="sheet-price-row">
+        <span class="sheet-price-label">Цена за игрока</span>
+        <span class="sheet-price-value" id="sheet-price-per">—</span>
+      </div>
+      <div class="sheet-price-row sheet-price-row-total">
+        <span class="sheet-price-label">Итого</span>
+        <span class="sheet-price-value sheet-price-total" id="sheet-price-total">—</span>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn" id="sheet-confirm-btn" onclick="sheetConfirmCompany()">Оплатить</button>
+    </div>
   </div>
 </div>
 
@@ -830,11 +852,26 @@ async function submitSignup(gameId, guestsCount) {
 
 // ── Bottom Sheet записи ──────────────────────────────────────────────────────
 let sheetGameId = null;      // игра, для которой открыт шит (null = закрыт)
+let sheetGame = null;        // объект игры — цена и payment_link берутся отсюда
 let sheetCompanyCount = 2;   // сколько всего людей в режиме «компания»
 let sheetSubmitting = false; // защита от двойного тапа во время запроса
 
-const SHEET_MIN_PEOPLE = 2;  // «компания» — это минимум двое
+const SHEET_MIN_PEOPLE = 1;  // «Оплатить 2500 ₸» за одного тоже валидный случай
 const SHEET_MAX_PEOPLE = 20; // тот же потолок, что и у бэкенда (guests_count ≤ 20)
+
+// Цена за игрока из свободного текста поля price («2500 ₸», «2 500 тг» и т.п.):
+// первое число в строке. null — цена не задана или не распознана, тогда
+// денежные строки скрываются, а кнопка становится «Забронировать места».
+function pricePerPlayer(g) {
+  const m = String((g && g.price) || "").match(/\d[\d\s]*/);
+  if (!m) return null;
+  const n = parseInt(m[0].replace(/\s+/g, ""), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function formatTenge(n) {
+  return `${n} ₸`;
+}
 
 function haptic(kind) {
   const h = window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback;
@@ -847,6 +884,7 @@ function haptic(kind) {
 
 function openSignupSheet(gameId) {
   sheetGameId = gameId;
+  sheetGame = (window.__lastGames || []).find(g => g.id === gameId) || null;
   sheetShowChoice();
   document.getElementById("sheet-backdrop").classList.add("open");
   document.getElementById("signup-sheet").classList.add("open");
@@ -855,6 +893,7 @@ function openSignupSheet(gameId) {
 
 function closeSignupSheet() {
   sheetGameId = null;
+  sheetGame = null;
   const sheet = document.getElementById("signup-sheet");
   sheet.classList.remove("open", "dragging");
   sheet.style.transform = "";
@@ -878,8 +917,8 @@ async function sheetChooseSolo() {
 }
 
 function sheetChooseCompany() {
-  sheetCompanyCount = SHEET_MIN_PEOPLE;
-  sheetRenderStepper();
+  sheetCompanyCount = 2;
+  sheetRenderCompany(false);
   document.getElementById("sheet-view-choice").classList.add("hidden");
   document.getElementById("sheet-view-company").classList.remove("hidden");
   haptic("light");
@@ -889,14 +928,42 @@ function sheetStep(delta) {
   const next = sheetCompanyCount + delta;
   if (next < SHEET_MIN_PEOPLE || next > SHEET_MAX_PEOPLE) return;
   sheetCompanyCount = next;
-  sheetRenderStepper();
+  sheetRenderCompany(true);
   haptic("light");
 }
 
-function sheetRenderStepper() {
+// Перерисовка экрана «компания»: счётчик, цена за игрока, итог и сумма на
+// кнопке пересчитываются мгновенно при каждом изменении количества.
+// animate=true перезапускает пульс на итоговой сумме и кнопке.
+function sheetRenderCompany(animate) {
   document.getElementById("sheet-step-value").textContent = sheetCompanyCount;
   document.getElementById("sheet-step-minus").disabled = sheetCompanyCount <= SHEET_MIN_PEOPLE;
   document.getElementById("sheet-step-plus").disabled = sheetCompanyCount >= SHEET_MAX_PEOPLE;
+
+  const per = pricePerPlayer(sheetGame);
+  const rows = document.getElementById("sheet-price-rows");
+  const totalEl = document.getElementById("sheet-price-total");
+  const btn = document.getElementById("sheet-confirm-btn");
+
+  if (per === null) {
+    rows.classList.add("hidden");
+    btn.textContent = "⚽ Забронировать места";
+    return;
+  }
+
+  rows.classList.remove("hidden");
+  const total = per * sheetCompanyCount;
+  document.getElementById("sheet-price-per").textContent = formatTenge(per);
+  totalEl.textContent = formatTenge(total);
+  btn.textContent = `Оплатить ${formatTenge(total)}`;
+
+  if (animate) {
+    for (const el of [totalEl, btn]) {
+      el.classList.remove("price-pop");
+      void el.offsetWidth; // reflow — чтобы анимация перезапустилась
+      el.classList.add("price-pop");
+    }
+  }
 }
 
 async function sheetConfirmCompany() {
@@ -906,10 +973,18 @@ async function sheetConfirmCompany() {
   btn.disabled = true;
   haptic("medium");
   const gameId = sheetGameId;
+  const paymentLink = sheetGame && sheetGame.payment_link;
   const guestsCount = sheetCompanyCount - 1; // регистрант + гости
   closeSignupSheet();
   const ok = await submitSignup(gameId, guestsCount);
   haptic(ok ? "success" : "error");
+  if (ok && paymentLink) {
+    // «Оплатить» честно ведёт к оплате: бронь создана — сразу открываем
+    // платёжную ссылку игры. «Я оплатил(а)» подтверждается в карточке игры.
+    const tw = window.Telegram && Telegram.WebApp;
+    if (tw && typeof tw.openLink === "function") tw.openLink(paymentLink);
+    else window.open(paymentLink, "_blank");
+  }
   btn.disabled = false;
   sheetSubmitting = false;
 }
