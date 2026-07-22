@@ -2,7 +2,7 @@
 import json
 
 from api import tg_post
-from config import ADMIN_IDS
+from config import ADMIN_IDS, bot_share_link
 from storage import (
     get_profile, get_role, display_name_from_profile,
     get_active_games, get_history_games, get_game,
@@ -162,6 +162,9 @@ class GamesRoutesMixin:
             # сумм на фронтенде (шит записи, кнопки оплаты). Парсится из
             # свободного текста games.price только тут, на бэкенде.
             g["price_per_player"] = price_per_player(g)
+            # Ссылка на бота для кнопки «Пригласить игроков» (экран
+            # подтверждения регистрации компании). None — если недоступна.
+            g["share_link"] = bot_share_link()
             g["signups"] = get_signups(g["id"])
             g["my_status"] = get_my_signup(g["id"], user_id) if user_id else None
             g["my_signups"] = get_my_signups(g["id"], user_id) if user_id else []

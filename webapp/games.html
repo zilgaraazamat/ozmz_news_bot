@@ -101,6 +101,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .price-pop{animation:price-pop .28s cubic-bezier(.2,.8,.2,1)}
 .sheet-footer{position:sticky;bottom:0;background:#181A1F;padding-top:10px;margin:0 -16px -1px;padding-left:16px;padding-right:16px}
 #sheet-confirm-btn{font-variant-numeric:tabular-nums}
+/* ── Экран подтверждения регистрации компании ── */
+.sheet-confirmed-icon{width:60px;height:60px;margin:6px auto 14px;border-radius:50%;background:rgba(48,209,88,.14);display:flex;align-items:center;justify-content:center;font-size:30px;animation:conf-pop .4s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes conf-pop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.sheet-confirmed-title{font-size:18px;font-weight:800;text-align:center;letter-spacing:-.3px;margin-bottom:18px}
+.sheet-confirmed-stats{display:flex;align-items:stretch;background:#101116;border:1px solid rgba(255,255,255,.05);border-radius:16px;padding:16px 8px;margin-bottom:18px}
+.sheet-confirmed-stat{flex:1;text-align:center;min-width:0}
+.sheet-confirmed-divider{width:1px;background:rgba(255,255,255,.08);margin:2px 0}
+.sheet-confirmed-num{font-size:34px;font-weight:800;color:#30D158;font-variant-numeric:tabular-nums;line-height:1.1}
+.sheet-confirmed-num-waiting{color:#E5A93C}
+.sheet-confirmed-label{font-size:12px;color:#9BA1AC;font-weight:600;margin-top:4px}
 .btn{width:100%;padding:14px;border:none;border-radius:14px;font-weight:700;font-size:15px;cursor:pointer;background:#5E6AD2;color:#fff;transition:transform .15s,background .15s;box-shadow:0 4px 14px rgba(94,106,210,.3)}
 .btn:active{transform:scale(.97);background:#525DC4}
 .btn[disabled]{opacity:.5;pointer-events:none}
@@ -246,6 +256,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
     </div>
     <div class="sheet-footer">
       <button class="btn" id="sheet-confirm-btn" onclick="sheetConfirmCompany()">Оплатить</button>
+    </div>
+  </div>
+  <div id="sheet-view-confirmed" class="hidden">
+    <div class="sheet-confirmed-icon">✅</div>
+    <div class="sheet-confirmed-title">Компания зарегистрирована</div>
+    <div class="sheet-confirmed-stats">
+      <div class="sheet-confirmed-stat">
+        <div class="sheet-confirmed-num" id="sheet-conf-paid">0</div>
+        <div class="sheet-confirmed-label">Players paid</div>
+      </div>
+      <div class="sheet-confirmed-divider"></div>
+      <div class="sheet-confirmed-stat">
+        <div class="sheet-confirmed-num sheet-confirmed-num-waiting" id="sheet-conf-waiting">0</div>
+        <div class="sheet-confirmed-label">Waiting for players</div>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn" id="sheet-invite-btn" onclick="sheetInvitePlayers()">Пригласить игроков</button>
     </div>
   </div>
 </div>
@@ -917,6 +945,7 @@ function closeSignupSheet() {
 function sheetShowChoice() {
   document.getElementById("sheet-view-choice").classList.remove("hidden");
   document.getElementById("sheet-view-company").classList.add("hidden");
+  document.getElementById("sheet-view-confirmed").classList.add("hidden");
 }
 
 async function sheetChooseSolo() {
@@ -988,19 +1017,63 @@ async function sheetConfirmCompany() {
   haptic("medium");
   const gameId = sheetGameId;
   const paymentLink = sheetGame && sheetGame.payment_link;
-  const guestsCount = sheetCompanyCount - 1; // регистрант + гости
-  closeSignupSheet();
+  const peopleCount = sheetCompanyCount;         // сколько игроков оплачено этой компанией
+  const guestsCount = sheetCompanyCount - 1;     // регистрант + гости
   const ok = await submitSignup(gameId, guestsCount);
   haptic(ok ? "success" : "error");
-  if (ok && paymentLink) {
-    // «Оплатить» честно ведёт к оплате: бронь создана — сразу открываем
-    // платёжную ссылку игры. «Я оплатил(а)» подтверждается в карточке игры.
+  btn.disabled = false;
+  sheetSubmitting = false;
+  if (!ok) { closeSignupSheet(); return; }
+
+  if (paymentLink) {
+    // «Оплатить» честно ведёт к оплате: бронь создана — открываем платёжную
+    // ссылку игры. Экран подтверждения показываем сразу за ней.
     const tw = window.Telegram && Telegram.WebApp;
     if (tw && typeof tw.openLink === "function") tw.openLink(paymentLink);
     else window.open(paymentLink, "_blank");
   }
-  btn.disabled = false;
-  sheetSubmitting = false;
+
+  // Свежий объект игры уже с новой записью — из него берём «ожидаем игроков».
+  loadGames();
+  sheetShowCompanyConfirmed(gameId, peopleCount);
+}
+
+// Экран подтверждения регистрации компании: оплачено / ожидаем игроков.
+// «Ожидаем» = свободные места игры (лимит − подтверждённые/записанные),
+// свои же оплаченные места сюда не попадают. Если лимита нет — 0.
+function sheetShowCompanyConfirmed(gameId, paidCount) {
+  const g = (window.__lastGames || []).find(x => x.id === gameId) || sheetGame;
+  let waiting = 0;
+  if (g && g.num_players) {
+    const taken = totalPeople(g.signups, null);
+    waiting = Math.max(0, g.num_players - taken);
+  }
+  document.getElementById("sheet-conf-paid").textContent = paidCount;
+  document.getElementById("sheet-conf-waiting").textContent = waiting;
+
+  document.getElementById("sheet-view-choice").classList.add("hidden");
+  document.getElementById("sheet-view-company").classList.add("hidden");
+  document.getElementById("sheet-view-confirmed").classList.remove("hidden");
+  // шит уже открыт — просто меняем экран, никакой навигации по страницам
+  document.getElementById("sheet-backdrop").classList.add("open");
+  document.getElementById("signup-sheet").classList.add("open");
+}
+
+function sheetInvitePlayers() {
+  haptic("medium");
+  const gameId = sheetGameId;
+  const g = (window.__lastGames || []).find(x => x.id === gameId) || sheetGame;
+  closeSignupSheet();
+
+  // Приглашение через нативный Telegram-шэринг: ссылка на бота (с бэкенда) +
+  // короткий текст. Если ссылки нет — шэрим только текст.
+  const tw = window.Telegram && Telegram.WebApp;
+  const botLink = g && g.share_link;
+  const when = g ? `${g.date || ""} ${g.time || ""}`.trim() : "";
+  const text = `⚽ Собираю команду на игру${when ? ` ${when}` : ""}! Присоединяйся 👇`;
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(botLink || "")}&text=${encodeURIComponent(text)}`;
+  if (tw && typeof tw.openTelegramLink === "function") tw.openTelegramLink(shareUrl);
+  else window.open(shareUrl, "_blank");
 }
 
 // Свайп-вниз по шиту закрывает его — как в нативных Telegram Bottom Sheet.

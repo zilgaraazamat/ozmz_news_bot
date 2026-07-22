@@ -13,6 +13,33 @@ ADMIN_IDS = {x.strip() for x in os.environ.get("ADMIN_IDS", "").split(",") if x.
 
 ASTANA_TZ = timezone(timedelta(hours=5))
 
+# Имя бота (@username) для deep-link приглашений. Берётся один раз через
+# getMe и кэшируется — используется, чтобы построить https://t.me/<bot>
+# ссылку «Пригласить игроков» на экране подтверждения регистрации компании.
+_BOT_USERNAME = None
+
+
+def get_bot_username():
+    """@username бота без «@», или None, если недоступен. Кэшируется."""
+    global _BOT_USERNAME
+    if _BOT_USERNAME is not None:
+        return _BOT_USERNAME
+    if not BOT_TOKEN:
+        return None
+    try:
+        import requests
+        r = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe", timeout=10)
+        _BOT_USERNAME = r.json().get("result", {}).get("username") or None
+    except Exception:
+        _BOT_USERNAME = None
+    return _BOT_USERNAME
+
+
+def bot_share_link():
+    """Ссылка на бота для приглашений, или None, если имя бота недоступно."""
+    u = get_bot_username()
+    return f"https://t.me/{u}" if u else None
+
 RSS_FEEDS = [
     ("Lenta.ru",  "https://lenta.ru/rss/news/sport/football"),
     ("Чемпионат", "https://www.championat.com/football/rss.xml"),
