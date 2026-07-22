@@ -66,9 +66,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .player-card-stats{font-size:9.5px;color:#6B7280;margin-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .roster-more-btn{width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px dashed rgba(255,255,255,.12);background:transparent;color:#8B93F5;font-size:12px;font-weight:700;cursor:pointer;text-align:center}
 .roster-more-btn:active{background:rgba(94,106,210,.08)}
-.guests-label{font-size:12px;color:#6B7280;display:block;margin-bottom:6px}
-.guests-input{width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#23262D;color:#F5F6F7;font-size:16px;margin-bottom:10px}
-.guests-input:focus{outline:none;border-color:#5E6AD2}
+/* ── Bottom Sheet записи на игру: две карточки выбора (сам / компания) в
+   стиле нативных Telegram-шитов — затемнение, скруглённая панель снизу,
+   ручка-грип, iOS-кривая анимации, свайп-вниз для закрытия ── */
+.sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .28s ease;z-index:60}
+.sheet-backdrop.open{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:61;background:#181A1F;border-radius:20px 20px 0 0;border-top:1px solid rgba(255,255,255,.08);box-shadow:0 -12px 40px rgba(0,0,0,.5);padding:8px 16px calc(16px + env(safe-area-inset-bottom));max-width:440px;margin:0 auto;transform:translateY(100%);transition:transform .34s cubic-bezier(.32,.72,0,1);touch-action:none}
+.sheet.open{transform:translateY(0)}
+.sheet.dragging{transition:none}
+.sheet-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.18);margin:4px auto 14px}
+.sheet-title{font-size:16px;font-weight:800;text-align:center;margin-bottom:14px;letter-spacing:-.2px}
+.sheet-card{width:100%;display:flex;align-items:center;gap:12px;text-align:left;background:#23262D;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;color:#F5F6F7;transition:transform .12s,background .12s;font-family:inherit}
+.sheet-card:active{transform:scale(.97);background:#282B33}
+.sheet-card-icon{width:44px;height:44px;flex-shrink:0;border-radius:12px;background:rgba(94,106,210,.16);display:flex;align-items:center;justify-content:center;font-size:22px}
+.sheet-card-body{flex:1;min-width:0}
+.sheet-card-title{font-size:14.5px;font-weight:700;margin-bottom:2px}
+.sheet-card-sub{font-size:12px;color:#6B7280;line-height:1.35}
+.sheet-card-chevron{color:#565A61;font-size:20px;font-weight:600;flex-shrink:0}
+.sheet-back{display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:#8B93F5;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;margin-bottom:8px;font-family:inherit}
+.sheet-stepper{display:flex;align-items:center;justify-content:center;gap:18px;margin:10px 0 16px}
+.sheet-step-btn{width:48px;height:48px;border-radius:50%;border:1.5px solid rgba(94,106,210,.4);background:rgba(94,106,210,.1);color:#8B93F5;font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .12s,background .12s;font-family:inherit}
+.sheet-step-btn:active{transform:scale(.92);background:rgba(94,106,210,.22)}
+.sheet-step-btn[disabled]{opacity:.35;pointer-events:none}
+.sheet-step-value{min-width:64px;text-align:center;font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}
+.sheet-step-hint{text-align:center;font-size:12px;color:#6B7280;margin-bottom:14px}
 .btn{width:100%;padding:14px;border:none;border-radius:14px;font-weight:700;font-size:15px;cursor:pointer;background:#5E6AD2;color:#fff;transition:transform .15s,background .15s;box-shadow:0 4px 14px rgba(94,106,210,.3)}
 .btn:active{transform:scale(.97);background:#525DC4}
 .btn[disabled]{opacity:.5;pointer-events:none}
@@ -168,6 +189,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
     <div class="bn-label">Профиль</div>
   </div>
 </nav>
+
+<!-- Bottom Sheet записи: единственный экземпляр на страницу, живёт вне
+     games-list, поэтому периодический ре-рендер списка его не трогает.
+     Два экрана внутри: выбор (сам/компания) и шаг количества для компании. -->
+<div class="sheet-backdrop" id="sheet-backdrop" onclick="closeSignupSheet()"></div>
+<div class="sheet" id="signup-sheet">
+  <div class="sheet-handle"></div>
+  <div id="sheet-view-choice">
+    <div class="sheet-title">Запись на игру</div>
+    <button class="sheet-card" onclick="sheetChooseSolo()">
+      <div class="sheet-card-icon">👤</div>
+      <div class="sheet-card-body">
+        <div class="sheet-card-title">Записаться самому</div>
+        <div class="sheet-card-sub">Я буду играть один.</div>
+      </div>
+      <div class="sheet-card-chevron">›</div>
+    </button>
+    <button class="sheet-card" onclick="sheetChooseCompany()">
+      <div class="sheet-card-icon">👥</div>
+      <div class="sheet-card-body">
+        <div class="sheet-card-title">Записать компанию</div>
+        <div class="sheet-card-sub">Я оплачиваю сразу за нескольких игроков.</div>
+      </div>
+      <div class="sheet-card-chevron">›</div>
+    </button>
+  </div>
+  <div id="sheet-view-company" class="hidden">
+    <button class="sheet-back" onclick="sheetShowChoice()">‹ Назад</button>
+    <div class="sheet-title">Сколько вас всего придёт?</div>
+    <div class="sheet-stepper">
+      <button class="sheet-step-btn" id="sheet-step-minus" onclick="sheetStep(-1)">−</button>
+      <div class="sheet-step-value" id="sheet-step-value">2</div>
+      <button class="sheet-step-btn" id="sheet-step-plus" onclick="sheetStep(1)">+</button>
+    </div>
+    <div class="sheet-step-hint">Вместе с тобой, максимум 20 человек</div>
+    <button class="btn" id="sheet-confirm-btn" onclick="sheetConfirmCompany()">⚽ Забронировать места</button>
+  </div>
+</div>
 
 <script>
 let userId = new URLSearchParams(location.search).get("uid");
@@ -522,10 +581,7 @@ function gameAddFormWidget(g, mySignups) {
   if (!isUpcoming(g)) return "";
 
   if (mySignups.length === 0) {
-    return `
-      <label class="guests-label">Сколько вас всего придёт (с тобой)?</label>
-      <input type="number" class="guests-input" id="guests-${g.id}" min="1" max="20" value="1">
-      <button class="btn" onclick="signup(${g.id})">⚽ Забронировать место</button>`;
+    return `<button class="btn" onclick="openSignupSheet(${g.id})">⚽ Записаться</button>`;
   }
   const addExpanded = !!addFormExpanded[g.id];
   return `
@@ -746,15 +802,14 @@ async function loadGames() {
   }
 }
 
-async function signup(gameId) {
+// ── Единая отправка регистрации: и «сам», и «компания» идут сюда, разница
+//    только в guests_count. Старый inline-флоу с полем количества заменён
+//    Bottom Sheet'ом (см. openSignupSheet ниже) — API и бэкенд не менялись. ──
+async function submitSignup(gameId, guestsCount) {
   if (!userId) {
     showError("Не удалось определить тебя. Открой игры заново через бота.");
-    return;
+    return false;
   }
-  const guestsInput = document.getElementById(`guests-${gameId}`);
-  const totalPeopleCount = guestsInput ? parseInt(guestsInput.value, 10) || 1 : 1;
-  const guestsCount = Math.max(0, totalPeopleCount - 1);
-
   try {
     const res = await fetch("/api/games/signup", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -762,14 +817,130 @@ async function signup(gameId) {
     }).then(r => r.json());
     if (!res.ok) {
       showError(res.error || "Не удалось записаться.");
-    } else {
-      document.getElementById("error-banner").innerHTML = "";
-      loadGames();
+      return false;
     }
+    document.getElementById("error-banner").innerHTML = "";
+    loadGames();
+    return true;
   } catch (e) {
     showError("Ошибка сети — попробуй ещё раз.");
+    return false;
   }
 }
+
+// ── Bottom Sheet записи ──────────────────────────────────────────────────────
+let sheetGameId = null;      // игра, для которой открыт шит (null = закрыт)
+let sheetCompanyCount = 2;   // сколько всего людей в режиме «компания»
+let sheetSubmitting = false; // защита от двойного тапа во время запроса
+
+const SHEET_MIN_PEOPLE = 2;  // «компания» — это минимум двое
+const SHEET_MAX_PEOPLE = 20; // тот же потолок, что и у бэкенда (guests_count ≤ 20)
+
+function haptic(kind) {
+  const h = window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback;
+  if (!h) return;
+  try {
+    if (kind === "success" || kind === "error") h.notificationOccurred(kind);
+    else h.impactOccurred(kind || "light");
+  } catch (e) {}
+}
+
+function openSignupSheet(gameId) {
+  sheetGameId = gameId;
+  sheetShowChoice();
+  document.getElementById("sheet-backdrop").classList.add("open");
+  document.getElementById("signup-sheet").classList.add("open");
+  haptic("light");
+}
+
+function closeSignupSheet() {
+  sheetGameId = null;
+  const sheet = document.getElementById("signup-sheet");
+  sheet.classList.remove("open", "dragging");
+  sheet.style.transform = "";
+  document.getElementById("sheet-backdrop").classList.remove("open");
+}
+
+function sheetShowChoice() {
+  document.getElementById("sheet-view-choice").classList.remove("hidden");
+  document.getElementById("sheet-view-company").classList.add("hidden");
+}
+
+async function sheetChooseSolo() {
+  if (sheetSubmitting || sheetGameId === null) return;
+  sheetSubmitting = true;
+  haptic("medium");
+  const gameId = sheetGameId;
+  closeSignupSheet();
+  const ok = await submitSignup(gameId, 0);
+  haptic(ok ? "success" : "error");
+  sheetSubmitting = false;
+}
+
+function sheetChooseCompany() {
+  sheetCompanyCount = SHEET_MIN_PEOPLE;
+  sheetRenderStepper();
+  document.getElementById("sheet-view-choice").classList.add("hidden");
+  document.getElementById("sheet-view-company").classList.remove("hidden");
+  haptic("light");
+}
+
+function sheetStep(delta) {
+  const next = sheetCompanyCount + delta;
+  if (next < SHEET_MIN_PEOPLE || next > SHEET_MAX_PEOPLE) return;
+  sheetCompanyCount = next;
+  sheetRenderStepper();
+  haptic("light");
+}
+
+function sheetRenderStepper() {
+  document.getElementById("sheet-step-value").textContent = sheetCompanyCount;
+  document.getElementById("sheet-step-minus").disabled = sheetCompanyCount <= SHEET_MIN_PEOPLE;
+  document.getElementById("sheet-step-plus").disabled = sheetCompanyCount >= SHEET_MAX_PEOPLE;
+}
+
+async function sheetConfirmCompany() {
+  if (sheetSubmitting || sheetGameId === null) return;
+  sheetSubmitting = true;
+  const btn = document.getElementById("sheet-confirm-btn");
+  btn.disabled = true;
+  haptic("medium");
+  const gameId = sheetGameId;
+  const guestsCount = sheetCompanyCount - 1; // регистрант + гости
+  closeSignupSheet();
+  const ok = await submitSignup(gameId, guestsCount);
+  haptic(ok ? "success" : "error");
+  btn.disabled = false;
+  sheetSubmitting = false;
+}
+
+// Свайп-вниз по шиту закрывает его — как в нативных Telegram Bottom Sheet.
+(function () {
+  const sheet = document.getElementById("signup-sheet");
+  let startY = null, delta = 0;
+  sheet.addEventListener("touchstart", e => {
+    if (!sheet.classList.contains("open")) return;
+    startY = e.touches[0].clientY;
+    delta = 0;
+    sheet.classList.add("dragging");
+  }, { passive: true });
+  sheet.addEventListener("touchmove", e => {
+    if (startY === null) return;
+    delta = Math.max(0, e.touches[0].clientY - startY);
+    sheet.style.transform = `translateY(${delta}px)`;
+  }, { passive: true });
+  sheet.addEventListener("touchend", () => {
+    if (startY === null) return;
+    sheet.classList.remove("dragging");
+    if (delta > 90) {
+      closeSignupSheet();
+      haptic("light");
+    } else {
+      sheet.style.transform = "";
+    }
+    startY = null;
+  }, { passive: true });
+})();
 
 async function addMorePeople(gameId) {
   if (!userId) return;
@@ -905,7 +1076,8 @@ setInterval(() => {
   const gamesListEl = document.getElementById("games-list");
   const typingNow = gamesListEl && gamesListEl.contains(document.activeElement)
     && (document.activeElement.tagName === "INPUT");
-  if (!anyChatOpen && !anyAddFormOpen && !typingNow) loadGames();
+  const sheetOpen = sheetGameId !== null;
+  if (!anyChatOpen && !anyAddFormOpen && !typingNow && !sheetOpen) loadGames();
 }, 4000);
 </script>
 </body>
