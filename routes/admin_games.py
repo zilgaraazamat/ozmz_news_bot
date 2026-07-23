@@ -12,6 +12,7 @@ from storage import (
     complete_match, settle_completed_games_xp, get_player_stats, get_games_awaiting_results,
     record_match_stats_bulk, get_match_stats,
 )
+from .helpers import _recompute_teams
 
 
 class AdminGamesRoutesMixin:
@@ -166,7 +167,12 @@ class AdminGamesRoutesMixin:
                 self._json({"ok": False, "error": "Нет прав администратора"})
                 return
             entry_id = data.get("entry_id")
+            game_id = data.get("game_id")
             confirm_signup(entry_id)
+            # Оплата подтверждена — теперь эти люди попадают в состав
+            # (auto_assign_teams берёт только confirmed-записи).
+            if game_id:
+                _recompute_teams(game_id)
             self._json({"ok": True})
         except Exception as e:
             print(f"  [WARN] confirm-signup: {e}")

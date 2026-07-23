@@ -46,15 +46,26 @@ def _build_members(s):
         ]
 
     size = 1 + (s.get("guests_count") or 0)
-    return [
-        {
-            "user_id": s["user_id"] if i == 0 else None,
-            "name": s["name"] if i == 0 else f"{s['name']} (гость {i})",
-            "player": s["player"] if i == 0 else None,
-            "is_guest": i > 0,
-        }
-        for i in range(size)
-    ]
+    # Занятые по приглашению места (slot_index -> {"user_id","name"}) —
+    # подставляем реального игрока вместо плейсхолдера «(гость N)».
+    # slot_index нумеруется с 2 (организатор = слот 1); i здесь 0-based,
+    # поэтому место i соответствует slot_index = i + 1.
+    claimed = s.get("claimed_slots") or {}
+    members = []
+    for i in range(size):
+        if i == 0:
+            members.append({"user_id": s["user_id"], "name": s["name"],
+                            "player": s["player"], "is_guest": False})
+            continue
+        slot = i + 1
+        c = claimed.get(slot)
+        if c:
+            members.append({"user_id": c.get("user_id"), "name": c.get("name") or f"{s['name']} (гость {i})",
+                            "player": None, "is_guest": False})
+        else:
+            members.append({"user_id": None, "name": f"{s['name']} (гость {i})",
+                            "player": None, "is_guest": True})
+    return members
 
 
 def _place_best_fit(members, teams, capacity, num_teams):
@@ -87,7 +98,12 @@ def _place_best_fit(members, teams, capacity, num_teams):
 
 
 def auto_assign_teams(game, signups):
-    """Все регистрации (с гостями) -> список команд, автоматически, сразу при записи.
+    """Подтверждённые регистрации (с гостями) -> список команд, автоматически.
+
+    В состав попадают ТОЛЬКО оплаченные и подтверждённые админом записи
+    (status == 'confirmed'). Это касается и основных записей, и партий
+    «добавить игроков»: пока оплата не подтверждена, люди в ростере не
+    показываются — иначе состав наполнялся бы теми, кто ещё не заплатил.
 
     Группа (тот, кто регистрировался + его гости) держится вместе и кладётся
     целиком туда, где помещается с наименьшим остатком места (best-fit).
@@ -100,7 +116,8 @@ def auto_assign_teams(game, signups):
     num_teams = game.get("num_teams") or 2
     per_team = game.get("players_per_team") or 10 ** 9
 
-    groups = sorted(signups, key=lambda s: -(1 + (s.get("guests_count") or 0)))
+    confirmed = [s for s in signups if s.get("status") == "confirmed"]
+    groups = sorted(confirmed, key=lambda s: -(1 + (s.get("guests_count") or 0)))
 
     teams = [[] for _ in range(num_teams)]
     capacity = [per_team] * num_teams

@@ -154,7 +154,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .reg-status-line b{color:#E5A93C;font-weight:700}
 .reg-status-line b.confirmed{color:#30D158}
 .reg-actions{display:flex;flex-direction:column;gap:8px}
-.reg-extra-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:12px;color:#9BA1AC}
+.reg-extra-row{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:12px;color:#9BA1AC}
+.reg-extra-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.reg-extra-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .reg-extra-cancel-btn{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,69,58,.3);background:rgba(255,69,58,.08);color:#FF6961;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 
 .gc-location-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#8B93F5;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
@@ -738,10 +740,29 @@ function extraEntryRow(g, s) {
   const label = s.status === "confirmed" ? "🟢 Подтверждено"
     : s.payment_claimed ? "🟡 Ждём подтверждения" : "🟡 Ждёт оплаты";
   const warnNoRefund = s.status === "confirmed" || s.payment_claimed;
+
+  // Доп. игроки проходят тот же путь оплаты, что и основная запись:
+  // «Оплатить» → «Я оплатил(а)» → админ подтверждает → попадают в состав.
+  // Кнопки показываем, пока оплата не заявлена и не подтверждена.
+  let actionsHtml = "";
+  if (s.status !== "confirmed" && !s.payment_claimed) {
+    const payLabel = amount !== null ? `💳 Оплатить ${formatTenge(amount)}` : "💳 Оплатить";
+    const payBtn = g.payment_link
+      ? `<a class="text-btn text-btn-primary" href="${g.payment_link}" target="_blank">${payLabel}</a>`
+      : `<button class="text-btn text-btn-primary" onclick="claimPayment(${g.id}, ${s.id})">${payLabel}</button>`;
+    const confirmBtn = g.payment_link
+      ? `<button class="text-btn text-btn-secondary" onclick="claimPayment(${g.id}, ${s.id})">✅ Я оплатил(а)</button>`
+      : "";
+    actionsHtml = `<div class="reg-extra-actions">${payBtn}${confirmBtn}</div>`;
+  }
+
   return `
     <div class="reg-extra-row">
-      <span>+ Доп. игроки · ${count} чел.${amountLabel} — ${label}</span>
-      <button class="reg-extra-cancel-btn" onclick="cancelEntry(${g.id}, ${s.id}, ${warnNoRefund})">❌ Отменить</button>
+      <div class="reg-extra-head">
+        <span>+ Доп. игроки · ${count} чел.${amountLabel} — ${label}</span>
+        <button class="reg-extra-cancel-btn" onclick="cancelEntry(${g.id}, ${s.id}, ${warnNoRefund})">❌ Отменить</button>
+      </div>
+      ${actionsHtml}
     </div>`;
 }
 
