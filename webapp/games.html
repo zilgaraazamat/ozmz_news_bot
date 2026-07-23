@@ -111,6 +111,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .sheet-confirmed-num{font-size:34px;font-weight:800;color:#30D158;font-variant-numeric:tabular-nums;line-height:1.1}
 .sheet-confirmed-num-waiting{color:#E5A93C}
 .sheet-confirmed-label{font-size:12px;color:#9BA1AC;font-weight:600;margin-top:4px}
+.sheet-invite-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;max-height:34vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sheet-invite-row{display:flex;align-items:center;gap:10px;background:#23262D;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:11px 12px}
+.sheet-invite-name{flex:1;min-width:0;font-size:14px;font-weight:700;color:#F5F6F7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet-invite-name.claimed{color:#30D158}
+.sheet-invite-copy{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;border:1.5px solid rgba(94,106,210,.4);background:rgba(94,106,210,.1);color:#8B93F5;border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .12s,background .12s}
+.sheet-invite-copy:active{transform:scale(.94);background:rgba(94,106,210,.22)}
+.sheet-invite-copy.copied{color:#30D158;border-color:rgba(48,209,88,.5);background:rgba(48,209,88,.12)}
+.sheet-invite-copy.done{color:#30D158;border-color:transparent;background:transparent;pointer-events:none}
 .btn{width:100%;padding:14px;border:none;border-radius:14px;font-weight:700;font-size:15px;cursor:pointer;background:#5E6AD2;color:#fff;transition:transform .15s,background .15s;box-shadow:0 4px 14px rgba(94,106,210,.3)}
 .btn:active{transform:scale(.97);background:#525DC4}
 .btn[disabled]{opacity:.5;pointer-events:none}
@@ -130,7 +138,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .text-btn-danger{border:1px solid rgba(255,69,58,.35);background:rgba(255,69,58,.08);color:#FF6961}
 .secondary-row{display:flex;gap:8px;margin-top:8px}
 .secondary-btn{flex:1;height:36px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 8px;border:1px solid rgba(255,255,255,.08);background:#1D2027;color:#D7D9DC;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
-.add-toggle-btn{width:100%;height:40px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px solid rgba(94,106,210,.4);background:rgba(94,106,210,.1);color:#8B93F5;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer}
+.add-toggle-btn{width:100%;height:44px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:7px;border:1.5px solid rgba(94,106,210,.35);background:rgba(94,106,210,.09);color:#8B93F5;border-radius:12px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .12s,background .12s}
+.add-toggle-btn:active{transform:scale(.98);background:rgba(94,106,210,.18)}
+.atb-plus{font-size:17px;font-weight:700;line-height:1}
+.sheet-subtitle{font-size:12.5px;color:#9BA1AC;text-align:center;margin:-8px 0 14px}
 
 /* ── статус регистрации: 4 понятных состояния (Доступно / Забронировано,
    ждёт оплаты / Подтверждено / Матч завершён) — заголовок + статус +
@@ -155,11 +166,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .reg-report-link{display:block;margin-top:12px;text-align:center;font-size:12.5px;font-weight:700;color:#8B93F5;text-decoration:none;padding:10px;border-radius:10px;background:rgba(94,106,210,.08);border:1px solid rgba(94,106,210,.2)}
 .reg-report-link:active{background:rgba(94,106,210,.16)}
 .atb-plus{font-size:16px;font-weight:800;line-height:1}
-.atb-chevron{font-size:9px;opacity:.8}
-.add-more-inline{display:flex;gap:8px;margin-top:8px}
-.guests-input-inline{width:70px;flex-shrink:0;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#23262D;color:#F5F6F7;font-size:16px;text-align:center}
-.guests-input-inline:focus{outline:none;border-color:#5E6AD2}
-.btn-switch-inline{flex:1;padding:9px;border:1px solid rgba(94,106,210,.4);background:transparent;color:#8B93F5;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 .teams-body{margin-top:8px}
 .filters{position:sticky;top:0;z-index:20;display:flex;gap:8px;margin:0 0 16px;padding:14px 0 10px;overflow-x:auto;background:#0B0D10}
 .filter-chip{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:20px;background:#181A1F;border:1px solid rgba(255,255,255,.08);color:#9BA1AC;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s,border-color .2s,transform .12s}
@@ -272,8 +278,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
         <div class="sheet-confirmed-label">Waiting for players</div>
       </div>
     </div>
+    <div class="sheet-invite-list" id="sheet-invite-list"></div>
     <div class="sheet-footer">
       <button class="btn" id="sheet-invite-btn" onclick="sheetInvitePlayers()">Пригласить игроков</button>
+    </div>
+  </div>
+  <div id="sheet-view-add" class="hidden">
+    <div class="sheet-title">Добавить игроков</div>
+    <div class="sheet-subtitle">Сколько человек привести дополнительно?</div>
+    <div class="sheet-stepper">
+      <button class="sheet-step-btn" id="sheet-add-minus" onclick="sheetAddStep(-1)">−</button>
+      <div class="sheet-step-value" id="sheet-add-value">1</div>
+      <button class="sheet-step-btn" id="sheet-add-plus" onclick="sheetAddStep(1)">+</button>
+    </div>
+    <div class="sheet-price-rows" id="sheet-add-price-rows">
+      <div class="sheet-price-row">
+        <span class="sheet-price-label">Цена за игрока</span>
+        <span class="sheet-price-value" id="sheet-add-price-per">—</span>
+      </div>
+      <div class="sheet-price-row sheet-price-row-total">
+        <span class="sheet-price-label">Итого</span>
+        <span class="sheet-price-value sheet-price-total" id="sheet-add-price-total">—</span>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn" id="sheet-add-btn" onclick="sheetConfirmAdd()">Оплатить</button>
     </div>
   </div>
 </div>
@@ -633,13 +662,7 @@ function gameAddFormWidget(g, mySignups) {
   if (mySignups.length === 0) {
     return `<button class="btn" onclick="openSignupSheet(${g.id})">⚽ Записаться</button>`;
   }
-  const addExpanded = !!addFormExpanded[g.id];
-  return `
-    <button class="add-toggle-btn" onclick="toggleAddForm(${g.id})"><span class="atb-plus">+</span> Добавить игроков <span class="atb-chevron">${addExpanded ? "▲" : "▼"}</span></button>
-    <div class="add-more-inline ${addExpanded ? "" : "hidden"}" id="add-form-${g.id}">
-      <input type="number" class="guests-input-inline" id="addmore-${g.id}" min="1" max="20" value="1">
-      <button class="btn-switch-inline" onclick="addMorePeople(${g.id})">Добавить</button>
-    </div>`;
+  return `<button class="add-toggle-btn" onclick="openAddSheet(${g.id})"><span class="atb-plus">+</span> Добавить игроков</button>`;
 }
 
 function gameSecondaryWidget(g, mySignups) {
@@ -826,13 +849,6 @@ function renderGames(games) {
   el.innerHTML = filtered.map((g, i) => gameCardWidget(g, i)).join("");
 }
 
-let addFormExpanded = {};
-
-function toggleAddForm(gameId) {
-  addFormExpanded[gameId] = !addFormExpanded[gameId];
-  renderGames(window.__lastGames || []);
-}
-
 function teamsInnerHtml(teams) {
   if (!teams || teams.length === 0) return `<div class="roster-empty">Пока не сформированы</div>`;
   const byTeam = {};
@@ -865,7 +881,7 @@ async function loadGames() {
 async function submitSignup(gameId, guestsCount) {
   if (!userId) {
     showError("Не удалось определить тебя. Открой игры заново через бота.");
-    return false;
+    return null;
   }
   try {
     const res = await fetch("/api/games/signup", {
@@ -874,14 +890,14 @@ async function submitSignup(gameId, guestsCount) {
     }).then(r => r.json());
     if (!res.ok) {
       showError(res.error || "Не удалось записаться.");
-      return false;
+      return null;
     }
     document.getElementById("error-banner").innerHTML = "";
     loadGames();
-    return true;
+    return res;  // {ok, amount, signup_id, invites}
   } catch (e) {
     showError("Ошибка сети — попробуй ещё раз.");
-    return false;
+    return null;
   }
 }
 
@@ -946,6 +962,7 @@ function sheetShowChoice() {
   document.getElementById("sheet-view-choice").classList.remove("hidden");
   document.getElementById("sheet-view-company").classList.add("hidden");
   document.getElementById("sheet-view-confirmed").classList.add("hidden");
+  document.getElementById("sheet-view-add").classList.add("hidden");
 }
 
 async function sheetChooseSolo() {
@@ -954,8 +971,8 @@ async function sheetChooseSolo() {
   haptic("medium");
   const gameId = sheetGameId;
   closeSignupSheet();
-  const ok = await submitSignup(gameId, 0);
-  haptic(ok ? "success" : "error");
+  const res = await submitSignup(gameId, 0);
+  haptic(res ? "success" : "error");
   sheetSubmitting = false;
 }
 
@@ -1019,11 +1036,11 @@ async function sheetConfirmCompany() {
   const paymentLink = sheetGame && sheetGame.payment_link;
   const peopleCount = sheetCompanyCount;         // сколько игроков оплачено этой компанией
   const guestsCount = sheetCompanyCount - 1;     // регистрант + гости
-  const ok = await submitSignup(gameId, guestsCount);
-  haptic(ok ? "success" : "error");
+  const res = await submitSignup(gameId, guestsCount);
+  haptic(res ? "success" : "error");
   btn.disabled = false;
   sheetSubmitting = false;
-  if (!ok) { closeSignupSheet(); return; }
+  if (!res) { closeSignupSheet(); return; }
 
   if (paymentLink) {
     // «Оплатить» честно ведёт к оплате: бронь создана — открываем платёжную
@@ -1035,13 +1052,13 @@ async function sheetConfirmCompany() {
 
   // Свежий объект игры уже с новой записью — из него берём «ожидаем игроков».
   loadGames();
-  sheetShowCompanyConfirmed(gameId, peopleCount);
+  sheetShowCompanyConfirmed(gameId, peopleCount, res.invites || [], res.signup_id);
 }
 
-// Экран подтверждения регистрации компании: оплачено / ожидаем игроков.
-// «Ожидаем» = свободные места игры (лимит − подтверждённые/записанные),
-// свои же оплаченные места сюда не попадают. Если лимита нет — 0.
-function sheetShowCompanyConfirmed(gameId, paidCount) {
+// Экран подтверждения регистрации компании: оплачено / ожидаем игроков +
+// список приглашений (Player 2 … Player N) с кнопкой «Copy Link» на каждое.
+// «Ожидаем» = свободные места игры (лимит − записанные). Если лимита нет — 0.
+function sheetShowCompanyConfirmed(gameId, paidCount, invites, signupId) {
   const g = (window.__lastGames || []).find(x => x.id === gameId) || sheetGame;
   let waiting = 0;
   if (g && g.num_players) {
@@ -1051,12 +1068,65 @@ function sheetShowCompanyConfirmed(gameId, paidCount) {
   document.getElementById("sheet-conf-paid").textContent = paidCount;
   document.getElementById("sheet-conf-waiting").textContent = waiting;
 
+  sheetInvites = invites || [];
+  sheetInviteSignupId = signupId || null;
+  renderInviteList();
+
   document.getElementById("sheet-view-choice").classList.add("hidden");
   document.getElementById("sheet-view-company").classList.add("hidden");
   document.getElementById("sheet-view-confirmed").classList.remove("hidden");
   // шит уже открыт — просто меняем экран, никакой навигации по страницам
   document.getElementById("sheet-backdrop").classList.add("open");
   document.getElementById("signup-sheet").classList.add("open");
+}
+
+let sheetInvites = [];         // приглашения текущей компании (Player 2..N)
+let sheetInviteSignupId = null;
+
+// Каждое приглашение — строка «Player N» + «Copy Link». Занятые места
+// показываются именем игрока и без кнопки копирования.
+function renderInviteList() {
+  const box = document.getElementById("sheet-invite-list");
+  if (!sheetInvites.length) { box.innerHTML = ""; return; }
+  box.innerHTML = sheetInvites.map((inv, i) => {
+    const label = inv.claimed
+      ? `<span class="sheet-invite-name claimed">✅ ${inv.claimed_name || "Игрок"}</span>`
+      : `<span class="sheet-invite-name">Player ${inv.slot_index}</span>`;
+    const btn = inv.claimed
+      ? `<span class="sheet-invite-copy done">Занято</span>`
+      : (inv.link
+          ? `<button class="sheet-invite-copy" id="inv-copy-${i}" onclick="copyInviteLink(${i})">🔗 Copy Link</button>`
+          : `<span class="sheet-invite-copy done">—</span>`);
+    return `<div class="sheet-invite-row">${label}${btn}</div>`;
+  }).join("");
+}
+
+async function copyInviteLink(i) {
+  const inv = sheetInvites[i];
+  if (!inv || !inv.link) return;
+  const btn = document.getElementById(`inv-copy-${i}`);
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(inv.link);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = inv.link; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); ta.remove();
+    }
+    haptic("light");
+    if (btn) {
+      btn.classList.add("copied");
+      btn.textContent = "✅ Скопировано";
+      setTimeout(() => { btn.classList.remove("copied"); btn.textContent = "🔗 Copy Link"; }, 1600);
+    }
+  } catch (e) {
+    // копирование недоступно — отдаём ссылку через нативный шэринг Telegram
+    const tw = window.Telegram && Telegram.WebApp;
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inv.link)}`;
+    if (tw && typeof tw.openTelegramLink === "function") tw.openTelegramLink(shareUrl);
+    else window.open(shareUrl, "_blank");
+  }
 }
 
 function sheetInvitePlayers() {
@@ -1104,11 +1174,98 @@ function sheetInvitePlayers() {
   }, { passive: true });
 })();
 
-async function addMorePeople(gameId) {
-  if (!userId) return;
-  const input = document.getElementById(`addmore-${gameId}`);
-  const guestsCount = parseInt(input.value, 10) || 1;
+// ── Добавление игроков к уже существующей записи ─────────────────────────────
+// Тот же Bottom Sheet, что и при первой записи: степпер вместо поля ввода,
+// сумма считается на лету, кнопка сразу ведёт на оплату с точной суммой.
+let sheetAddCount = 1;
 
+const SHEET_ADD_MIN = 1;
+const SHEET_ADD_MAX = 20;
+
+function openAddSheet(gameId) {
+  sheetGameId = gameId;
+  sheetGame = (window.__lastGames || []).find(g => g.id === gameId) || null;
+  sheetAddCount = 1;
+  sheetRenderAdd(false);
+
+  document.getElementById("sheet-view-choice").classList.add("hidden");
+  document.getElementById("sheet-view-company").classList.add("hidden");
+  document.getElementById("sheet-view-confirmed").classList.add("hidden");
+  document.getElementById("sheet-view-add").classList.remove("hidden");
+
+  document.getElementById("sheet-backdrop").classList.add("open");
+  document.getElementById("signup-sheet").classList.add("open");
+  haptic("light");
+}
+
+function sheetAddStep(delta) {
+  const next = sheetAddCount + delta;
+  if (next < SHEET_ADD_MIN || next > SHEET_ADD_MAX) return;
+  sheetAddCount = next;
+  sheetRenderAdd(true);
+  haptic("light");
+}
+
+// Счётчик, цена за игрока, итог и сумма на кнопке пересчитываются мгновенно.
+function sheetRenderAdd(animate) {
+  document.getElementById("sheet-add-value").textContent = sheetAddCount;
+  document.getElementById("sheet-add-minus").disabled = sheetAddCount <= SHEET_ADD_MIN;
+  document.getElementById("sheet-add-plus").disabled = sheetAddCount >= SHEET_ADD_MAX;
+
+  const per = pricePerPlayer(sheetGame);
+  const rows = document.getElementById("sheet-add-price-rows");
+  const totalEl = document.getElementById("sheet-add-price-total");
+  const btn = document.getElementById("sheet-add-btn");
+
+  if (per === null) {
+    rows.classList.add("hidden");
+    btn.textContent = "⚽ Добавить игроков";
+    return;
+  }
+
+  rows.classList.remove("hidden");
+  const total = per * sheetAddCount;
+  document.getElementById("sheet-add-price-per").textContent = formatTenge(per);
+  totalEl.textContent = formatTenge(total);
+  btn.textContent = `Оплатить ${formatTenge(total)}`;
+
+  if (animate) {
+    for (const el of [totalEl, btn]) {
+      el.classList.remove("price-pop");
+      void el.offsetWidth; // reflow — чтобы анимация перезапустилась
+      el.classList.add("price-pop");
+    }
+  }
+}
+
+async function sheetConfirmAdd() {
+  if (sheetSubmitting || sheetGameId === null) return;
+  sheetSubmitting = true;
+  const btn = document.getElementById("sheet-add-btn");
+  btn.disabled = true;
+  haptic("medium");
+
+  const gameId = sheetGameId;
+  const paymentLink = sheetGame && sheetGame.payment_link;
+  const guestsCount = sheetAddCount;
+  closeSignupSheet();
+
+  const ok = await addMorePeople(gameId, guestsCount);
+  haptic(ok ? "success" : "error");
+  btn.disabled = false;
+  sheetSubmitting = false;
+
+  // Бронь создана — сразу ведём на оплату, сумма уже показана на кнопке.
+  // Подтверждение «Я оплатил(а)» остаётся в карточке игры.
+  if (ok && paymentLink) {
+    const tw = window.Telegram && Telegram.WebApp;
+    if (tw && typeof tw.openLink === "function") tw.openLink(paymentLink);
+    else window.open(paymentLink, "_blank");
+  }
+}
+
+async function addMorePeople(gameId, guestsCount) {
+  if (!userId) return false;
   try {
     const res = await fetch("/api/games/signup", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -1116,12 +1273,14 @@ async function addMorePeople(gameId) {
     }).then(r => r.json());
     if (!res.ok) {
       showError(res.error || "Не удалось добавить игроков.");
-    } else {
-      document.getElementById("error-banner").innerHTML = "";
-      loadGames();
+      return false;
     }
+    document.getElementById("error-banner").innerHTML = "";
+    loadGames();
+    return true;
   } catch (e) {
     showError("Ошибка сети — попробуй ещё раз.");
+    return false;
   }
 }
 
@@ -1234,12 +1393,12 @@ renderFilters();
 loadGames();
 setInterval(() => {
   const anyChatOpen = Object.values(openChats).some(v => v);
-  const anyAddFormOpen = Object.values(addFormExpanded).some(v => v);
   const gamesListEl = document.getElementById("games-list");
   const typingNow = gamesListEl && gamesListEl.contains(document.activeElement)
     && (document.activeElement.tagName === "INPUT");
+  // шит (запись / добавление игроков) открыт — не перерисовываем список под руками
   const sheetOpen = sheetGameId !== null;
-  if (!anyChatOpen && !anyAddFormOpen && !typingNow && !sheetOpen) loadGames();
+  if (!anyChatOpen && !typingNow && !sheetOpen) loadGames();
 }, 4000);
 </script>
 </body>
