@@ -273,11 +273,12 @@ class GamesRoutesMixin:
             # None, если по этому матчу статистика ещё не заводилась.
             g["my_match_stats"] = get_player_stat_in_match(g["id"], user_id) if user_id else None
 
-        # Карточки игроков в списке "Участники" показывают OVR/игры/голы —
-        # берём их одним общим вызовом Player Statistics service на все игры
-        # разом (не по одному запросу на игрока), чтобы не дублировать расчёт
-        # статистики и не заваливать БД повторными запросами.
+        # Карточки игроков в списке "Участники" и в составах команд показывают
+        # OVR/игры/голы — берём их одним общим вызовом Player Statistics service
+        # на все игры разом (не по одному запросу на игрока), чтобы не
+        # дублировать расчёт статистики и не заваливать БД повторными запросами.
         all_ids = {s["user_id"] for g in games for s in g["signups"] if s.get("user_id")}
+        all_ids |= {m["user_id"] for g in games for m in g["teams"] if m.get("user_id")}
         stats_by_id = get_players_stats_bulk(all_ids) if all_ids else {}
         for g in games:
             for s in g["signups"]:
@@ -286,6 +287,12 @@ class GamesRoutesMixin:
                     s["ovr"] = stats["ovr"]
                     s["games_played"] = stats["games_played"]
                     s["goals"] = stats["goals"]
+            for m in g["teams"]:
+                stats = stats_by_id.get(str(m.get("user_id")))
+                if stats:
+                    m["ovr"] = stats["ovr"]
+                    m["games_played"] = stats["games_played"]
+                    m["goals"] = stats["goals"]
 
         self._json({"games": games})
 

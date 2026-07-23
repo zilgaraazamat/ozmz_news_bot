@@ -51,19 +51,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .gc-capacity-spots{font-size:12px;font-weight:700;color:#6B7280;white-space:nowrap}
 .gc-capacity-spots.urgent{color:#FF7A5C}
 .gc-capacity-spots.full{color:#565A61}
-.roster{background:#1D2027;border-radius:12px;padding:10px;margin-bottom:8px}
-.roster-title{font-size:11px;font-weight:700;color:#9BA1AC;margin-bottom:8px}
+.roster{background:#1D2027;border-radius:12px;padding:12px 10px 10px;margin-bottom:8px}
+.roster-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.roster-title{font-size:11.5px;font-weight:800;color:#C9CDD4;letter-spacing:.2px;display:flex;align-items:center;gap:6px}
+.roster-count{min-width:20px;height:18px;padding:0 6px;border-radius:9px;background:rgba(94,106,210,.16);color:#8B93F5;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;font-variant-numeric:tabular-nums}
+.roster-legend{display:flex;align-items:center;gap:10px}
+.rl-item{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:#6B7280;font-weight:600;white-space:nowrap}
+.rl-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.rl-dot.confirmed{background:#30D158}
+.rl-dot.pending{background:#E5A93C}
 .roster-empty{font-size:12px;color:#565A61}
 .roster-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.player-card{background:#23262D;border-radius:12px;padding:9px 6px 8px;text-align:center;cursor:pointer;transition:transform .12s,background .12s}
+.player-card{background:#23262D;border-radius:12px;padding:10px 6px 9px;text-align:center;cursor:pointer;transition:transform .12s,background .12s}
 .player-card:active{transform:scale(.95);background:#282B33}
-.player-card-avatar{width:34px;height:34px;margin:0 auto 5px;border-radius:50%;background:rgba(94,106,210,.16);color:#8B93F5;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;border:2px solid transparent}
+.player-card-avatar-wrap{position:relative;width:34px;margin:0 auto 6px}
+.player-card-avatar{width:34px;height:34px;border-radius:50%;background:rgba(94,106,210,.16);color:#8B93F5;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;border:2px solid transparent}
 .player-card-avatar.confirmed{border-color:#30D158}
 .player-card-avatar.pending{border-color:#E5A93C}
+.player-card-dot{position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;border:2px solid #23262D}
+.player-card-dot.confirmed{background:#30D158}
+.player-card-dot.pending{background:#E5A93C}
 .player-card-name{font-size:11.5px;font-weight:700;color:#F5F6F7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
-.player-card-guests{color:#6B7280;font-weight:600}
-.player-card-ovr{font-size:10px;color:#8B93F5;font-weight:700;margin-top:2px}
-.player-card-stats{font-size:9.5px;color:#6B7280;margin-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.player-card-guests{color:#8B93F5;font-weight:700;margin-left:3px}
+.player-card-ovr{font-size:10px;color:#8B93F5;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
+.player-card-ovr-empty{color:#4A4E56}
+.player-card-stats{display:flex;align-items:center;justify-content:center;gap:7px;font-size:9.5px;color:#6B7280;margin-top:3px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .roster-more-btn{width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px dashed rgba(255,255,255,.12);background:transparent;color:#8B93F5;font-size:12px;font-weight:700;cursor:pointer;text-align:center}
 .roster-more-btn:active{background:rgba(94,106,210,.08)}
 /* ── Bottom Sheet записи на игру: две карточки выбора (сам / компания) в
@@ -126,9 +138,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .status-pending{background:rgba(229,169,60,.12);color:#E5A93C;border:1px solid rgba(229,169,60,.3)}
 .status-confirmed{background:rgba(48,209,88,.12);color:#30D158;border:1px solid rgba(48,209,88,.3)}
 .error-banner{background:rgba(255,69,58,.12);border:1px solid rgba(255,69,58,.3);color:#FF6961;font-size:12px;padding:10px 12px;border-radius:10px;margin-bottom:12px;text-align:center}
-.team-block{background:#1D2027;border-radius:10px;padding:8px;margin-top:8px}
-.team-title{font-size:12px;font-weight:800;color:#8B93F5;margin-bottom:4px}
-.team-player{font-size:12px;padding:2px 0;color:#9BA1AC}
+/* ── Составы команд: карточка на команду со своим акцентным цветом ── */
+.teams-grid{display:flex;flex-direction:column;gap:10px}
+.team-card{position:relative;background:#1D2027;border-radius:14px;padding:12px 12px 4px;overflow:hidden;border:1px solid rgba(255,255,255,.05)}
+.team-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--team-accent)}
+.team-card-head{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.team-badge{width:26px;height:26px;flex-shrink:0;border-radius:8px;background:var(--team-soft);color:var(--team-accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+.team-card-title{flex:1;min-width:0;font-size:13.5px;font-weight:800;color:#F5F6F7;letter-spacing:-.2px}
+.team-count{flex-shrink:0;min-width:26px;height:22px;padding:0 8px;border-radius:11px;background:rgba(255,255,255,.06);color:#9BA1AC;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.team-players{display:flex;flex-direction:column}
+.team-player{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid rgba(255,255,255,.04);cursor:pointer;transition:opacity .12s}
+.team-player:first-child{border-top:none}
+.team-player:active{opacity:.6}
+.team-player.guest{cursor:default}
+.tp-avatar{width:30px;height:30px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+.team-player.guest .tp-avatar{background:rgba(255,255,255,.05)!important;color:#6B7280!important}
+.tp-body{flex:1;min-width:0}
+.tp-name{font-size:13px;font-weight:600;color:#F5F6F7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
+.team-player.guest .tp-name{color:#9BA1AC;font-weight:500}
+.tp-nick{display:block;font-size:10.5px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tp-ovr{flex-shrink:0;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.tp-ovr-empty{color:#3A3E46}
+.team-foot{display:flex;align-items:center;justify-content:space-between;margin-top:2px;padding:9px 0 10px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:#6B7280;font-weight:600}
+.team-foot b{color:var(--team-accent);font-size:13px;font-variant-numeric:tabular-nums}
+.teams-empty{text-align:center;padding:22px 12px}
+.teams-empty-icon{font-size:26px;opacity:.4;margin-bottom:6px}
+.teams-empty-text{font-size:13px;font-weight:700;color:#9BA1AC}
+.teams-empty-hint{font-size:11.5px;color:#565A61;margin-top:3px}
 .teams-title{font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px}
 .text-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;box-sizing:border-box;padding:14px;border-radius:12px;font-weight:700;font-size:15px;text-align:center;cursor:pointer;text-decoration:none;transition:transform .15s,background .15s}
 .text-btn:active{transform:scale(.97)}
@@ -523,13 +559,20 @@ function dedupeRoster(signups) {
 
 function playerCardHtml(p) {
   const statusCls = p.confirmed ? "confirmed" : "pending";
-  const guestsBadge = p.guests > 0 ? `<span class="player-card-guests"> +${p.guests}</span>` : "";
+  const guestsBadge = p.guests > 0 ? `<span class="player-card-guests">+${p.guests}</span>` : "";
+  const ovr = (typeof p.ovr === "number") ? p.ovr : null;
   return `
     <div class="player-card" onclick="openPlayer('${p.user_id}')">
-      <div class="player-card-avatar ${statusCls}">${avatarLetter(p.name)}</div>
+      <div class="player-card-avatar-wrap">
+        <div class="player-card-avatar ${statusCls}">${avatarLetter(p.name)}</div>
+        <i class="player-card-dot ${statusCls}"></i>
+      </div>
       <div class="player-card-name">${p.name}${guestsBadge}</div>
-      <div class="player-card-ovr">OVR ${p.ovr ?? "—"}</div>
-      <div class="player-card-stats">🎮 ${p.games_played ?? 0} ⚽ ${p.goals ?? 0}</div>
+      ${ovr !== null ? `<div class="player-card-ovr">OVR ${ovr}</div>` : `<div class="player-card-ovr player-card-ovr-empty">OVR —</div>`}
+      <div class="player-card-stats">
+        <span title="Игр сыграно">🎮 ${p.games_played ?? 0}</span>
+        <span title="Голов">⚽ ${p.goals ?? 0}</span>
+      </div>
     </div>`;
 }
 
@@ -668,9 +711,22 @@ function gameCapacityWidget(g) {
 }
 
 function gameRosterWidget(g, totalCount) {
+  // Подзаголовок со сводкой: сколько подтверждено, сколько ещё ждёт оплаты —
+  // видно с одного взгляда, не открывая карточки игроков.
+  const confirmed = totalPeople(g.signups, "confirmed");
+  const pending = Math.max(0, totalCount - confirmed);
+  const meta = totalCount > 0
+    ? `<div class="roster-legend">
+         <span class="rl-item"><i class="rl-dot confirmed"></i>${confirmed} подтв.</span>
+         ${pending > 0 ? `<span class="rl-item"><i class="rl-dot pending"></i>${pending} ждёт оплаты</span>` : ""}
+       </div>`
+    : "";
   return `
     <div class="roster">
-      <div class="roster-title">👥 Участники (${totalCount})</div>
+      <div class="roster-head">
+        <div class="roster-title">👥 Участники <span class="roster-count">${totalCount}</span></div>
+        ${meta}
+      </div>
       ${rosterHtml(g.id, g.signups)}
     </div>`;
 }
@@ -889,16 +945,72 @@ function renderGames(games) {
   el.innerHTML = filtered.map((g, i) => gameCardWidget(g, i)).join("");
 }
 
+// Составы команд: каждая команда — карточка со своим цветом (полоса слева,
+// цветной бейдж-номер), списком игроков с аватарами и OVR, и сводкой снизу
+// (число игроков + средний OVR), чтобы на глаз оценить баланс команд.
+const TEAM_THEMES = [
+  { name: "Команда 1", accent: "#5E6AD2", soft: "rgba(94,106,210,.16)", label: "A" },
+  { name: "Команда 2", accent: "#30D158", soft: "rgba(48,209,88,.16)",  label: "B" },
+  { name: "Команда 3", accent: "#E5A93C", soft: "rgba(229,169,60,.16)", label: "C" },
+  { name: "Команда 4", accent: "#EC6A5E", soft: "rgba(236,106,94,.16)", label: "D" },
+];
+
+function teamTheme(i) {
+  return TEAM_THEMES[i % TEAM_THEMES.length];
+}
+
+function teamPlayerRowHtml(p, theme) {
+  const isGuest = !p.user_id;
+  const ovr = (typeof p.ovr === "number") ? p.ovr : null;
+  const clickable = isGuest ? "" : ` onclick="openPlayer('${p.user_id}')"`;
+  const nick = p.player ? `<span class="tp-nick">${p.player}</span>` : "";
+  return `
+    <div class="team-player${isGuest ? " guest" : ""}"${clickable}>
+      <div class="tp-avatar" style="background:${theme.soft};color:${theme.accent}">${avatarLetter(p.name)}</div>
+      <div class="tp-body">
+        <div class="tp-name">${p.name}</div>
+        ${nick}
+      </div>
+      ${ovr !== null ? `<div class="tp-ovr" style="color:${theme.accent}">${ovr}</div>` : `<div class="tp-ovr tp-ovr-empty">—</div>`}
+    </div>`;
+}
+
 function teamsInnerHtml(teams) {
-  if (!teams || teams.length === 0) return `<div class="roster-empty">Пока не сформированы</div>`;
+  if (!teams || teams.length === 0) {
+    return `<div class="teams-empty">
+      <div class="teams-empty-icon">🏆</div>
+      <div class="teams-empty-text">Составы пока не сформированы</div>
+      <div class="teams-empty-hint">Появятся, когда организатор подтвердит оплаты</div>
+    </div>`;
+  }
+
   const byTeam = {};
   teams.forEach(m => (byTeam[m.team_index] = byTeam[m.team_index] || []).push(m));
   const indices = Object.keys(byTeam).map(Number).sort((a, b) => a - b);
-  return indices.map(i => `
-    <div class="team-block">
-      <div class="team-title">Команда ${i + 1} (${byTeam[i].length})</div>
-      ${byTeam[i].map(p => `<div class="team-player">${p.name}${p.player ? ` — <i>${p.player}</i>` : ""}</div>`).join("")}
-    </div>`).join("");
+
+  return `<div class="teams-grid">` + indices.map(i => {
+    const theme = teamTheme(i);
+    const members = byTeam[i];
+    // Средний OVR — только по игрокам с аккаунтом: у гостей статистики нет,
+    // и включать их как нули исказило бы силу команды.
+    const rated = members.filter(m => typeof m.ovr === "number");
+    const avg = rated.length
+      ? Math.round(rated.reduce((sum, m) => sum + m.ovr, 0) / rated.length)
+      : null;
+
+    return `
+      <div class="team-card" style="--team-accent:${theme.accent};--team-soft:${theme.soft}">
+        <div class="team-card-head">
+          <div class="team-badge">${theme.label}</div>
+          <div class="team-card-title">${theme.name}</div>
+          <div class="team-count">${members.length}</div>
+        </div>
+        <div class="team-players">
+          ${members.map(p => teamPlayerRowHtml(p, theme)).join("")}
+        </div>
+        ${avg !== null ? `<div class="team-foot"><span>Средний OVR</span><b>${avg}</b></div>` : ""}
+      </div>`;
+  }).join("") + `</div>`;
 }
 
 let lastGamesHash = "";
