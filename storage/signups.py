@@ -11,10 +11,11 @@ def signup_for_game(game_id, user_id, name, player, guests_count=0, team_pref=No
     user_id = str(user_id)
     guests_count = max(0, int(guests_count or 0))
     with _lock, _conn() as c:
-        c.execute("""INSERT INTO game_signups(game_id, user_id, name, player, guests_count,
+        cur = c.execute("""INSERT INTO game_signups(game_id, user_id, name, player, guests_count,
                         is_addition, team_pref, amount, payment_claimed, status, created_at)
                      VALUES(?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending', datetime('now'))""",
                   (game_id, user_id, name, player, guests_count, int(is_addition), team_pref, amount))
+        return cur.lastrowid
 
 
 def get_signups(game_id):

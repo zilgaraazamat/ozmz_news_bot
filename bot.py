@@ -15,6 +15,11 @@ import server
 
 _offset = 0
 
+# user_id -> токен приглашения, если игрок пришёл по start=inv_... но ещё не
+# зарегистрирован (нет телефона). После того как он поделится контактом,
+# _handle_contact продолжит флоу занятия места с этим токеном.
+_pending_invite = {}
+
 
 def poll():
     global _offset
@@ -53,10 +58,15 @@ def poll():
         print(f"  [WARN] poll: {e}")
 
 
-def _app_url(user_id=None):
+def _app_url(user_id=None, invite_token=None):
     base = (f"https://{RAILWAY_DOMAIN}/app" if RAILWAY_DOMAIN
             else f"http://localhost:{PORT}/app")
-    return f"{base}?uid={user_id}" if user_id else base
+    params = []
+    if user_id:
+        params.append(f"uid={user_id}")
+    if invite_token:
+        params.append(f"invite={invite_token}")
+    return f"{base}?{'&'.join(params)}" if params else base
 
 
 def _request_phone(user_id):
@@ -80,15 +90,39 @@ def _handle_contact(user_id, name, contact):
         return
     phone = contact.get("phone_number", "")
     save_phone(user_id, name, phone)
-    _open_app(user_id)
+    # Если игрок начинал с приглашения (start=inv_...) — после регистрации
+    # сразу возвращаем его в флоу занятия места.
+    pending = _pending_invite.pop(user_id, None)
+    _open_app(user_id, pending)
 
 
-def _open_app(user_id):
+def _open_app(user_id, invite_token=None):
     if not has_phone(user_id):
+        # Незарегистрированного игрока сперва просим телефон; после того как он
+        # поделится контактом, _handle_contact снова позовёт _open_app. Токен
+        # приглашения передаём дальше через отложенное состояние.
+        if invite_token:
+            _pending_invite[user_id] = invite_token
         _request_phone(user_id)
         return
 
     _setup_menu_button(user_id)
+
+    # Пришёл по приглашению — ведём сразу в приложение с токеном: оно займёт
+    # оплаченное место за этим игроком. Отдельная кнопка, без лишнего текста.
+    if invite_token:
+        app_url = _app_url(user_id, invite_token)
+        keyboard = [[{"text": "🟢 Занять моё место", "web_app": {"url": app_url}}]]
+        try:
+            tg_post(user_id, "sendMessage", **{
+                "text": ("🎟️ Тебя пригласили на игру и место уже оплачено!\n\n"
+                         "Жми кнопку — займём его за тобой 👇"),
+                "parse_mode": "HTML",
+                "reply_markup": {"keyboard": keyboard, "resize_keyboard": True},
+            })
+        except Exception:
+            send_msg(user_id, f"🎟️ Открой приложение, чтобы занять место: {app_url}")
+        return
 
     role = get_role(user_id)
     if role:
@@ -150,8 +184,16 @@ def _handle(user_id, name, text):
         _setup_menu_button(user_id)
         _menu_refreshed.add(user_id)
 
-    # /start
-    if text in ("/start", "/help", "помощь", "help"):
+    # /start (в т.ч. deep-link «/start inv_<token>» из ссылки-приглашения)
+    if text == "/start" or text.startswith("/start "):
+        parts = text.split(maxsplit=1)
+        payload = parts[1].strip() if len(parts) > 1 else ""
+        if payload.startswith("inv_"):
+            _open_app(user_id, invite_token=payload[4:])
+        else:
+            _open_app(user_id)
+
+    elif text in ("/help", "помощь", "help"):
         _open_app(user_id)
 
     # 🎯 прогноз счёта

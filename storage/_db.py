@@ -215,6 +215,27 @@ def init_db():
             is_guest   INTEGER DEFAULT 0
         )""")
 
+        # ── Приглашения на зарезервированные места (регистрация компании) ──────
+        # Организатор при записи компании оплачивает N мест: своё + (N-1)
+        # приглашений. На каждое НЕ-организаторское место создаётся строка тут
+        # с уникальным token. Ссылка t.me/<bot>?start=inv_<token> открывает
+        # Mini App и занимает место за открывшим её игроком.
+        #   signup_id  — партия записи компании (game_signups.id), к которой
+        #                привязано место; slot_index — 2..N (место игрока в
+        #                компании; организатор = 1, приглашений на него нет).
+        #   claimed_by — user_id занявшего место (NULL, пока свободно).
+        c.execute("""CREATE TABLE IF NOT EXISTS game_invites(
+            token       TEXT PRIMARY KEY,
+            game_id     INTEGER NOT NULL,
+            signup_id   INTEGER NOT NULL,
+            inviter_id  TEXT,
+            slot_index  INTEGER NOT NULL,
+            claimed_by  TEXT,
+            claimed_name TEXT,
+            claimed_at  TEXT,
+            created_at  TEXT
+        )""")
+
         # Статистика игроков по завершённым матчам — единый источник правды
         # для футбольной статистики (см. storage/match_stats.py). Одна строка =
         # один игрок в одном матче. Сейчас: голы + MVP. Чтобы добавить новую

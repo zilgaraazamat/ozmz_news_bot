@@ -59,6 +59,11 @@ from .signups import (
     get_my_signup, cancel_signup, confirm_signup,
 )
 
+from .invites import (
+    create_invites_for_signup, get_invites_for_signup, get_invite,
+    claim_invite, get_claimed_slots,
+)
+
 from .progression import (
     DEFAULT_LEVEL, DEFAULT_XP, XP_PER_COMPLETED_GAME,
     xp_required_for_level, get_progression, award_xp, settle_completed_games_xp,

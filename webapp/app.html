@@ -508,6 +508,11 @@ input:focus{outline:none;border-color:#5E6AD2}
 <script>
 let userId = new URLSearchParams(location.search).get("uid");
 
+// Токен приглашения: из ?invite=... (бот кладёт его в web_app URL) или из
+// Telegram start_param (deep-link t.me/<bot>?start=inv_<token>). Если есть —
+// после инициализации займём оплаченное место за этим игроком.
+let inviteToken = new URLSearchParams(location.search).get("invite");
+
 if (window.Telegram && Telegram.WebApp) {
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
@@ -524,6 +529,42 @@ if (window.Telegram && Telegram.WebApp) {
     const tgUser = Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
     if (tgUser && tgUser.id) userId = String(tgUser.id);
   }
+  if (!inviteToken) {
+    const sp = Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.start_param;
+    if (sp && sp.indexOf("inv_") === 0) inviteToken = sp.slice(4);
+  }
+}
+
+// Занять место по приглашению. Аккаунт (телефон) к этому моменту уже есть —
+// бот проводит регистрацию до открытия приложения. После успеха ведём игрока
+// на страницу игр, где он видит себя в составе.
+async function claimInviteIfAny() {
+  if (!inviteToken || !userId) return;
+  try {
+    const res = await fetch("/api/games/claim-invite", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, token: inviteToken })
+    }).then(r => r.json());
+    if (res.ok) {
+      const h = window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback;
+      if (h) try { h.notificationOccurred("success"); } catch (e) {}
+      location.href = "/games?uid=" + userId;
+    } else if (res.error === "need_registration") {
+      showInviteToast("Сначала заверши регистрацию в боте, затем открой ссылку снова.");
+    } else {
+      showInviteToast(res.error || "Не удалось занять место по приглашению.");
+    }
+  } catch (e) {
+    showInviteToast("Ошибка сети. Попробуй открыть ссылку ещё раз.");
+  }
+}
+
+function showInviteToast(msg) {
+  const el = document.createElement("div");
+  el.className = "toast-soon";
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
 }
 
 function go(path) {
@@ -1041,6 +1082,9 @@ if (new URLSearchParams(location.search).get("tab") === "profile") {
 } else {
   setActiveTab("home");
 }
+
+// Пришли по ссылке-приглашению — сразу занимаем оплаченное место.
+claimInviteIfAny();
 
 function showError(msg) {
   document.getElementById("error-banner").innerHTML = `<div class="error-banner">⚠️ ${msg}</div>`;
