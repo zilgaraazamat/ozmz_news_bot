@@ -95,48 +95,23 @@ def game_capacity(game):
         return None
 
 
-def _team_load(teams):
-    """Текущие размеры составов — по ним меряем баланс."""
-    return [len(t) for t in teams]
+def _place_evenly(members, teams, capacity, num_teams):
+    """Кладёт группу целиком в команду с НАИБОЛЬШИМ свободным местом
+    (worst-fit) — так составы наполняются равномерно, а не по очереди.
 
+    Best-fit (искать наименьший достаточный остаток) давал перекос: группа
+    добивала почти полную команду до конца, пока соседняя стояла пустой.
+    При равных остатках предпочитаем команду с меньшим числом игроков.
 
-def _split_group(members, teams, capacity, num_teams):
-    """Раскидывает группу по кускам, всегда добавляя в самую пустую команду
-    из тех, где ещё есть место. Так группа расходится максимально ровно."""
-    for m in members:
-        candidates = [i for i in range(num_teams) if capacity[i] > 0]
-        if not candidates:
-            # мест физически не осталось — кладём в самую пустую, никого не теряем
-            target = min(range(num_teams), key=lambda i: len(teams[i]))
-        else:
-            target = min(candidates, key=lambda i: (len(teams[i]), -capacity[i]))
-        teams[target].append(m)
-        capacity[target] -= 1
-
-
-def _place_group(members, teams, capacity, num_teams, target_size):
-    """Кладёт группу друзей, соблюдая баланс команд.
-
-    Приоритет — держать группу вместе, НО не в ущерб распределению: если
-    после размещения целиком команда заметно перерастёт целевой размер
-    (всего игроков / число команд), группа делится. Иначе одна компания из
-    10 человек занимала бы всю первую команду, оставив вторую пустой.
-
-    Порядок выбора:
-      1) команда, где группа помещается целиком и не превысит целевой размер;
-      2) если такой нет — группа делится по самым пустым командам.
+    Если группа целиком никуда не влезает — раскидываем по кусочкам,
+    начиная с самых свободных команд, никого не теряя.
     """
     size = len(members)
-
     best = None
     for i in range(num_teams):
         if capacity[i] < size:
             continue
-        # не разрешаем команде перерасти целевой размер из-за этой группы
-        if len(teams[i]) + size > target_size:
-            continue
-        # при прочих равных — в самую пустую команду
-        if best is None or len(teams[i]) < len(teams[best]):
+        if best is None or (capacity[i], -len(teams[i])) > (capacity[best], -len(teams[best])):
             best = i
 
     if best is not None:
@@ -144,7 +119,19 @@ def _place_group(members, teams, capacity, num_teams, target_size):
         capacity[best] -= size
         return
 
-    _split_group(members, teams, capacity, num_teams)
+    order = sorted(range(num_teams), key=lambda i: -capacity[i])
+    idx = 0
+    for i in order:
+        while capacity[i] > 0 and idx < len(members):
+            teams[i].append(members[idx])
+            capacity[i] -= 1
+            idx += 1
+        if idx >= len(members):
+            break
+    while idx < len(members):
+        smallest = min(range(num_teams), key=lambda i: len(teams[i]))
+        teams[smallest].append(members[idx])
+        idx += 1
 
 
 def auto_assign_teams(game, signups):
@@ -155,37 +142,25 @@ def auto_assign_teams(game, signups):
     «добавить игроков»: пока оплата не подтверждена, люди в ростере не
     показываются — иначе состав наполнялся бы теми, кто ещё не заплатил.
 
-    Игроки распределяются на то число команд, которое админ указал при
-    создании игры (num_teams). Друзья (регистрант + его гости) в приоритете
-    держатся вместе, но если группа настолько большая, что займёт команду
-    целиком и оставит остальные пустыми, — она делится. Целевой размер
-    команды = всего игроков / число команд, округлённое вверх.
+    Группа (тот, кто регистрировался + его гости) держится вместе и кладётся
+    целиком туда, где помещается с наименьшим остатком места (best-fit).
+    Если группа целиком нигде не влезает — раскидываем только лишних по
+    остальным местам. Никто не теряется, даже если мест физически не хватает.
 
     Возвращает список списков member-словарей:
     {"user_id", "name", "player", "is_guest"} — индекс в списке teams и есть номер команды.
     """
-    num_teams = max(1, int(game.get("num_teams") or 2))
+    num_teams = game.get("num_teams") or 2
     per_team = game.get("players_per_team") or 10 ** 9
 
     confirmed = [s for s in signups if s.get("status") == "confirmed"]
+    groups = sorted(confirmed, key=lambda s: -(1 + (s.get("guests_count") or 0)))
 
     teams = [[] for _ in range(num_teams)]
     capacity = [per_team] * num_teams
-    if not confirmed:
-        return teams
-
-    # Целевой размер команды — по фактическому числу игроков, а не по
-    # вместимости: 6 человек на 2 команды это 3+3, даже если в команду
-    # влезает по 10.
-    total_players = sum(len(_build_members(s)) for s in confirmed)
-    target_size = -(-total_players // num_teams)  # ceil
-
-    # Большие группы размещаем первыми: им сложнее найти место целиком,
-    # а мелкие потом легко выравнивают составы.
-    groups = sorted(confirmed, key=lambda s: -len(_build_members(s)))
 
     for s in groups:
-        _place_group(_build_members(s), teams, capacity, num_teams, target_size)
+        _place_evenly(_build_members(s), teams, capacity, num_teams)
 
     return teams
 
