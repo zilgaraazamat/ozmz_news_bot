@@ -422,8 +422,25 @@ function hasConfirmedSignup(g) {
 }
 
 function hasOpenSpots(g) {
-  if (!g.num_players) return true; // лимит не задан — считаем открытой
-  return totalPeople(g.signups, "confirmed") < g.num_players;
+  // Вместимость приходит с бэкенда (команды × игроков в команде) — то же
+  // число, по которому там проверяется лимит записи.
+  const cap = gameCapacity(g);
+  if (!cap) return true; // лимит не задан — считаем открытой
+  // Считаем ВСЕ записи, а не только подтверждённые: бронь держит место,
+  // даже пока админ не подтвердил оплату.
+  return totalPeople(g.signups, null) < cap;
+}
+
+// Вместимость игры: значение с бэкенда, с запасным расчётом на случай
+// старого ответа API без поля capacity.
+function gameCapacity(g) {
+  if (!g) return null;
+  if (typeof g.capacity === "number" && g.capacity > 0) return g.capacity;
+  if (g.num_teams && g.players_per_team) {
+    const cap = Number(g.num_teams) * Number(g.players_per_team);
+    if (cap > 0) return cap;
+  }
+  return g.num_players || null;
 }
 
 // Каждая категория — просто предикат над игрой. Чтобы добавить новую вкладку,
@@ -611,21 +628,24 @@ function pluralSpots(n) {
 // "████████░░"), счёт "16 / 20 игроков" и сообщение "Осталось всего N мест".
 // Когда свободных мест ≤5 — полоса и сообщение подсвечиваются тревожным
 // цветом, создавая ощущение срочности.
-function gameCapacityWidget(g, confirmedCount) {
-  const max = g.num_players || null;
+function gameCapacityWidget(g) {
+  const max = gameCapacity(g);
+  // Занятость считаем по ВСЕМ записям (включая неоплаченные) — место
+  // занимается в момент брони, как и в проверке лимита на бэкенде.
+  const takenCount = totalPeople(g.signups, null);
 
   if (!max) {
     // Лимит не задан — просто показываем, сколько человек уже записалось,
     // без полосы/сообщения о местах (их в принципе не может не хватить).
-    return `<div class="gc-capacity-meta"><span class="gc-capacity-count">👥 ${confirmedCount} игроков записано</span></div>`;
+    return `<div class="gc-capacity-meta"><span class="gc-capacity-count">👥 ${takenCount} игроков записано</span></div>`;
   }
 
-  const freeSpots = Math.max(0, max - confirmedCount);
+  const freeSpots = Math.max(0, max - takenCount);
   const urgent = freeSpots > 0 && freeSpots <= 5;
   const full = freeSpots === 0;
 
   const totalSegments = 10;
-  const filledSegments = Math.round(Math.min(1, confirmedCount / max) * totalSegments);
+  const filledSegments = Math.round(Math.min(1, takenCount / max) * totalSegments);
   const segmentsHtml = Array.from({ length: totalSegments }, (_, i) =>
     `<div class="gc-capacity-seg${i < filledSegments ? ` filled${urgent ? " urgent" : ""}` : ""}"></div>`
   ).join("");
@@ -641,7 +661,7 @@ function gameCapacityWidget(g, confirmedCount) {
     <div class="gc-capacity">
       <div class="gc-capacity-bar">${segmentsHtml}</div>
       <div class="gc-capacity-meta">
-        <span class="gc-capacity-count">👥 ${confirmedCount} / ${max} игроков</span>
+        <span class="gc-capacity-count">👥 ${takenCount} / ${max} игроков</span>
         <span class="gc-capacity-spots ${spotsCls}">${spotsText}</span>
       </div>
     </div>`;
@@ -689,7 +709,6 @@ function gameSecondaryWidget(g, mySignups) {
 // прогресс записи → кнопка действия → участники. Экран должен читаться как
 // бронирование события сверху вниз, а не как разрозненная форма.
 function gameCardWidget(g, index) {
-  const confirmedCount = totalPeople(g.signups, "confirmed");
   const totalCount = totalPeople(g.signups, null);
   const mySignups = g.my_signups || [];
   const delay = Math.min(index || 0, 8) * 0.045;
@@ -701,7 +720,7 @@ function gameCardWidget(g, index) {
       ${gameFieldWidget(g)}
       ${gameDateTimeWidget(g)}
       ${gamePriceWidget(g)}
-      ${gameCapacityWidget(g, confirmedCount)}
+      ${gameCapacityWidget(g)}
       ${gameRegistrationStatusWidget(g)}
       ${gameAddFormWidget(g, mySignups)}
       ${gameRosterWidget(g, totalCount)}
@@ -931,6 +950,16 @@ let sheetSubmitting = false; // защита от двойного тапа во
 const SHEET_MIN_PEOPLE = 1;  // «Оплатить 2500 ₸» за одного тоже валидный случай
 const SHEET_MAX_PEOPLE = 20; // тот же потолок, что и у бэкенда (guests_count ≤ 20)
 
+// Сколько ещё людей реально можно записать на игру: свободные места,
+// но не больше потолка партии. Степперы не дают выбрать больше, чем
+// влезет — бэкенд всё равно откажет, лучше не доводить до ошибки.
+function sheetMaxPeople(g) {
+  const cap = gameCapacity(g);
+  if (!cap) return SHEET_MAX_PEOPLE;
+  const free = Math.max(0, cap - totalPeople((g && g.signups) || [], null));
+  return Math.max(SHEET_MIN_PEOPLE, Math.min(SHEET_MAX_PEOPLE, free));
+}
+
 // Цена за игрока приходит ГОТОВЫМ числом с бэкенда (game.price_per_player,
 // см. routes/games.py + storage/pricing.py) — фронтенд текст цены не парсит
 // и никаких сумм не хардкодит. null — у игры нет распознаваемой цены.
@@ -1007,7 +1036,7 @@ function sheetChooseCompany() {
 
 function sheetStep(delta) {
   const next = sheetCompanyCount + delta;
-  if (next < SHEET_MIN_PEOPLE || next > SHEET_MAX_PEOPLE) return;
+  if (next < SHEET_MIN_PEOPLE || next > sheetMaxPeople(sheetGame)) return;
   sheetCompanyCount = next;
   sheetRenderCompany(true);
   haptic("light");
@@ -1019,7 +1048,7 @@ function sheetStep(delta) {
 function sheetRenderCompany(animate) {
   document.getElementById("sheet-step-value").textContent = sheetCompanyCount;
   document.getElementById("sheet-step-minus").disabled = sheetCompanyCount <= SHEET_MIN_PEOPLE;
-  document.getElementById("sheet-step-plus").disabled = sheetCompanyCount >= SHEET_MAX_PEOPLE;
+  document.getElementById("sheet-step-plus").disabled = sheetCompanyCount >= sheetMaxPeople(sheetGame);
 
   const per = pricePerPlayer(sheetGame);
   const rows = document.getElementById("sheet-price-rows");
@@ -1082,9 +1111,10 @@ async function sheetConfirmCompany() {
 function sheetShowCompanyConfirmed(gameId, paidCount, invites, signupId) {
   const g = (window.__lastGames || []).find(x => x.id === gameId) || sheetGame;
   let waiting = 0;
-  if (g && g.num_players) {
+  const cap = gameCapacity(g);
+  if (cap) {
     const taken = totalPeople(g.signups, null);
-    waiting = Math.max(0, g.num_players - taken);
+    waiting = Math.max(0, cap - taken);
   }
   document.getElementById("sheet-conf-paid").textContent = paidCount;
   document.getElementById("sheet-conf-waiting").textContent = waiting;
@@ -1221,7 +1251,7 @@ function openAddSheet(gameId) {
 
 function sheetAddStep(delta) {
   const next = sheetAddCount + delta;
-  if (next < SHEET_ADD_MIN || next > SHEET_ADD_MAX) return;
+  if (next < SHEET_ADD_MIN || next > sheetMaxPeople(sheetGame)) return;
   sheetAddCount = next;
   sheetRenderAdd(true);
   haptic("light");
@@ -1231,7 +1261,7 @@ function sheetAddStep(delta) {
 function sheetRenderAdd(animate) {
   document.getElementById("sheet-add-value").textContent = sheetAddCount;
   document.getElementById("sheet-add-minus").disabled = sheetAddCount <= SHEET_ADD_MIN;
-  document.getElementById("sheet-add-plus").disabled = sheetAddCount >= SHEET_ADD_MAX;
+  document.getElementById("sheet-add-plus").disabled = sheetAddCount >= sheetMaxPeople(sheetGame);
 
   const per = pricePerPlayer(sheetGame);
   const rows = document.getElementById("sheet-add-price-rows");

@@ -2,7 +2,8 @@
 import json
 
 from api import tg_post
-from config import ADMIN_IDS, bot_share_link
+from config import ADMIN_IDS, bot_share_link, get_bot_username
+from teams import game_capacity
 from storage import (
     get_profile, get_role, display_name_from_profile,
     get_active_games, get_history_games, get_game,
@@ -11,11 +12,28 @@ from storage import (
     get_team_members, get_leaderboard, LEADERBOARD_CATEGORIES,
     get_player_stat_in_match, get_players_stats_bulk,
     price_per_player, entry_amount,
+    create_invites_for_signup, get_invites_for_signup, get_invite,
+    claim_invite, has_phone,
 )
 from .helpers import _recompute_teams
 
 
 class GamesRoutesMixin:
+    def _invite_public(self, inv):
+        """Приглашение в виде, готовом для клиента: ссылка на бота с deep-link
+        параметром start=inv_<token>. Открытие ссылки запускает бота, тот
+        открывает Mini App, а приложение занимает место по токену."""
+        token = inv["token"]
+        username = get_bot_username()
+        link = f"https://t.me/{username}?start=inv_{token}" if username else None
+        return {
+            "token": token,
+            "slot_index": inv["slot_index"],
+            "claimed": bool(inv.get("claimed_by")),
+            "claimed_name": inv.get("claimed_name"),
+            "link": link,
+        }
+
     def route_post_games_signup(self, body):
         try:
             data = json.loads(body)
@@ -35,16 +53,25 @@ class GamesRoutesMixin:
 
             game = get_game(game_id)
             new_people = guests_count if is_addition else 1 + guests_count
-            if game and game.get("num_players"):
+
+            # Лимит = число команд × игроков в команде (см. teams.game_capacity).
+            # Считаем ВСЕ записи, включая неоплаченные: бронь держит место,
+            # иначе на одно место записалось бы несколько человек, пока админ
+            # не подтвердил оплату.
+            capacity = game_capacity(game)
+            if capacity:
                 existing = get_signups(game_id)
                 current_total = sum(
                     (s["guests_count"] if s.get("is_addition") else 1 + (s.get("guests_count") or 0))
                     for s in existing
                 )
-                limit = int(game["num_players"])
-                if current_total + new_people > limit:
-                    free = max(0, limit - current_total)
-                    self._json({"ok": False, "error": f"На игру заявлено {limit} мест, свободно: {free}"})
+                if current_total + new_people > capacity:
+                    free = max(0, capacity - current_total)
+                    if free == 0:
+                        msg = f"Все места заняты ({capacity} из {capacity})"
+                    else:
+                        msg = f"Осталось мест: {free} из {capacity}"
+                    self._json({"ok": False, "error": msg})
                     return
 
             profile = get_profile(user_id)
@@ -57,9 +84,19 @@ class GamesRoutesMixin:
             # Клиент сумму не присылает — подделать её из приложения нельзя.
             amount = entry_amount(game, new_people)
 
-            signup_for_game(game_id, user_id, name, player, guests_count, None, is_addition, amount)
+            signup_id = signup_for_game(game_id, user_id, name, player, guests_count, None, is_addition, amount)
             _recompute_teams(game_id)
-            self._json({"ok": True, "amount": amount})
+
+            # Регистрация компании (не «добавление», людей больше одного) —
+            # автоматически заводим приглашения на все места, кроме места
+            # организатора: Player 2 … Player N. Возвращаем ссылки клиенту,
+            # чтобы экран подтверждения сразу показал их для копирования.
+            invites = []
+            if not is_addition and new_people >= 2:
+                created = create_invites_for_signup(game_id, signup_id, user_id, new_people)
+                invites = [self._invite_public(inv) for inv in created]
+
+            self._json({"ok": True, "amount": amount, "signup_id": signup_id, "invites": invites})
         except Exception as e:
             print(f"  [WARN] games/signup: {e}")
             self.send_response(400); self.end_headers()
@@ -129,9 +166,67 @@ class GamesRoutesMixin:
             self.send_response(400); self.end_headers()
 
 
-    def route_post_games_chat_send(self, body):
+    def route_post_games_claim_invite(self, body):
+        """Игрок открыл приглашение (start=inv_<token>) и приложение занимает
+        за ним конкретное оплаченное место компании. Новую запись/оплату не
+        создаёт и лимит игры не трогает — место уже оплачено организатором.
+        Требует, чтобы у игрока был телефон (аккаунт): иначе просим сперва
+        завершить регистрацию в боте."""
         try:
             data = json.loads(body)
+            user_id = str(data.get("user_id", ""))
+            token = (data.get("token") or "").strip()
+            if not user_id or not token:
+                self._json({"ok": False, "error": "bad_request"})
+                return
+
+            inv = get_invite(token)
+            if not inv:
+                self._json({"ok": False, "error": "Приглашение не найдено или устарело"})
+                return
+
+            # Нет аккаунта (не поделился телефоном) — регистрация сначала.
+            if not has_phone(user_id):
+                self._json({"ok": False, "error": "need_registration",
+                            "game_id": inv["game_id"]})
+                return
+
+            profile = get_profile(user_id)
+            name = display_name_from_profile(profile) if profile else "Игрок"
+            ok, result = claim_invite(token, user_id, name)
+            if not ok:
+                msg = ("Это место уже занято другим игроком"
+                       if result == "already_claimed"
+                       else "Приглашение не найдено или устарело")
+                self._json({"ok": False, "error": msg})
+                return
+
+            # Место занято — пересчитываем состав, чтобы игрок появился в нём
+            # вместо плейсхолдера «(гость N)».
+            _recompute_teams(inv["game_id"])
+            self._json({"ok": True, "game_id": inv["game_id"]})
+        except Exception as e:
+            print(f"  [WARN] games/claim-invite: {e}")
+            self.send_response(400); self.end_headers()
+
+    def route_get_games_invites(self, q):
+        """Ссылки-приглашения партии компании (для экрана подтверждения и
+        карточки игры) — только владелец партии может их получить."""
+        user_id = (q.get("user_id") or [""])[0]
+        signup_id = (q.get("signup_id") or [""])[0]
+        if not user_id or not signup_id:
+            self._json({"invites": []})
+            return
+        try:
+            signup_id = int(signup_id)
+        except (TypeError, ValueError):
+            self._json({"invites": []})
+            return
+        invites = [self._invite_public(inv) for inv in get_invites_for_signup(signup_id)]
+        self._json({"invites": invites})
+
+    def route_post_games_chat_send(self, body):
+        try:
             user_id = str(data.get("user_id", ""))
             game_id = data.get("game_id")
             text = (data.get("text") or "").strip()
@@ -162,6 +257,10 @@ class GamesRoutesMixin:
             # сумм на фронтенде (шит записи, кнопки оплаты). Парсится из
             # свободного текста games.price только тут, на бэкенде.
             g["price_per_player"] = price_per_player(g)
+            # Реальная вместимость = команды × игроков в команде. Фронтенд
+            # использует ЭТО число для индикатора мест и статуса «мест нет»,
+            # чтобы не расходиться с проверкой лимита на бэкенде.
+            g["capacity"] = game_capacity(g)
             # Ссылка на бота для кнопки «Пригласить игроков» (экран
             # подтверждения регистрации компании). None — если недоступна.
             g["share_link"] = bot_share_link()

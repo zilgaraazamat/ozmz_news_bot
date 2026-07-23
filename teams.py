@@ -68,13 +68,50 @@ def _build_members(s):
     return members
 
 
-def _place_best_fit(members, teams, capacity, num_teams):
-    """Кладёт группу целиком туда, где влезает с наименьшим остатком.
-    Если целиком никуда не влезает — раскидывает по кусочкам, никого не теряя."""
+def game_capacity(game):
+    """Реальная вместимость игры = число команд × игроков в команде.
+
+    Именно столько человек может быть записано — состав физически не вместит
+    больше. Отдельное поле num_players используется как запасной вариант,
+    только если разбивка по командам не задана: эти два числа могут
+    расходиться (админ поменял размер команд, а num_players остался старым),
+    и авторитетной считается разбивка.
+
+    None — вместимость не ограничена (ни то, ни другое не задано).
+    """
+    num_teams = (game or {}).get("num_teams")
+    per_team = (game or {}).get("players_per_team")
+    try:
+        if num_teams and per_team:
+            cap = int(num_teams) * int(per_team)
+            if cap > 0:
+                return cap
+    except (TypeError, ValueError):
+        pass
+    try:
+        n = int((game or {}).get("num_players") or 0)
+        return n if n > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _place_evenly(members, teams, capacity, num_teams):
+    """Кладёт группу целиком в команду с НАИБОЛЬШИМ свободным местом
+    (worst-fit) — так составы наполняются равномерно, а не по очереди.
+
+    Best-fit (искать наименьший достаточный остаток) давал перекос: группа
+    добивала почти полную команду до конца, пока соседняя стояла пустой.
+    При равных остатках предпочитаем команду с меньшим числом игроков.
+
+    Если группа целиком никуда не влезает — раскидываем по кусочкам,
+    начиная с самых свободных команд, никого не теряя.
+    """
     size = len(members)
     best = None
     for i in range(num_teams):
-        if capacity[i] >= size and (best is None or capacity[i] < capacity[best]):
+        if capacity[i] < size:
+            continue
+        if best is None or (capacity[i], -len(teams[i])) > (capacity[best], -len(teams[best])):
             best = i
 
     if best is not None:
@@ -123,7 +160,7 @@ def auto_assign_teams(game, signups):
     capacity = [per_team] * num_teams
 
     for s in groups:
-        _place_best_fit(_build_members(s), teams, capacity, num_teams)
+        _place_evenly(_build_members(s), teams, capacity, num_teams)
 
     return teams
 
