@@ -61,6 +61,33 @@ input[type="file"]{display:none}
 textarea{resize:vertical;min-height:76px}
 input:focus,textarea:focus,select:focus{outline:none;border-color:#5E6AD2;background:#fff;box-shadow:0 0 0 4px rgba(94,106,210,.1)}
 .row2{display:flex;gap:10px}
+/* Колонки должны сжиматься: у flex-элементов min-width по умолчанию auto, и
+   нативные date/time инпуты на iOS распирают колонку своей внутренней
+   шириной, вылезая за карточку. min-width:0 снимает это ограничение. */
+.row2>*{flex:1 1 0;min-width:0}
+.row2 input,.row2 select,.row2 textarea{min-width:0;max-width:100%}
+/* iOS рисует date/time по-своему и игнорирует часть стилей: выключаем
+   нативную отрисовку, центрируем значение и не даём ему переносится. */
+input[type="date"],input[type="time"],input[type="datetime-local"]{
+  -webkit-appearance:none;appearance:none;
+  text-align:center;text-align:-webkit-center;
+  min-width:0;max-width:100%;
+  padding-left:8px;padding-right:8px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+}
+/* Кружок-иконка календаря/часов у WebKit занимает место и сдвигает текст */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value{
+  text-align:center;margin:0;min-width:0;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator{
+  margin-left:2px;opacity:.55;
+}
+/* Дата на русской локали в iOS длинная («28 сентября 2026 г.» — самый
+   длинный вариант), поэтому кегль и боковые отступы подобраны так, чтобы
+   она помещалась целиком без многоточия. */
+input[type="date"]{font-size:13.5px;padding-left:6px;padding-right:6px}
 .row2>div{flex:1}
 .row2 input{min-width:0}
 .hint{font-size:11.5px;color:#94A3B8;margin-top:6px;line-height:1.45}
