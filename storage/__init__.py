@@ -41,6 +41,16 @@ from .pricing import (
     price_per_player, entry_amount,
 )
 
+from .tournaments import (
+    entry_fee_amount,
+    create_tournament, update_tournament, get_tournaments, get_tournament,
+    delete_tournament, link_announcement,
+    register_team, get_teams, get_team, get_my_teams, claim_team_payment,
+    confirm_team, cancel_team, set_team_group, autodistribute_groups,
+    create_match, update_match, set_match_result, delete_match, get_matches,
+    group_standings,
+)
+
 from .games import (
     mark_game_completed, get_games_played_count,
     create_game, get_all_games, cancel_game, delete_game, get_active_games,
@@ -138,4 +148,14 @@ __all__ = [
     "calculate_ovr", "BASE_OVR",
     "calculate_weekly_streak", "get_weekly_streak",
     "ACHIEVEMENTS", "calculate_achievements", "get_player_achievements", "get_achievements_summary",
+    "price_per_player", "entry_amount",
+    "create_invites_for_signup", "get_invites_for_signup", "get_invite",
+    "claim_invite", "get_claimed_slots",
+    "entry_fee_amount",
+    "create_tournament", "update_tournament", "get_tournaments", "get_tournament",
+    "delete_tournament", "link_announcement",
+    "register_team", "get_teams", "get_team", "get_my_teams", "claim_team_payment",
+    "confirm_team", "cancel_team", "set_team_group", "autodistribute_groups",
+    "create_match", "update_match", "set_match_result", "delete_match", "get_matches",
+    "group_standings",
 ]

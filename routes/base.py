@@ -2,19 +2,32 @@
 route-миксинами через общий Handler (см. server.py)."""
 import os
 import json
+import gzip
 
 # server.py живёт в корне проекта, а этот файл — на один уровень глубже
 # (routes/base.py), поэтому поднимаемся на директорию выше, чтобы
 # относительные пути вида "webapp/app.html" резолвились так же, как раньше.
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# Ответы меньше этого порога не сжимаем: выигрыш в байтах не окупает
+# работу процессора, а у мелких ответов gzip может даже увеличить размер.
+_GZIP_MIN_BYTES = 1024
+
 
 class BaseRoutesMixin:
     def _json(self, data):
-        body = json.dumps(data, ensure_ascii=False).encode()
+        body = json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
+
+        # /api/games опрашивается каждые 4 секунды и весит десятки килобайт —
+        # на JSON gzip даёт ~25x, что решающе экономит мобильный трафик.
+        if len(body) >= _GZIP_MIN_BYTES and "gzip" in self.headers.get("Accept-Encoding", ""):
+            body = gzip.compress(body, compresslevel=6)
+            self.send_header("Content-Encoding", "gzip")
+
+        self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 

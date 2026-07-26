@@ -20,19 +20,23 @@ def publish_announcement(announcement_id):
 
 def get_active_announcements(limit=10):
     with _lock, _conn() as c:
-        rows = c.execute("""SELECT id, title, text, image, category, event_date, created_at
+        rows = c.execute("""SELECT id, title, text, image, category, event_date, created_at,
+                                    tournament_id
                              FROM announcements WHERE status='active' ORDER BY id DESC LIMIT ?""",
                           (limit,)).fetchall()
+    # tournament_id — новость категории «Турнир» может вести на страницу турнира
     return [{"id": r[0], "title": r[1], "text": r[2], "image": r[3], "category": r[4],
-             "event_date": r[5], "created_at": r[6]} for r in rows]
+             "event_date": r[5], "created_at": r[6], "tournament_id": r[7]} for r in rows]
 
 
 def get_all_announcements():
     with _lock, _conn() as c:
-        rows = c.execute("""SELECT id, title, text, image, category, event_date, created_at, status
+        rows = c.execute("""SELECT id, title, text, image, category, event_date, created_at, status,
+                                    tournament_id
                              FROM announcements ORDER BY id DESC""").fetchall()
     return [{"id": r[0], "title": r[1], "text": r[2], "image": r[3], "category": r[4],
-             "event_date": r[5], "created_at": r[6], "status": r[7]} for r in rows]
+             "event_date": r[5], "created_at": r[6], "status": r[7],
+             "tournament_id": r[8]} for r in rows]
 
 
 def delete_announcement(announcement_id):

@@ -439,13 +439,19 @@ input[type="date"]{font-size:13.5px;padding-left:6px;padding-right:6px}
     <div class="section-card">
       <div class="fs-title">🏷️ Публикация</div>
       <label>Категория</label>
-      <select id="an-category">
+      <select id="an-category" onchange="toggleTournamentPicker()">
         <option>Анонс</option>
         <option>Турнир</option>
         <option>Новости</option>
         <option>Важно</option>
         <option>Другое</option>
       </select>
+      <!-- Для категории «Турнир» новость можно привязать к турниру: тогда в
+           приложении в ней появится кнопка «Открыть турнир». -->
+      <div id="an-tournament-wrap" class="hidden">
+        <label>Привязать к турниру</label>
+        <select id="an-tournament"><option value="">— без привязки —</option></select>
+      </div>
       <label>Дата события (необязательно)</label>
       <input id="an-date" type="date">
     </div>
@@ -475,6 +481,79 @@ input[type="date"]{font-size:13.5px;padding-left:6px;padding-right:6px}
   </div>
 
   <!-- ═══ ИГРОКИ: СПИСОК / ПОИСК ═══ -->
+  <!-- ═══ ТУРНИРЫ: СПИСОК ═══ -->
+  <div id="screen-tournaments-list" class="screen hidden">
+    <div class="screen-head">
+      <button class="back-btn" onclick="showScreen('dashboard')">‹</button>
+      <h2>🏆 Турниры</h2>
+    </div>
+    <button class="btn btn-primary" style="margin-bottom:14px" onclick="openTournamentEditor(null)">+ Создать турнир</button>
+    <div id="tournaments-list"></div>
+  </div>
+
+  <!-- ═══ ТУРНИР: СОЗДАНИЕ/РЕДАКТИРОВАНИЕ ═══ -->
+  <div id="screen-tournament-edit" class="screen hidden">
+    <div class="screen-head">
+      <button class="back-btn" onclick="showScreen('tournaments-list')">‹</button>
+      <h2 id="tournament-edit-title">Создать турнир</h2>
+    </div>
+    <div id="tournament-error-banner"></div>
+
+    <div class="section-card">
+      <div class="fs-title">🏆 О турнире</div>
+      <label>Название</label>
+      <input id="tr-name" placeholder="OZMZ Cup 2026">
+      <label>Описание</label>
+      <textarea id="tr-description" rows="3" placeholder="Формат, правила, призы"></textarea>
+      <label>Место проведения</label>
+      <input id="tr-location" placeholder="Поле №1, ул. Кабанбай батыра">
+    </div>
+
+    <div class="section-card">
+      <div class="fs-title">📅 Даты</div>
+      <div class="row2">
+        <div><label>Начало</label><input id="tr-start" type="date"></div>
+        <div><label>Конец</label><input id="tr-end" type="date"></div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="fs-title">👥 Формат</div>
+      <div class="row2">
+        <div><label>Максимум команд</label><input id="tr-max-teams" type="number" min="2" placeholder="8"></div>
+        <div><label>Игроков в команде</label><input id="tr-team-size" type="number" min="1" placeholder="7"></div>
+      </div>
+      <label>Групп</label>
+      <input id="tr-num-groups" type="number" min="1" max="8" placeholder="2">
+    </div>
+
+    <div class="section-card">
+      <div class="fs-title">💰 Взнос</div>
+      <label>Взнос за команду</label>
+      <input id="tr-entry-fee" placeholder="15000 ₸">
+      <label>Ссылка на оплату</label>
+      <input id="tr-payment-link" placeholder="https://pay.kaspi.kz/...">
+    </div>
+
+    <div class="section-card">
+      <div class="fs-title">🖼 Обложка</div>
+      <div id="tr-photo-zone"></div>
+      <input id="tr-photo" type="file" accept="image/*">
+    </div>
+
+    <div class="saved-msg" id="tournament-saved-msg">✅ Сохранено</div>
+    <button class="btn btn-primary" id="tournament-submit-btn" onclick="saveTournament()">Создать турнир</button>
+  </div>
+
+  <!-- ═══ ТУРНИР: КОМАНДЫ И МАТЧИ ═══ -->
+  <div id="screen-tournament-manage" class="screen hidden">
+    <div class="screen-head">
+      <button class="back-btn" onclick="showScreen('tournaments-list')">‹</button>
+      <h2 id="tournament-manage-title">Турнир</h2>
+    </div>
+    <div id="tournament-manage-body"></div>
+  </div>
+
   <div id="screen-players-list" class="screen hidden">
     <div class="screen-sub">Все зарегистрированные игроки</div>
     <div class="list-toolbar">
@@ -594,6 +673,9 @@ function gameStatusBadge(g, past) {
 let currentScreen = "loading";
 
 const SCREEN_TITLES = {
+  "tournaments-list": "Турниры",
+  "tournament-edit": "Турнир",
+  "tournament-manage": "Управление турниром",
   "dashboard": "Панель администратора",
   "games-create": "Создать игру",
   "games-manage": "Управление играми",
@@ -617,12 +699,14 @@ function showScreen(id) {
   window.scrollTo(0, 0);
 
   if (id === "games-create") { renderPhotoZone("f-photo-zone", "f-photo", selectedGamePhotoBase64); loadGameTemplatesForPicker(); }
-  if (id === "news-create") { renderPhotoZone("an-photo-zone", "an-photo", selectedPhotoBase64); }
+  if (id === "news-create") { renderPhotoZone("an-photo-zone", "an-photo", selectedPhotoBase64); loadTournamentsForPicker(); }
   if (id === "games-manage") loadManageGames();
   if (id === "awaiting-results") loadAwaitingResults();
   if (id === "templates-list") loadTemplatesList();
   if (id === "news-manage") loadAnnouncements();
   if (id === "players-list") loadPlayers();
+  if (id === "tournaments-list") loadTournamentsList();
+  if (id === "tournament-edit") renderPhotoZone("tr-photo-zone", "tr-photo", selectedTournamentPhotoBase64);
 }
 
 function backToDashboard() {
@@ -636,6 +720,10 @@ const MODULES = [
     { label: "Шаблоны игр", screen: "templates-list" },
     { label: "Управление и записи", screen: "games-manage" },
     { label: "Ожидают результата", screen: "awaiting-results" },
+  ]},
+  { icon: "🏆", title: "Турниры", items: [
+    { label: "Создать турнир", screen: "tournament-edit" },
+    { label: "Управление турнирами", screen: "tournaments-list" },
   ]},
   { icon: "📰", title: "Новости", items: [
     { label: "Создать новость", screen: "news-create" },
@@ -1521,6 +1609,342 @@ async function saveTemplate() {
   btn.removeAttribute("disabled");
 }
 
+
+// Список турниров для привязки новости категории «Турнир».
+function toggleTournamentPicker() {
+  const isTournament = document.getElementById("an-category").value === "Турнир";
+  document.getElementById("an-tournament-wrap").classList.toggle("hidden", !isTournament);
+}
+
+async function loadTournamentsForPicker() {
+  try {
+    const r = await fetch(`/api/admin/tournaments?user_id=${userId}`).then(r => r.json());
+    window.__allTournaments = r.tournaments || [];
+    const sel = document.getElementById("an-tournament");
+    sel.innerHTML = `<option value="">— без привязки —</option>` +
+      window.__allTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+    toggleTournamentPicker();
+  } catch (e) {}
+}
+
+/* ── Турниры ──────────────────────────────────────────────────────────────── */
+let editingTournamentId = null;
+let selectedTournamentPhotoBase64 = null;
+let currentTournament = null;
+
+async function loadTournamentsList() {
+  try {
+    const r = await fetch(`/api/admin/tournaments?user_id=${userId}`).then(r => r.json());
+    window.__allTournaments = r.tournaments || [];
+    renderTournamentsList();
+  } catch (e) {}
+}
+
+function renderTournamentsList() {
+  const list = window.__allTournaments || [];
+  const el = document.getElementById("tournaments-list");
+  if (!list.length) {
+    el.innerHTML = `<div class="list-empty">Турниров пока нет — создай первый</div>`;
+    return;
+  }
+  el.innerHTML = list.map(t => `
+    <div class="news-card">
+      <div class="news-card-top">
+        <div>
+          <div class="news-card-title">${t.image ? "🖼️ " : "🏆 "}${t.name}</div>
+          <div class="news-card-meta">
+            ${badgeHtml(t.start_date || "даты не заданы", "accent")}
+            <span>${t.location || "место не указано"}</span>
+          </div>
+          <div class="news-card-meta">
+            ${t.entry_fee ? `<span>💰 ${t.entry_fee}</span>` : ""}
+            ${t.max_teams ? `<span>👥 до ${t.max_teams} команд</span>` : ""}
+            ${t.num_groups ? `<span>🔢 ${t.num_groups} группы</span>` : ""}
+          </div>
+        </div>
+      </div>
+      <div class="news-card-actions">
+        <button class="mini-btn" onclick="openTournamentManage(${t.id})">Команды и матчи</button>
+        <button class="mini-btn" onclick="openTournamentEditor(${t.id})">Изменить</button>
+        <button class="mini-btn danger" onclick="deleteTournament(${t.id})">Удалить</button>
+      </div>
+    </div>`).join("");
+}
+
+function openTournamentEditor(id) {
+  editingTournamentId = id;
+  document.getElementById("tournament-error-banner").innerHTML = "";
+  const t = id ? (window.__allTournaments || []).find(x => x.id === id) : null;
+
+  const val = (elId, v) => document.getElementById(elId).value = v || "";
+  val("tr-name", t && t.name);
+  val("tr-description", t && t.description);
+  val("tr-location", t && t.location);
+  val("tr-start", t && t.start_date);
+  val("tr-end", t && t.end_date);
+  val("tr-max-teams", t && t.max_teams);
+  val("tr-team-size", t && t.team_size);
+  val("tr-num-groups", t ? t.num_groups : 2);
+  val("tr-entry-fee", t && t.entry_fee);
+  document.getElementById("tr-payment-link").value =
+    t ? (t.payment_link || "") : "https://pay.kaspi.kz/pay/ybsrtfje";
+
+  selectedTournamentPhotoBase64 = t && t.image ? `data:image/jpeg;base64,${t.image}` : null;
+  renderPhotoZone("tr-photo-zone", "tr-photo", selectedTournamentPhotoBase64);
+
+  document.getElementById("tournament-edit-title").textContent = t ? "Изменить турнир" : "Создать турнир";
+  document.getElementById("tournament-submit-btn").textContent = t ? "Сохранить изменения" : "Создать турнир";
+  showScreen("tournament-edit");
+}
+
+async function saveTournament() {
+  const banner = document.getElementById("tournament-error-banner");
+  banner.innerHTML = "";
+  const name = document.getElementById("tr-name").value.trim();
+  if (!name) {
+    banner.innerHTML = `<div class="error-banner">⚠️ Укажи название турнира</div>`;
+    return;
+  }
+  const payload = {
+    user_id: userId, name,
+    description: document.getElementById("tr-description").value.trim(),
+    location: document.getElementById("tr-location").value.trim(),
+    start_date: document.getElementById("tr-start").value,
+    end_date: document.getElementById("tr-end").value,
+    max_teams: document.getElementById("tr-max-teams").value,
+    team_size: document.getElementById("tr-team-size").value,
+    num_groups: document.getElementById("tr-num-groups").value || 2,
+    entry_fee: document.getElementById("tr-entry-fee").value.trim(),
+    payment_link: document.getElementById("tr-payment-link").value.trim(),
+    image: selectedTournamentPhotoBase64,
+  };
+  if (editingTournamentId) payload.id = editingTournamentId;
+
+  const btn = document.getElementById("tournament-submit-btn");
+  btn.setAttribute("disabled", "true");
+  try {
+    const res = await fetch("/api/admin/save-tournament", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(r => r.json());
+    if (!res.ok) {
+      banner.innerHTML = `<div class="error-banner">⚠️ ${res.error || "Не удалось сохранить"}</div>`;
+    } else {
+      const saved = document.getElementById("tournament-saved-msg");
+      saved.classList.add("show");
+      await loadTournamentsList();
+      setTimeout(() => { saved.classList.remove("show"); showScreen("tournaments-list"); }, 900);
+    }
+  } catch (e) {
+    banner.innerHTML = `<div class="error-banner">⚠️ Ошибка сети</div>`;
+  }
+  btn.removeAttribute("disabled");
+}
+
+async function deleteTournament(id) {
+  if (!confirm("Удалить турнир вместе с командами и матчами? Это необратимо.")) return;
+  try {
+    const res = await fetch("/api/admin/delete-tournament", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, id })
+    }).then(r => r.json());
+    if (res.ok) loadTournamentsList();
+  } catch (e) {}
+}
+
+/* ── Управление турниром: команды, группы, матчи ── */
+async function openTournamentManage(id) {
+  showScreen("tournament-manage");
+  document.getElementById("tournament-manage-body").innerHTML = `<div class="list-empty">Загрузка…</div>`;
+  await refreshTournamentManage(id);
+}
+
+async function refreshTournamentManage(id) {
+  try {
+    const r = await fetch(`/api/tournament?id=${id}&user_id=${userId}`).then(r => r.json());
+    if (r.error) return;
+    currentTournament = r;
+    document.getElementById("tournament-manage-title").textContent = r.tournament.name;
+    renderTournamentManage();
+  } catch (e) {}
+}
+
+function renderTournamentManage() {
+  const d = currentTournament;
+  const t = d.tournament;
+  const teams = d.teams || [];
+  const confirmed = teams.filter(x => x.status === "confirmed");
+  const pending = teams.filter(x => x.status !== "confirmed");
+
+  const teamRow = x => `
+    <div class="manage-signup-row">
+      <span class="manage-name">${x.name}
+        <span class="manage-guests">${x.captain_name || ""}${x.players.length ? ` · ${x.players.length} игр.` : ""}</span>
+        ${x.amount ? `<span class="manage-amount">💵 ${x.amount} ₸</span>` : ""}
+        ${x.payment_claimed && x.status !== "confirmed" ? `<span class="manage-paid-claim">💰 заявил об оплате</span>` : ""}
+        ${x.group_index != null ? `<span class="manage-guests">Группа ${x.group_index + 1}</span>` : ""}
+      </span>
+      <span>
+        ${x.status !== "confirmed" ? `<button class="mini-btn" onclick="confirmTeam(${x.id})">Подтвердить</button>` : ""}
+        <button class="mini-btn danger" onclick="removeTeam(${x.id})">Убрать</button>
+      </span>
+    </div>`;
+
+  const groupOptions = n => Array.from({ length: Number(t.num_groups) || 2 },
+    (_, i) => `<option value="${i}">Группа ${i + 1}</option>`).join("");
+
+  const teamSelect = (id, sel) => `
+    <select id="${id}">
+      <option value="">— команда —</option>
+      ${confirmed.map(x => `<option value="${x.id}" ${sel === x.id ? "selected" : ""}>${x.name}</option>`).join("")}
+    </select>`;
+
+  const matches = d.matches || [];
+  const matchRow = m => `
+    <div class="manage-signup-row">
+      <span class="manage-name">
+        ${m.stage === "playoff" ? (m.round_name || "Плей-офф") : `Гр. ${(m.group_index ?? 0) + 1}`}:
+        ${m.team_a_name || "—"} vs ${m.team_b_name || "—"}
+        <span class="manage-guests">${[m.match_date, m.match_time].filter(Boolean).join(" ")}</span>
+        ${m.status === "finished" ? `<span class="manage-amount">${m.score_a}:${m.score_b}</span>` : ""}
+      </span>
+      <span>
+        <button class="mini-btn" onclick="promptMatchResult(${m.id})">Счёт</button>
+        <button class="mini-btn danger" onclick="removeMatch(${m.id})">✕</button>
+      </span>
+    </div>`;
+
+  document.getElementById("tournament-manage-body").innerHTML = `
+    <div class="section-card">
+      <div class="fs-title">👥 Команды (${confirmed.length} подтв. / ${teams.length} всего)</div>
+      ${teams.length ? teams.map(teamRow).join("") : `<div class="list-empty">Заявок пока нет</div>`}
+      ${confirmed.length ? `<button class="btn btn-secondary" style="margin-top:10px" onclick="distributeGroups()">🔢 Разбить по группам</button>` : ""}
+    </div>
+
+    <div class="section-card">
+      <div class="fs-title">⚽ Добавить матч</div>
+      <label>Этап</label>
+      <select id="tm-stage" onchange="toggleMatchStage()">
+        <option value="group">Групповой этап</option>
+        <option value="playoff">Плей-офф</option>
+      </select>
+      <div id="tm-group-wrap">
+        <label>Группа</label>
+        <select id="tm-group">${groupOptions()}</select>
+      </div>
+      <div id="tm-round-wrap" class="hidden">
+        <label>Раунд</label>
+        <select id="tm-round">
+          <option>1/8 финала</option><option>1/4 финала</option>
+          <option>Полуфинал</option><option>Матч за 3-е место</option><option>Финал</option>
+        </select>
+      </div>
+      <div class="row2">
+        <div><label>Команда 1</label>${teamSelect("tm-team-a")}</div>
+        <div><label>Команда 2</label>${teamSelect("tm-team-b")}</div>
+      </div>
+      <div class="row2">
+        <div><label>Дата</label><input id="tm-date" type="date" value="${t.start_date || ""}"></div>
+        <div><label>Время</label><input id="tm-time" type="time"></div>
+      </div>
+      <label>Место</label>
+      <input id="tm-location" value="${t.location || ""}">
+      <button class="btn btn-primary" style="margin-top:10px" onclick="addTournamentMatch()">Добавить матч</button>
+    </div>
+
+    <div class="section-card">
+      <div class="fs-title">📋 Матчи (${matches.length})</div>
+      ${matches.length ? matches.map(matchRow).join("") : `<div class="list-empty">Матчей пока нет</div>`}
+    </div>`;
+}
+
+function toggleMatchStage() {
+  const isPlayoff = document.getElementById("tm-stage").value === "playoff";
+  document.getElementById("tm-group-wrap").classList.toggle("hidden", isPlayoff);
+  document.getElementById("tm-round-wrap").classList.toggle("hidden", !isPlayoff);
+}
+
+async function confirmTeam(teamId) {
+  try {
+    const res = await fetch("/api/admin/confirm-team", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, team_id: teamId })
+    }).then(r => r.json());
+    if (res.ok) refreshTournamentManage(currentTournament.tournament.id);
+  } catch (e) {}
+}
+
+async function removeTeam(teamId) {
+  if (!confirm("Убрать команду с турнира?")) return;
+  try {
+    const res = await fetch("/api/tournament/cancel-team", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, team_id: teamId })
+    }).then(r => r.json());
+    if (res.ok) refreshTournamentManage(currentTournament.tournament.id);
+  } catch (e) {}
+}
+
+async function distributeGroups() {
+  try {
+    const res = await fetch("/api/admin/distribute-groups", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, tournament_id: currentTournament.tournament.id })
+    }).then(r => r.json());
+    if (res.ok) refreshTournamentManage(currentTournament.tournament.id);
+  } catch (e) {}
+}
+
+async function addTournamentMatch() {
+  const stage = document.getElementById("tm-stage").value;
+  const payload = {
+    user_id: userId,
+    tournament_id: currentTournament.tournament.id,
+    stage,
+    group_index: stage === "group" ? Number(document.getElementById("tm-group").value) : null,
+    round_name: stage === "playoff" ? document.getElementById("tm-round").value : null,
+    team_a_id: Number(document.getElementById("tm-team-a").value) || null,
+    team_b_id: Number(document.getElementById("tm-team-b").value) || null,
+    match_date: document.getElementById("tm-date").value,
+    match_time: document.getElementById("tm-time").value,
+    location: document.getElementById("tm-location").value.trim(),
+  };
+  try {
+    const res = await fetch("/api/admin/save-tournament-match", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(r => r.json());
+    if (res.ok) refreshTournamentManage(currentTournament.tournament.id);
+  } catch (e) {}
+}
+
+async function promptMatchResult(matchId) {
+  const raw = prompt("Счёт матча в формате 3:1");
+  if (!raw) return;
+  const parts = raw.split(/[:\-\s]+/).filter(Boolean);
+  if (parts.length < 2) return;
+  try {
+    const res = await fetch("/api/admin/tournament-match-result", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, match_id: matchId,
+                             score_a: parseInt(parts[0], 10) || 0,
+                             score_b: parseInt(parts[1], 10) || 0 })
+    }).then(r => r.json());
+    if (res.ok) refreshTournamentManage(currentTournament.tournament.id);
+  } catch (e) {}
+}
+
+async function removeMatch(matchId) {
+  if (!confirm("Удалить матч?")) return;
+  try {
+    const res = await fetch("/api/admin/delete-tournament-match", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, match_id: matchId })
+    }).then(r => r.json());
+    if (res.ok) refreshTournamentManage(currentTournament.tournament.id);
+  } catch (e) {}
+}
+
 async function deleteTemplate(id) {
   if (!confirm("Удалить шаблон? Это действие необратимо.")) return;
   try {
@@ -1583,6 +2007,19 @@ async function createAnnouncement(publish) {
       document.getElementById("announce-error").innerHTML =
         `<div class="error-banner">⚠️ ${res.error || "Не удалось сохранить"}</div>`;
     } else {
+      // Категория «Турнир» + выбранный турнир — связываем новость с ним,
+      // чтобы в приложении появилась кнопка «Открыть турнир».
+      const linkTid = document.getElementById("an-tournament").value;
+      if (linkTid && res.id) {
+        try {
+          await fetch("/api/admin/save-tournament", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId, id: Number(linkTid),
+                                   name: (window.__allTournaments || []).find(x => x.id === Number(linkTid))?.name || "Турнир",
+                                   announcement_id: res.id })
+          });
+        } catch (e) {}
+      }
       document.getElementById("an-title").value = "";
       document.getElementById("an-text").value = "";
       document.getElementById("an-date").value = "";

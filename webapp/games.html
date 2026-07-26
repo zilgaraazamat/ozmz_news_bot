@@ -1576,7 +1576,13 @@ function toggleChat(gameId) {
     openChats[gameId] = true;
     btn.textContent = "🔼 Скрыть";
     pollChat(gameId);
-    chatPollTimers[gameId] = setInterval(() => pollChat(gameId), 3000);
+    // Сбрасываем прежний таймер перед созданием нового — иначе при быстром
+    // открытии/закрытии чата таймеры накапливались и опрос шёл в несколько
+    // потоков. В фоне (свёрнутое приложение) чат тоже не опрашиваем.
+    clearInterval(chatPollTimers[gameId]);
+    chatPollTimers[gameId] = setInterval(() => {
+      if (!document.hidden) pollChat(gameId);
+    }, 3000);
   }
 }
 
@@ -1599,15 +1605,27 @@ async function sendChatMessage(gameId) {
 
 renderFilters();
 loadGames();
-setInterval(() => {
+// Фоновый опрос списка игр. Оптимизации:
+//  • когда приложение свёрнуто/неактивно — не опрашиваем вовсе (главная
+//    экономия батареи и трафика: раньше запросы шли даже в фоне);
+//  • при возврате на экран обновляемся сразу, не дожидаясь тика;
+//  • открытый чат/шит/ввод текста по-прежнему ставят опрос на паузу,
+//    чтобы список не перерисовывался под руками.
+function gamesPollTick() {
+  if (document.hidden) return;
   const anyChatOpen = Object.values(openChats).some(v => v);
   const gamesListEl = document.getElementById("games-list");
   const typingNow = gamesListEl && gamesListEl.contains(document.activeElement)
     && (document.activeElement.tagName === "INPUT");
-  // шит (запись / добавление игроков) открыт — не перерисовываем список под руками
   const sheetOpen = sheetGameId !== null;
   if (!anyChatOpen && !typingNow && !sheetOpen) loadGames();
-}, 4000);
+}
+
+setInterval(gamesPollTick, 4000);
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) gamesPollTick();
+});
 </script>
 </body>
 </html>

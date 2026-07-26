@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>Турнир — OZMZ</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0B0D10;color:#F5F6F7;min-height:100%;padding:0 0 calc(40px + env(safe-area-inset-bottom));overflow-y:auto;-webkit-overflow-scrolling:touch}
+.wrap{width:100%;max-width:440px;margin:0 auto;padding:0 16px}
+.hidden{display:none!important}
+
+/* ── Шапка с обложкой ── */
+.t-hero{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#141416}
+.t-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.t-hero-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:64px;background:radial-gradient(ellipse 80% 70% at 70% 30%,rgba(139,147,245,.32),transparent 70%),#17181D}
+.t-hero-scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(11,13,16,.98) 0%,rgba(11,13,16,.7) 38%,transparent 78%)}
+.t-back{position:absolute;top:calc(12px + env(safe-area-inset-top));left:12px;width:34px;height:34px;border-radius:50%;background:rgba(11,13,16,.66);backdrop-filter:blur(8px);border:none;color:#fff;font-size:17px;cursor:pointer;z-index:2;display:flex;align-items:center;justify-content:center}
+.t-hero-body{position:absolute;left:0;right:0;bottom:0;padding:0 16px 14px;max-width:440px;margin:0 auto}
+.t-title{font-size:22px;font-weight:800;letter-spacing:-.4px;line-height:1.2;text-shadow:0 1px 14px rgba(0,0,0,.55)}
+.t-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.t-pill{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.1);backdrop-filter:blur(6px);color:#E8EAEE;white-space:nowrap}
+.t-pill.accent{background:rgba(94,106,210,.28);color:#B4BAFF}
+
+/* ── Инфо-строки ── */
+.t-info{display:flex;flex-direction:column;gap:1px;background:rgba(255,255,255,.05);border-radius:14px;overflow:hidden;margin-top:16px}
+.t-info-row{display:flex;align-items:center;gap:10px;padding:12px 13px;background:#15171C;font-size:13.5px}
+.t-info-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.t-info-label{color:#7C818B;flex:1;min-width:0}
+.t-info-value{font-weight:700;color:#F0F1F3;text-align:right}
+.t-desc{font-size:13.5px;color:#B9BDC5;line-height:1.6;margin-top:14px;white-space:pre-wrap}
+
+/* ── Вкладки ── */
+.t-tabs{display:flex;gap:6px;margin:18px 0 14px;overflow-x:auto;scrollbar-width:none}
+.t-tabs::-webkit-scrollbar{display:none}
+.t-tab{flex-shrink:0;padding:9px 14px;border-radius:10px;background:#181A1F;border:1px solid rgba(255,255,255,.06);color:#9BA1AC;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s}
+.t-tab.active{background:#5E6AD2;border-color:#5E6AD2;color:#fff}
+
+/* ── Команды ── */
+.team-card{display:flex;align-items:center;gap:11px;background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:12px;margin-bottom:9px}
+.team-logo{width:40px;height:40px;flex-shrink:0;border-radius:11px;background:rgba(94,106,210,.16);color:#8B93F5;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+.team-body{flex:1;min-width:0}
+.team-name{font-size:14.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-meta{font-size:11.5px;color:#7C818B;margin-top:3px}
+.team-status{flex-shrink:0;font-size:10px;font-weight:800;padding:4px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.4px}
+.st-confirmed{background:rgba(48,209,88,.16);color:#4ADE80}
+.st-pending{background:rgba(229,169,60,.16);color:#FFCE73}
+.team-roster{margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.05);display:flex;flex-wrap:wrap;gap:5px}
+.roster-chip{font-size:11px;color:#B9BDC5;background:rgba(255,255,255,.05);padding:4px 9px;border-radius:7px}
+
+/* ── Таблица группы ── */
+.group-block{margin-bottom:16px}
+.group-title{font-size:12px;font-weight:800;color:#8B93F5;letter-spacing:.4px;text-transform:uppercase;margin-bottom:8px}
+.standings{width:100%;background:#15171C;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.05)}
+.st-row{display:flex;align-items:center;gap:8px;padding:10px 11px;font-size:12.5px;border-top:1px solid rgba(255,255,255,.04)}
+.st-row:first-child{border-top:none}
+.st-row.head{background:rgba(255,255,255,.03);font-size:10.5px;color:#7C818B;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.st-pos{width:18px;flex-shrink:0;color:#7C818B;font-weight:700;font-variant-numeric:tabular-nums}
+.st-row.qualify .st-pos{color:#4ADE80}
+.st-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.st-num{width:26px;flex-shrink:0;text-align:center;font-variant-numeric:tabular-nums;color:#9BA1AC}
+.st-pts{width:30px;flex-shrink:0;text-align:center;font-weight:800;color:#F5F6F7;font-variant-numeric:tabular-nums}
+
+/* ── Матчи ── */
+.match-card{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:12px;margin-bottom:9px}
+.match-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.match-tag{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#8B93F5;background:rgba(94,106,210,.15);padding:3.5px 8px;border-radius:6px}
+.match-when{font-size:11px;color:#7C818B;font-weight:600}
+.match-teams{display:flex;align-items:center;gap:10px}
+.mt-side{flex:1;min-width:0;font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mt-side.right{text-align:right}
+.mt-side.dim{color:#5C616B;font-weight:500}
+.mt-score{flex-shrink:0;font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;padding:3px 11px;border-radius:9px;background:rgba(255,255,255,.06)}
+.mt-score.pending{font-size:12px;font-weight:700;color:#7C818B;background:transparent}
+.mt-win{color:#4ADE80}
+
+/* ── Кнопки ── */
+.btn{width:100%;height:50px;border:none;border-radius:14px;background:#5E6AD2;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .12s,opacity .12s;font-variant-numeric:tabular-nums}
+.btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.btn-secondary{background:rgba(94,106,210,.12);border:1.5px solid rgba(94,106,210,.35);color:#8B93F5}
+.btn-ghost{background:none;border:none;color:#EC6A5E;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;padding:10px}
+.reg-box{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px;margin-bottom:14px}
+.reg-head{font-size:14px;font-weight:800;margin-bottom:4px}
+.reg-sub{font-size:12.5px;color:#7C818B;margin-bottom:12px;line-height:1.5}
+.reg-actions{display:flex;flex-direction:column;gap:8px}
+.full-note{display:flex;align-items:center;gap:10px;padding:12px 13px;border-radius:12px;background:rgba(236,106,94,.08);border:1px solid rgba(236,106,94,.22);font-size:13px;color:#EC6A5E;font-weight:700}
+
+.empty{text-align:center;padding:32px 14px;color:#5C616B;font-size:13px}
+.empty-icon{font-size:30px;opacity:.35;margin-bottom:7px}
+.error-banner{background:rgba(236,106,94,.12);border:1px solid rgba(236,106,94,.3);color:#EC6A5E;font-size:12.5px;padding:11px 13px;border-radius:11px;margin-bottom:12px}
+
+/* ── Bottom Sheet регистрации ── */
+.sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .28s ease;z-index:60}
+.sheet-backdrop.open{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:61;background:#181A1F;border-radius:20px 20px 0 0;border-top:1px solid rgba(255,255,255,.08);box-shadow:0 -12px 40px rgba(0,0,0,.5);padding:8px 16px calc(16px + env(safe-area-inset-bottom));max-width:440px;margin:0 auto;transform:translateY(100%);transition:transform .34s cubic-bezier(.32,.72,0,1);max-height:92vh;overflow-y:auto}
+.sheet.open{transform:translateY(0)}
+.sheet-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.18);margin:4px auto 14px}
+.sheet-title{font-size:17px;font-weight:800;text-align:center;margin-bottom:4px;letter-spacing:-.2px}
+.sheet-sub{font-size:12.5px;color:#7C818B;text-align:center;margin-bottom:16px}
+.field-label{font-size:11.5px;color:#7C818B;font-weight:700;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px}
+.field{width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,.08);background:#23262D;color:#F5F6F7;font-size:15.5px;font-family:inherit;margin-bottom:14px;min-height:48px}
+.field:focus{outline:none;border-color:#5E6AD2}
+.player-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.player-num{width:24px;flex-shrink:0;font-size:12px;font-weight:800;color:#5E6AD2;text-align:center;font-variant-numeric:tabular-nums}
+.player-row .field{margin-bottom:0;flex:1;min-width:0;font-size:14.5px;padding:11px 12px;min-height:44px}
+.player-del{flex-shrink:0;width:32px;height:32px;border-radius:9px;border:none;background:rgba(236,106,94,.12);color:#EC6A5E;font-size:15px;cursor:pointer}
+.add-player-btn{width:100%;height:42px;border-radius:11px;border:1.5px dashed rgba(94,106,210,.4);background:transparent;color:#8B93F5;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin:4px 0 14px}
+.fee-rows{background:#101116;border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:4px 14px;margin-bottom:14px}
+.fee-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;font-size:13px}
+.fee-row+.fee-row{border-top:1px solid rgba(255,255,255,.07)}
+.fee-label{color:#9BA1AC;font-weight:600}
+.fee-value{font-weight:800;color:#8B93F5;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+
+<div class="t-hero" id="t-hero"></div>
+
+<div class="wrap">
+  <div id="error-banner"></div>
+  <div id="t-body"><div class="empty">Загрузка…</div></div>
+</div>
+
+<div class="sheet-backdrop" id="sheet-backdrop" onclick="closeRegSheet()"></div>
+<div class="sheet" id="reg-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">Регистрация команды</div>
+  <div class="sheet-sub" id="reg-sheet-sub"></div>
+  <label class="field-label">Название команды</label>
+  <input class="field" id="reg-team-name" maxlength="40" placeholder="Например, Барселона">
+  <label class="field-label">Состав игроков</label>
+  <div id="reg-players"></div>
+  <button class="add-player-btn" onclick="addPlayerField()">+ Добавить игрока</button>
+  <div class="fee-rows hidden" id="reg-fee-rows">
+    <div class="fee-row">
+      <span class="fee-label">Взнос за команду</span>
+      <span class="fee-value" id="reg-fee">—</span>
+    </div>
+  </div>
+  <button class="btn" id="reg-submit" onclick="submitRegistration()">Зарегистрировать команду</button>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const userId = params.get("uid");
+const tournamentId = params.get("id");
+
+let DATA = null;
+let activeTab = "overview";
+
+if (window.Telegram && Telegram.WebApp) {
+  Telegram.WebApp.ready();
+  Telegram.WebApp.expand();
+  if (typeof Telegram.WebApp.disableVerticalSwipes === "function") Telegram.WebApp.disableVerticalSwipes();
+}
+
+function haptic(kind) {
+  const h = window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback;
+  if (!h) return;
+  try {
+    if (kind === "success" || kind === "error") h.notificationOccurred(kind);
+    else h.impactOccurred(kind || "light");
+  } catch (e) {}
+}
+
+function goBack() {
+  location.href = "/app" + (userId ? ("?uid=" + userId) : "");
+}
+
+function showError(msg) {
+  document.getElementById("error-banner").innerHTML = `<div class="error-banner">⚠️ ${msg}</div>`;
+  setTimeout(() => { document.getElementById("error-banner").innerHTML = ""; }, 4000);
+}
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function initials(name) {
+  return (String(name || "?").trim().charAt(0) || "?").toUpperCase();
+}
+
+function fmtDate(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  const months = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+  if (!y || !m || !d) return iso;
+  return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1] || ""}`;
+}
+
+function dateRange(a, b) {
+  if (a && b && a !== b) return `${fmtDate(a)} — ${fmtDate(b)}`;
+  return fmtDate(a || b);
+}
+
+// ── Загрузка ────────────────────────────────────────────────────────────────
+async function load() {
+  if (!tournamentId) {
+    document.getElementById("t-body").innerHTML = `<div class="empty">Турнир не указан</div>`;
+    return;
+  }
+  try {
+    const r = await fetch(`/api/tournament?id=${tournamentId}&user_id=${userId || ""}`).then(r => r.json());
+    if (r.error) {
+      document.getElementById("t-body").innerHTML = `<div class="empty">Турнир не найден</div>`;
+      return;
+    }
+    DATA = r;
+    render();
+  } catch (e) {
+    document.getElementById("t-body").innerHTML = `<div class="empty">Ошибка загрузки</div>`;
+  }
+}
+
+function render() {
+  renderHero();
+  renderTabs();
+  renderTabContent();
+}
+
+function renderHero() {
+  const t = DATA.tournament;
+  const media = t.image
+    ? `<img src="data:image/jpeg;base64,${t.image}" alt="">`
+    : `<div class="t-hero-fallback">🏆</div>`;
+  const when = dateRange(t.start_date, t.end_date);
+  const confirmed = DATA.teams.filter(x => x.status === "confirmed").length;
+  document.getElementById("t-hero").innerHTML = `
+    ${media}
+    <div class="t-hero-scrim"></div>
+    <button class="t-back" onclick="goBack()">‹</button>
+    <div class="t-hero-body">
+      <div class="t-title">${esc(t.name)}</div>
+      <div class="t-sub">
+        ${when ? `<span class="t-pill">📅 ${when}</span>` : ""}
+        <span class="t-pill accent">👥 ${confirmed} команд</span>
+        ${DATA.entry_amount ? `<span class="t-pill">💰 ${DATA.entry_amount} ₸</span>` : ""}
+      </div>
+    </div>`;
+}
+
+function renderTabs() {
+  const tabs = [
+    ["overview", "Обзор"],
+    ["teams", "Команды"],
+    ["groups", "Группы"],
+    ["playoff", "Плей-офф"],
+  ];
+  const existing = document.getElementById("t-tabs");
+  const html = `<div class="t-tabs" id="t-tabs">
+    ${tabs.map(([k, label]) => `<button class="t-tab ${activeTab === k ? "active" : ""}" onclick="switchTab('${k}')">${label}</button>`).join("")}
+  </div><div id="tab-content"></div>`;
+  if (!existing) document.getElementById("t-body").innerHTML = html;
+  else {
+    document.querySelectorAll(".t-tab").forEach((el, i) => {
+      el.classList.toggle("active", tabs[i][0] === activeTab);
+    });
+  }
+}
+
+function switchTab(k) {
+  activeTab = k;
+  haptic("light");
+  renderTabs();
+  renderTabContent();
+}
+
+function renderTabContent() {
+  const el = document.getElementById("tab-content");
+  if (!el) return;
+  if (activeTab === "overview") el.innerHTML = overviewHtml();
+  else if (activeTab === "teams") el.innerHTML = teamsHtml();
+  else if (activeTab === "groups") el.innerHTML = groupsHtml();
+  else el.innerHTML = playoffHtml();
+}
+
+// ── Обзор ───────────────────────────────────────────────────────────────────
+function overviewHtml() {
+  const t = DATA.tournament;
+  const rows = [
+    t.location ? ["📍", "Место", esc(t.location)] : null,
+    dateRange(t.start_date, t.end_date) ? ["📅", "Даты", dateRange(t.start_date, t.end_date)] : null,
+    DATA.entry_amount ? ["💰", "Взнос за команду", `${DATA.entry_amount} ₸`] : null,
+    t.team_size ? ["👤", "Игроков в команде", t.team_size] : null,
+    t.max_teams ? ["🏁", "Максимум команд", t.max_teams] : null,
+    t.num_groups ? ["🔢", "Групп", t.num_groups] : null,
+  ].filter(Boolean);
+
+  return `
+    ${registrationHtml()}
+    <div class="t-info">
+      ${rows.map(([i, l, v]) => `
+        <div class="t-info-row">
+          <span class="t-info-icon">${i}</span>
+          <span class="t-info-label">${l}</span>
+          <span class="t-info-value">${v}</span>
+        </div>`).join("")}
+    </div>
+    ${t.description ? `<div class="t-desc">${esc(t.description)}</div>` : ""}`;
+}
+
+// Блок регистрации: своя команда со статусом оплаты либо кнопка записи.
+function registrationHtml() {
+  const t = DATA.tournament;
+  const mine = DATA.my_teams || [];
+
+  if (mine.length) {
+    const m = mine[0];
+    const amount = m.amount || DATA.entry_amount;
+    const confirmed = m.status === "confirmed";
+    const claimed = m.payment_claimed;
+
+    let actions = "";
+    if (!confirmed && !claimed) {
+      const payLabel = amount ? `💳 Оплатить ${amount} ₸` : "💳 Оплатить";
+      actions = `
+        ${t.payment_link
+          ? `<a class="btn" href="${esc(t.payment_link)}" target="_blank" style="display:flex;align-items:center;justify-content:center;text-decoration:none">${payLabel}</a>
+             <button class="btn btn-secondary" onclick="claimPayment(${m.id})">✅ Я оплатил(а)</button>`
+          : `<button class="btn" onclick="claimPayment(${m.id})">${payLabel}</button>`}
+        <button class="btn-ghost" onclick="cancelTeam(${m.id})">Снять команду с турнира</button>`;
+    } else if (!confirmed) {
+      actions = `<button class="btn-ghost" onclick="cancelTeam(${m.id})">Снять команду с турнира</button>`;
+    }
+
+    const statusText = confirmed ? "✅ Команда подтверждена"
+      : claimed ? "🟡 Ждём подтверждения оплаты" : "🟡 Ждёт оплаты";
+
+    return `
+      <div class="reg-box">
+        <div class="reg-head">${esc(m.name)}</div>
+        <div class="reg-sub">${statusText}${m.players.length ? ` · ${m.players.length} игроков` : ""}</div>
+        <div class="reg-actions">${actions}</div>
+      </div>`;
+  }
+
+  const total = DATA.teams.length;
+  const isFull = t.max_teams && total >= Number(t.max_teams);
+  if (isFull) {
+    return `<div class="full-note">🚫 Набран максимум команд (${t.max_teams})</div>`;
+  }
+
+  return `
+    <div class="reg-box">
+      <div class="reg-head">Заявка команды</div>
+      <div class="reg-sub">Впиши название и состав${DATA.entry_amount ? `, взнос — ${DATA.entry_amount} ₸ за команду` : ""}.</div>
+      <button class="btn" onclick="openRegSheet()">🏆 Зарегистрировать команду</button>
+    </div>`;
+}
+
+// ── Команды ─────────────────────────────────────────────────────────────────
+function teamsHtml() {
+  const teams = DATA.teams || [];
+  if (!teams.length) {
+    return `<div class="empty"><div class="empty-icon">👥</div>Пока нет заявок — стань первым</div>`;
+  }
+  return teams.map(t => `
+    <div class="team-card" style="flex-direction:column;align-items:stretch">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div class="team-logo">${initials(t.name)}</div>
+        <div class="team-body">
+          <div class="team-name">${esc(t.name)}</div>
+          <div class="team-meta">Капитан: ${esc(t.captain_name || "—")}${t.group_index != null ? ` · Группа ${t.group_index + 1}` : ""}</div>
+        </div>
+        <span class="team-status ${t.status === "confirmed" ? "st-confirmed" : "st-pending"}">
+          ${t.status === "confirmed" ? "в игре" : "заявка"}
+        </span>
+      </div>
+      ${t.players && t.players.length
+        ? `<div class="team-roster">${t.players.map(p => `<span class="roster-chip">${esc(p.name)}</span>`).join("")}</div>`
+        : ""}
+    </div>`).join("");
+}
+
+// ── Группы ──────────────────────────────────────────────────────────────────
+function groupsHtml() {
+  const st = DATA.standings || {};
+  const keys = Object.keys(st).sort((a, b) => Number(a) - Number(b));
+  if (!keys.length) {
+    return `<div class="empty"><div class="empty-icon">🔢</div>Группы ещё не сформированы<div style="font-size:12px;margin-top:4px">Появятся, когда организатор подтвердит команды</div></div>`;
+  }
+  return keys.map(g => {
+    const rows = st[g];
+    const groupMatches = (DATA.matches || []).filter(m => m.stage === "group" && String(m.group_index) === String(g));
+    return `
+      <div class="group-block">
+        <div class="group-title">Группа ${Number(g) + 1}</div>
+        <div class="standings">
+          <div class="st-row head">
+            <span class="st-pos">#</span>
+            <span class="st-name">Команда</span>
+            <span class="st-num">И</span><span class="st-num">Р</span><span class="st-num">±</span>
+            <span class="st-pts">О</span>
+          </div>
+          ${rows.map((r, i) => `
+            <div class="st-row ${i < 2 ? "qualify" : ""}">
+              <span class="st-pos">${i + 1}</span>
+              <span class="st-name">${esc(r.name)}</span>
+              <span class="st-num">${r.played}</span>
+              <span class="st-num">${r.win}-${r.draw}-${r.loss}</span>
+              <span class="st-num">${r.diff > 0 ? "+" : ""}${r.diff}</span>
+              <span class="st-pts">${r.points}</span>
+            </div>`).join("")}
+        </div>
+        ${groupMatches.length ? `<div style="margin-top:10px">${groupMatches.map(matchHtml).join("")}</div>` : ""}
+      </div>`;
+  }).join("");
+}
+
+// ── Плей-офф ────────────────────────────────────────────────────────────────
+function playoffHtml() {
+  const ms = (DATA.matches || []).filter(m => m.stage === "playoff");
+  if (!ms.length) {
+    return `<div class="empty"><div class="empty-icon">🏆</div>Плей-офф ещё не начался<div style="font-size:12px;margin-top:4px">Сетка появится после группового этапа</div></div>`;
+  }
+  const byRound = {};
+  ms.forEach(m => (byRound[m.round_name || "Плей-офф"] = byRound[m.round_name || "Плей-офф"] || []).push(m));
+  return Object.keys(byRound).map(round => `
+    <div class="group-block">
+      <div class="group-title">${esc(round)}</div>
+      ${byRound[round].map(matchHtml).join("")}
+    </div>`).join("");
+}
+
+function matchHtml(m) {
+  const played = m.status === "finished" && m.score_a != null && m.score_b != null;
+  const when = [fmtDate(m.match_date), m.match_time].filter(Boolean).join(", ");
+  const aWin = played && m.score_a > m.score_b;
+  const bWin = played && m.score_b > m.score_a;
+  const tag = m.stage === "playoff" ? (m.round_name || "Плей-офф") : `Группа ${(m.group_index ?? 0) + 1}`;
+  return `
+    <div class="match-card">
+      <div class="match-top">
+        <span class="match-tag">${esc(tag)}</span>
+        ${when ? `<span class="match-when">${when}</span>` : ""}
+      </div>
+      <div class="match-teams">
+        <span class="mt-side ${m.team_a_name ? "" : "dim"} ${aWin ? "mt-win" : ""}">${esc(m.team_a_name || "Ожидается")}</span>
+        <span class="mt-score ${played ? "" : "pending"}">${played ? `${m.score_a} : ${m.score_b}` : "vs"}</span>
+        <span class="mt-side right ${m.team_b_name ? "" : "dim"} ${bWin ? "mt-win" : ""}">${esc(m.team_b_name || "Ожидается")}</span>
+      </div>
+    </div>`;
+}
+
+// ── Регистрация команды ─────────────────────────────────────────────────────
+function openRegSheet() {
+  if (!userId) { showError("Открой турнир через бота, чтобы зарегистрироваться."); return; }
+  const t = DATA.tournament;
+  const size = Number(t.team_size) || 5;
+  document.getElementById("reg-sheet-sub").textContent =
+    `Состав до ${size} игроков — можно дополнить позже у организатора`;
+  document.getElementById("reg-team-name").value = "";
+  document.getElementById("reg-players").innerHTML = "";
+  for (let i = 0; i < Math.min(size, 5); i++) addPlayerField();
+
+  const feeRows = document.getElementById("reg-fee-rows");
+  if (DATA.entry_amount) {
+    feeRows.classList.remove("hidden");
+    document.getElementById("reg-fee").textContent = `${DATA.entry_amount} ₸`;
+    document.getElementById("reg-submit").textContent = `Зарегистрировать за ${DATA.entry_amount} ₸`;
+  } else {
+    feeRows.classList.add("hidden");
+    document.getElementById("reg-submit").textContent = "Зарегистрировать команду";
+  }
+
+  document.getElementById("sheet-backdrop").classList.add("open");
+  document.getElementById("reg-sheet").classList.add("open");
+  haptic("light");
+}
+
+function closeRegSheet() {
+  document.getElementById("sheet-backdrop").classList.remove("open");
+  document.getElementById("reg-sheet").classList.remove("open");
+}
+
+function addPlayerField() {
+  const box = document.getElementById("reg-players");
+  const n = box.children.length + 1;
+  const row = document.createElement("div");
+  row.className = "player-row";
+  row.innerHTML = `
+    <span class="player-num">${n}</span>
+    <input class="field" maxlength="40" placeholder="Имя игрока">
+    <button class="player-del" onclick="this.parentElement.remove();renumberPlayers()">✕</button>`;
+  box.appendChild(row);
+}
+
+function renumberPlayers() {
+  [...document.getElementById("reg-players").children].forEach((row, i) => {
+    row.querySelector(".player-num").textContent = i + 1;
+  });
+}
+
+async function submitRegistration() {
+  const name = document.getElementById("reg-team-name").value.trim();
+  if (!name) { showError("Впиши название команды"); haptic("error"); return; }
+  const players = [...document.querySelectorAll("#reg-players input")]
+    .map(i => i.value.trim()).filter(Boolean);
+
+  const btn = document.getElementById("reg-submit");
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/tournament/register", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, tournament_id: Number(tournamentId), team_name: name, players })
+    }).then(r => r.json());
+
+    if (!res.ok) { showError(res.error || "Не удалось зарегистрировать"); haptic("error"); }
+    else {
+      haptic("success");
+      closeRegSheet();
+      // Взнос платный — сразу ведём на оплату, сумма уже известна.
+      const link = DATA.tournament.payment_link;
+      if (res.amount && link) {
+        const tw = window.Telegram && Telegram.WebApp;
+        if (tw && typeof tw.openLink === "function") tw.openLink(link);
+        else window.open(link, "_blank");
+      }
+      activeTab = "overview";
+      await load();
+    }
+  } catch (e) {
+    showError("Ошибка сети");
+  }
+  btn.disabled = false;
+}
+
+async function claimPayment(teamId) {
+  haptic("medium");
+  try {
+    const res = await fetch("/api/tournament/claim-payment", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, team_id: teamId })
+    }).then(r => r.json());
+    if (res.ok) { haptic("success"); await load(); }
+    else showError(res.error || "Не удалось отправить заявку");
+  } catch (e) { showError("Ошибка сети"); }
+}
+
+async function cancelTeam(teamId) {
+  if (!confirm("Снять команду с турнира? Взнос не возвращается автоматически.")) return;
+  try {
+    const res = await fetch("/api/tournament/cancel-team", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, team_id: teamId })
+    }).then(r => r.json());
+    if (res.ok) { haptic("success"); await load(); }
+    else showError(res.error || "Не удалось снять команду");
+  } catch (e) { showError("Ошибка сети"); }
+}
+
+load();
+</script>
+</body>
+</html>

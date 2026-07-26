@@ -154,6 +154,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .news-modal-card .nm-meta{display:flex;align-items:center;gap:8px;margin-bottom:11px}
 .news-modal-card .nm-title{font-size:21px;font-weight:800;margin:0 0 12px;line-height:1.26;letter-spacing:-.3px;color:#F5F6F7}
 .news-modal-card .nm-text{font-size:14.5px;color:#C8CBD1;line-height:1.68;white-space:pre-wrap}
+/* Переход на страницу турнира из новости категории «Турнир» */
+.nm-tourney-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:50px;margin-top:18px;border-radius:14px;background:#5E6AD2;color:#fff;font-size:15px;font-weight:700;text-decoration:none;transition:transform .12s}
+.nm-tourney-btn:active{transform:scale(.98)}
+.nm-arrow{font-size:16px}
 
 
 /* ── профиль ── */
@@ -849,6 +853,13 @@ function openNewsModal(i) {
   const a = newsCache[i];
   if (!a) return;
   const date = formatNewsDate(a.created_at, a.event_date);
+  // Новость про турнир ведёт на его страницу: составы, группы, расписание,
+  // регистрация команды. Кнопка появляется, только если турнир привязан.
+  const tourneyBtn = a.tournament_id
+    ? `<a class="nm-tourney-btn" href="/tournament?id=${a.tournament_id}${userId ? `&uid=${userId}` : ""}">
+         🏆 Открыть турнир <span class="nm-arrow">→</span>
+       </a>`
+    : "";
   document.getElementById("news-modal-body").innerHTML = `
     ${a.image ? `<img class="nm-photo" src="data:image/jpeg;base64,${a.image}">` : ""}
     <div class="nm-body">
@@ -858,6 +869,7 @@ function openNewsModal(i) {
       </div>
       <div class="nm-title">${a.title}</div>
       <div class="nm-text">${a.text || ""}</div>
+      ${tourneyBtn}
     </div>`;
   document.getElementById("news-modal").classList.remove("hidden");
 }

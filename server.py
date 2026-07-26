@@ -17,6 +17,7 @@ from routes.announcements import AnnouncementsRoutesMixin
 from routes.scanner import ScannerRoutesMixin
 from routes.static_pages import StaticRoutesMixin
 from routes.match_report import MatchReportRoutesMixin
+from routes.tournaments import TournamentRoutesMixin
 
 
 # путь → имя метода на Handler'е. Смысл и поведение каждого эндпоинта не
@@ -36,6 +37,17 @@ POST_ROUTES = {
     "/api/games/cancel-signup":         "route_post_games_cancel_signup",
     "/api/games/claim-payment":         "route_post_games_claim_payment",
     "/api/games/claim-invite":          "route_post_games_claim_invite",
+    "/api/tournament/register":         "route_post_tournament_register",
+    "/api/tournament/claim-payment":    "route_post_tournament_claim_payment",
+    "/api/tournament/cancel-team":      "route_post_tournament_cancel_team",
+    "/api/admin/save-tournament":       "route_post_admin_save_tournament",
+    "/api/admin/delete-tournament":     "route_post_admin_delete_tournament",
+    "/api/admin/confirm-team":          "route_post_admin_confirm_team",
+    "/api/admin/set-team-group":        "route_post_admin_set_team_group",
+    "/api/admin/distribute-groups":     "route_post_admin_distribute_groups",
+    "/api/admin/save-tournament-match": "route_post_admin_save_tournament_match",
+    "/api/admin/tournament-match-result": "route_post_admin_tournament_match_result",
+    "/api/admin/delete-tournament-match": "route_post_admin_delete_tournament_match",
     "/api/scanner/analyze":             "route_post_scanner_analyze",
     "/api/games/chat/send":             "route_post_games_chat_send",
     "/api/admin/confirm-signup":        "route_post_admin_confirm_signup",
@@ -64,6 +76,10 @@ GET_ROUTES = {
     "/api/games":               "route_get_games",
     "/api/games/chat":          "route_get_games_chat",
     "/api/games/invites":       "route_get_games_invites",
+    "/api/tournaments":         "route_get_tournaments",
+    "/api/tournament":          "route_get_tournament",
+    "/api/admin/tournaments":   "route_get_admin_tournaments",
+    "/tournament":              "route_get_tournament_page",
     "/api/admin/game-templates":"route_get_admin_game_templates",
     "/api/admin/games":         "route_get_admin_games",
     "/api/admin/users":         "route_get_admin_users",
@@ -93,6 +109,7 @@ class Handler(
     ScannerRoutesMixin,
     StaticRoutesMixin,
     MatchReportRoutesMixin,
+    TournamentRoutesMixin,
     BaseHTTPRequestHandler,
 ):
     def log_message(self, *args):

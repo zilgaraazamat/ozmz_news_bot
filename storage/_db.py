@@ -289,6 +289,83 @@ def init_db():
                 pass
 
 
+        # ── Турниры ────────────────────────────────────────────────────────
+        # Турнир привязывается к новости категории «Турнир» (announcement_id):
+        # из ленты новостей по нему открывается страница турнира. Формат —
+        # групповой этап + плей-офф. Команды регистрирует капитан (название +
+        # состав игроков), участие платное: как и в играх, оплата проходит
+        # цикл «оплатил → админ подтвердил», и только подтверждённые команды
+        # попадают в группы и таблицу.
+        c.execute("""CREATE TABLE IF NOT EXISTS tournaments(
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            announcement_id INTEGER,
+            name            TEXT NOT NULL,
+            description     TEXT,
+            location        TEXT,
+            start_date      TEXT,
+            end_date        TEXT,
+            entry_fee       TEXT,
+            payment_link    TEXT,
+            max_teams       INTEGER,
+            team_size       INTEGER,
+            num_groups      INTEGER DEFAULT 2,
+            image           TEXT,
+            status          TEXT DEFAULT 'active',
+            created_by      TEXT,
+            created_at      TEXT
+        )""")
+
+        # Команда-участник. group_index — номер группы (NULL, пока не разведены).
+        c.execute("""CREATE TABLE IF NOT EXISTS tournament_teams(
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            tournament_id   INTEGER NOT NULL,
+            captain_id      TEXT,
+            captain_name    TEXT,
+            name            TEXT NOT NULL,
+            amount          INTEGER,
+            payment_claimed INTEGER DEFAULT 0,
+            status          TEXT DEFAULT 'pending',
+            group_index     INTEGER,
+            created_at      TEXT
+        )""")
+
+        # Состав команды: капитан вписывает игроков при регистрации.
+        c.execute("""CREATE TABLE IF NOT EXISTS tournament_team_players(
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            team_id  INTEGER NOT NULL,
+            name     TEXT NOT NULL,
+            user_id  TEXT,
+            position INTEGER DEFAULT 0
+        )""")
+
+        # Матч турнира. stage: 'group' (тогда важен group_index) либо 'playoff'
+        # (тогда важен round_name: «1/4 финала», «Полуфинал», «Финал»).
+        # team_a_id/team_b_id могут быть NULL в плей-офф, пока пары не известны.
+        c.execute("""CREATE TABLE IF NOT EXISTS tournament_matches(
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            tournament_id INTEGER NOT NULL,
+            stage         TEXT DEFAULT 'group',
+            group_index   INTEGER,
+            round_name    TEXT,
+            team_a_id     INTEGER,
+            team_b_id     INTEGER,
+            score_a       INTEGER,
+            score_b       INTEGER,
+            match_date    TEXT,
+            match_time    TEXT,
+            location      TEXT,
+            status        TEXT DEFAULT 'scheduled',
+            sort_order    INTEGER DEFAULT 0,
+            created_at    TEXT
+        )""")
+
+        # Ссылка новости на турнир: по анонсу категории «Турнир» открывается
+        # страница турнира. Колонка добавляется миграцией к существующей таблице.
+        try:
+            c.execute("ALTER TABLE announcements ADD COLUMN tournament_id INTEGER")
+        except sqlite3.OperationalError:
+            pass
+
         # ── Индексы ────────────────────────────────────────────────────────
         # Без них SQLite делает полный скан таблицы на каждый запрос. Больнее
         # всего это бьёт по /api/games: он опрашивается каждые 4 секунды и на
@@ -305,6 +382,11 @@ def init_db():
             "CREATE INDEX IF NOT EXISTS idx_mps_user ON match_player_stats(user_id)",
             "CREATE INDEX IF NOT EXISTS idx_chat_game ON game_chat(game_id)",
             "CREATE INDEX IF NOT EXISTS idx_games_status ON games(status)",
+            "CREATE INDEX IF NOT EXISTS idx_tteams_tournament ON tournament_teams(tournament_id)",
+            "CREATE INDEX IF NOT EXISTS idx_tteams_captain ON tournament_teams(captain_id)",
+            "CREATE INDEX IF NOT EXISTS idx_tplayers_team ON tournament_team_players(team_id)",
+            "CREATE INDEX IF NOT EXISTS idx_tmatches_tournament ON tournament_matches(tournament_id)",
+            "CREATE INDEX IF NOT EXISTS idx_tournaments_announcement ON tournaments(announcement_id)",
         ]:
             try:
                 c.execute(idx_sql)

@@ -32,13 +32,14 @@ class AnnouncementsRoutesMixin:
                 self._json({"ok": False, "error": "Заполни заголовок и текст"})
                 return
 
-            create_announcement(title, text, admin_id, image, category, event_date, published)
+            # id нужен клиенту, чтобы связать новость с турниром (категория «Турнир»)
+            ann_id = create_announcement(title, text, admin_id, image, category, event_date, published)
 
             if published:
                 group_text = f"📢 <b>{category}: {title}</b>\n\n{text}"
                 tg_post(CHAT_ID, "sendMessage", text=group_text, parse_mode="HTML")
 
-            self._json({"ok": True})
+            self._json({"ok": True, "id": ann_id})
         except Exception as e:
             print(f"  [WARN] create-announcement: {e}")
             self.send_response(400); self.end_headers()
