@@ -87,6 +87,10 @@ class AdminGamesRoutesMixin:
             default_time = (data.get("default_time") or "").strip() or None
             price        = (data.get("price") or "").strip() or None
             max_players  = data.get("max_players") or None
+            # Разбивка по командам сохраняется в шаблоне: при создании игры
+            # админу остаётся поменять только дату.
+            num_teams        = data.get("num_teams") or None
+            players_per_team = data.get("players_per_team") or None
             duration     = data.get("duration") or None
             description  = (data.get("description") or "").strip() or None
             payment_link = (data.get("payment_link") or "").strip() or None
@@ -100,7 +104,7 @@ class AdminGamesRoutesMixin:
 
             template_id = create_game_template(name, field, address, default_time, price,
                                                  max_players, duration, description, payment_link,
-                                                 image, admin_id)
+                                                 image, admin_id, num_teams, players_per_team)
             self._json({"ok": True, "id": template_id})
         except Exception as e:
             print(f"  [WARN] create-game-template: {e}")
@@ -126,6 +130,10 @@ class AdminGamesRoutesMixin:
             default_time = (data.get("default_time") or "").strip() or None
             price        = (data.get("price") or "").strip() or None
             max_players  = data.get("max_players") or None
+            # Разбивка по командам сохраняется в шаблоне: при создании игры
+            # админу остаётся поменять только дату.
+            num_teams        = data.get("num_teams") or None
+            players_per_team = data.get("players_per_team") or None
             duration     = data.get("duration") or None
             description  = (data.get("description") or "").strip() or None
             payment_link = (data.get("payment_link") or "").strip() or None
@@ -138,7 +146,8 @@ class AdminGamesRoutesMixin:
                 return
 
             update_game_template(template_id, name, field, address, default_time, price,
-                                  max_players, duration, description, payment_link, image)
+                                  max_players, duration, description, payment_link, image,
+                                  num_teams, players_per_team)
             self._json({"ok": True})
         except Exception as e:
             print(f"  [WARN] update-game-template: {e}")

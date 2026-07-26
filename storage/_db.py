@@ -126,6 +126,15 @@ def init_db():
             created_at   TEXT,
             updated_at   TEXT
         )""")
+        # Разбивка по командам в шаблоне: сколько команд и сколько игроков в
+        # каждой. Раньше шаблон нёс только max_players, и админу приходилось
+        # заново задавать состав при каждой игре — хотя для одного и того же
+        # поля он всегда одинаковый. Меняется от игры к игре только дата.
+        for col in ("num_teams", "players_per_team"):
+            try:
+                c.execute(f"ALTER TABLE game_templates ADD COLUMN {col} INTEGER")
+            except sqlite3.OperationalError:
+                pass
         # Примеры шаблонов при самом первом запуске — чтобы раздел не выглядел
         # пустым и админ сразу видел, как это работает. Только если шаблонов
         # ещё вообще не было (не подставляем повторно, если админ их удалил).
@@ -279,3 +288,33 @@ def init_db():
             except sqlite3.OperationalError:
                 pass
 
+
+        # ── Индексы ────────────────────────────────────────────────────────
+        # Без них SQLite делает полный скан таблицы на каждый запрос. Больнее
+        # всего это бьёт по /api/games: он опрашивается каждые 4 секунды и на
+        # каждую игру дёргает записи, составы и статистику.
+        # Покрываем ровно те колонки, по которым идёт фильтрация в WHERE.
+        for idx_sql in [
+            "CREATE INDEX IF NOT EXISTS idx_signups_game ON game_signups(game_id)",
+            "CREATE INDEX IF NOT EXISTS idx_signups_game_user ON game_signups(game_id, user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_signups_user ON game_signups(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_teams_game ON game_teams(game_id)",
+            "CREATE INDEX IF NOT EXISTS idx_invites_signup ON game_invites(signup_id)",
+            "CREATE INDEX IF NOT EXISTS idx_invites_game ON game_invites(game_id)",
+            "CREATE INDEX IF NOT EXISTS idx_mps_game ON match_player_stats(game_id)",
+            "CREATE INDEX IF NOT EXISTS idx_mps_user ON match_player_stats(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_chat_game ON game_chat(game_id)",
+            "CREATE INDEX IF NOT EXISTS idx_games_status ON games(status)",
+        ]:
+            try:
+                c.execute(idx_sql)
+            except sqlite3.OperationalError:
+                pass
+
+        # WAL: чтение не блокируется записью — бот пишет в БД параллельно с
+        # тем, как приложение её читает. Плюс меньше fsync на Railway Volume.
+        try:
+            c.execute("PRAGMA journal_mode=WAL")
+            c.execute("PRAGMA synchronous=NORMAL")
+        except sqlite3.OperationalError:
+            pass

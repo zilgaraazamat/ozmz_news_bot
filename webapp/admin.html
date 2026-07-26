@@ -352,6 +352,10 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:#5E6AD2;backgr
     <div class="section-card">
       <div class="fs-title">👥 Состав игры</div>
       <div class="row2">
+        <div><label>Команд</label><input id="t-num-teams" type="number" min="1" placeholder="2"></div>
+        <div><label>Игроков в команде</label><input id="t-players-per-team" type="number" min="1" placeholder="8"></div>
+      </div>
+      <div class="row2">
         <div><label>Игроков всего</label><input id="t-max-players" type="number" min="1" placeholder="16"></div>
         <div><label>Длительность, мин</label><input id="t-duration" type="number" min="1" placeholder="90"></div>
       </div>
@@ -1355,6 +1359,9 @@ function applyTemplate(id) {
   document.getElementById("f-time").value = t.default_time || "";
   document.getElementById("f-location").value = [t.field, t.address].filter(Boolean).join(", ");
   document.getElementById("f-num-players").value = t.max_players || "";
+  // Разбивка по командам тоже приходит из шаблона — менять остаётся только дату
+  if (t.num_teams) document.getElementById("f-num-teams").value = t.num_teams;
+  if (t.players_per_team) document.getElementById("f-players-per-team").value = t.players_per_team;
   document.getElementById("f-price").value = t.price || "";
   document.getElementById("f-payment-link").value = t.payment_link || "";
 
@@ -1396,7 +1403,9 @@ function renderTemplatesList() {
           </div>
           <div class="news-card-meta">
             ${t.price ? `<span>💰 ${t.price}</span>` : ""}
-            ${t.max_players ? `<span>👥 ${t.max_players}</span>` : ""}
+            ${(t.num_teams && t.players_per_team)
+                ? `<span>🏆 ${t.num_teams}×${t.players_per_team}</span>`
+                : (t.max_players ? `<span>👥 ${t.max_players}</span>` : "")}
             ${t.duration ? `<span>⏱ ${t.duration} мин</span>` : ""}
           </div>
         </div>
@@ -1422,6 +1431,8 @@ function openTemplateEditor(id) {
   document.getElementById("t-field").value = t ? (t.field || "") : "";
   document.getElementById("t-address").value = t ? (t.address || "") : "";
   document.getElementById("t-max-players").value = t ? (t.max_players || "") : "";
+  document.getElementById("t-num-teams").value = t ? (t.num_teams || "") : "";
+  document.getElementById("t-players-per-team").value = t ? (t.players_per_team || "") : "";
   document.getElementById("t-duration").value = t ? (t.duration || "") : "";
   document.getElementById("t-price").value = t ? (t.price || "") : "";
   document.getElementById("t-payment-link").value = t ? (t.payment_link || "") : "https://pay.kaspi.kz/pay/ybsrtfje";
@@ -1451,6 +1462,8 @@ async function saveTemplate() {
     default_time: document.getElementById("t-default-time").value.trim(),
     price: document.getElementById("t-price").value.trim(),
     max_players: document.getElementById("t-max-players").value.trim(),
+    num_teams: document.getElementById("t-num-teams").value.trim(),
+    players_per_team: document.getElementById("t-players-per-team").value.trim(),
     duration: document.getElementById("t-duration").value.trim(),
     description: document.getElementById("t-description").value.trim(),
     payment_link: document.getElementById("t-payment-link").value.trim(),
