@@ -279,6 +279,67 @@ def get_matches(tournament_id):
 
 # ── Турнирная таблица ───────────────────────────────────────────────────────
 
+def get_champion(tournament_id):
+    """Чемпион турнира — победитель сыгранного финала.
+
+    Ничего не хранится: смотрим матч плей-офф, у которого в названии раунда
+    есть «Финал» (но не «3-е место» — это матч за бронзу), и берём команду
+    с большим счётом. None, пока финал не сыгран или закончился вничью
+    (в этом случае организатор доигрывает/правит счёт).
+    """
+    matches = get_matches(tournament_id)
+    finals = [m for m in matches
+              if m["stage"] == "playoff"
+              # именно финал, а не «1/4 финала» и не «Матч за 3-е место»
+              and str(m.get("round_name") or "").strip().lower() == "финал"
+              and m["status"] == "finished"
+              and m["score_a"] is not None and m["score_b"] is not None]
+    if not finals:
+        return None
+    f = finals[-1]
+    if f["score_a"] == f["score_b"]:
+        return None
+    win_id = f["team_a_id"] if f["score_a"] > f["score_b"] else f["team_b_id"]
+    lose_id = f["team_b_id"] if f["score_a"] > f["score_b"] else f["team_a_id"]
+    names = {m["team_a_id"]: m["team_a_name"] for m in matches}
+    names.update({m["team_b_id"]: m["team_b_name"] for m in matches})
+    return {
+        "team_id": win_id,
+        "name": names.get(win_id),
+        "runner_up_id": lose_id,
+        "runner_up_name": names.get(lose_id),
+        "score": f"{max(f['score_a'], f['score_b'])}:{min(f['score_a'], f['score_b'])}",
+        "final_date": f.get("match_date"),
+    }
+
+
+def get_tournaments_overview():
+    """Список всех турниров для меню: с числом команд, чемпионом и признаком
+    завершённости. Завершённым считается турнир, у которого сыгран финал
+    (есть чемпион) либо админ вручную перевёл его в архив (status='finished').
+    """
+    out = []
+    for t in get_tournaments():
+        champion = get_champion(t["id"])
+        teams = get_teams(t["id"], only_confirmed=True)
+        matches = get_matches(t["id"])
+        played = [m for m in matches if m["status"] == "finished"]
+        t = dict(t)
+        t["champion"] = champion
+        t["teams_count"] = len(teams)
+        t["matches_total"] = len(matches)
+        t["matches_played"] = len(played)
+        t["is_finished"] = bool(champion) or t.get("status") == "finished"
+        out.append(t)
+    return out
+
+
+def set_tournament_status(tournament_id, status):
+    """Архивирование/возврат турнира в активные ('finished' | 'active')."""
+    with _lock, _conn() as c:
+        c.execute("UPDATE tournaments SET status=? WHERE id=?", (status, tournament_id))
+
+
 def group_standings(tournament_id):
     """Таблицы групп, посчитанные из сыгранных матчей группового этапа.
 

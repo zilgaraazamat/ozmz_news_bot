@@ -48,7 +48,7 @@ from .tournaments import (
     register_team, get_teams, get_team, get_my_teams, claim_team_payment,
     confirm_team, cancel_team, set_team_group, autodistribute_groups,
     create_match, update_match, set_match_result, delete_match, get_matches,
-    group_standings,
+    group_standings, get_champion, get_tournaments_overview, set_tournament_status,
 )
 
 from .games import (
@@ -157,5 +157,5 @@ __all__ = [
     "register_team", "get_teams", "get_team", "get_my_teams", "claim_team_payment",
     "confirm_team", "cancel_team", "set_team_group", "autodistribute_groups",
     "create_match", "update_match", "set_match_result", "delete_match", "get_matches",
-    "group_standings",
+    "group_standings", "get_champion", "get_tournaments_overview", "set_tournament_status",
 ]

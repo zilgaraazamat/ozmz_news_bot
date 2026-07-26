@@ -76,6 +76,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .mt-score.pending{font-size:12px;font-weight:700;color:#7C818B;background:transparent}
 .mt-win{color:#4ADE80}
 
+/* ── Чемпион ── */
+.champ-banner{text-align:center;padding:20px 16px;margin-top:16px;border-radius:18px;background:linear-gradient(160deg,rgba(229,169,60,.18),rgba(229,169,60,.05));border:1px solid rgba(229,169,60,.28)}
+.champ-cup{font-size:40px;margin-bottom:6px;animation:cup-in .5s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes cup-in{0%{transform:scale(.5) rotate(-12deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
+.champ-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#C79A3C}
+.champ-name{font-size:22px;font-weight:800;color:#FFCE73;margin-top:5px;letter-spacing:-.3px}
+.champ-final{font-size:12px;color:#9BA1AC;margin-top:6px}
+
 /* ── Кнопки ── */
 .btn{width:100%;height:50px;border:none;border-radius:14px;background:#5E6AD2;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .12s,opacity .12s;font-variant-numeric:tabular-nums}
 .btn:active{transform:scale(.98)}
@@ -280,6 +288,15 @@ function renderTabContent() {
 // ── Обзор ───────────────────────────────────────────────────────────────────
 function overviewHtml() {
   const t = DATA.tournament;
+  // Турнир сыгран — вверху обзора показываем чемпиона.
+  const c = DATA.champion;
+  const champBlock = c ? `
+    <div class="champ-banner">
+      <div class="champ-cup">🏆</div>
+      <div class="champ-label">Чемпион турнира</div>
+      <div class="champ-name">${esc(c.name || "—")}</div>
+      ${c.runner_up_name ? `<div class="champ-final">Финал ${esc(c.score)} против ${esc(c.runner_up_name)}</div>` : ""}
+    </div>` : "";
   const rows = [
     t.location ? ["📍", "Место", esc(t.location)] : null,
     dateRange(t.start_date, t.end_date) ? ["📅", "Даты", dateRange(t.start_date, t.end_date)] : null,
@@ -290,6 +307,7 @@ function overviewHtml() {
   ].filter(Boolean);
 
   return `
+    ${champBlock}
     ${registrationHtml()}
     <div class="t-info">
       ${rows.map(([i, l, v]) => `

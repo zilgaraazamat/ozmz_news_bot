@@ -12,6 +12,7 @@ from storage import (
     confirm_team, cancel_team, set_team_group, autodistribute_groups,
     create_match, update_match, set_match_result, delete_match, get_matches,
     group_standings, get_profile, display_name_from_profile,
+    get_champion, get_tournaments_overview, set_tournament_status,
 )
 
 _MAX_PLAYERS_PER_TEAM = 30
@@ -20,7 +21,16 @@ _MAX_PLAYERS_PER_TEAM = 30
 class TournamentRoutesMixin:
     # ── Публичное ───────────────────────────────────────────────────────────
     def route_get_tournaments(self, q):
-        self._json({"tournaments": get_tournaments(only_active=True)})
+        """Меню турниров: все турниры с числом команд и чемпионом.
+        Клиент сам делит их на текущие и завершённые по is_finished —
+        так история и активные турниры приходят одним запросом."""
+        items = get_tournaments_overview()
+        # Обложки в списке не нужны: они тяжёлые (base64), а карточка меню
+        # показывает только название, даты и чемпиона.
+        for t in items:
+            t.pop("image", None)
+            t.pop("description", None)
+        self._json({"tournaments": items})
 
     def route_get_tournament(self, q):
         """Полная выдача по турниру: сам турнир, команды, матчи, таблицы групп.
@@ -40,6 +50,7 @@ class TournamentRoutesMixin:
         standings = group_standings(tid)
         self._json({
             "tournament": t,
+            "champion": get_champion(tid),
             "entry_amount": entry_fee_amount(t),
             "teams": teams,
             "matches": get_matches(tid),
@@ -223,6 +234,22 @@ class TournamentRoutesMixin:
             self._json({"ok": True})
         except Exception as e:
             print(f"  [WARN] admin/delete-tournament: {e}")
+            self.send_response(400); self.end_headers()
+
+    def route_post_admin_set_tournament_status(self, body):
+        """Перевести турнир в архив или обратно в активные."""
+        try:
+            data = json.loads(body)
+            if not self._require_admin(data):
+                return
+            status = data.get("status") or "active"
+            if status not in ("active", "finished"):
+                self._json({"ok": False, "error": "bad_status"})
+                return
+            set_tournament_status(data.get("id"), status)
+            self._json({"ok": True})
+        except Exception as e:
+            print(f"  [WARN] admin/set-tournament-status: {e}")
             self.send_response(400); self.end_headers()
 
     def route_post_admin_confirm_team(self, body):

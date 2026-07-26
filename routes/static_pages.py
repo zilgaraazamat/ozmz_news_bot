@@ -30,6 +30,9 @@ class StaticRoutesMixin:
     def route_get_tournament_page(self, q):
         self._file("webapp/tournament.html", "text/html; charset=utf-8")
 
+    def route_get_tournaments_page(self, q):
+        self._file("webapp/tournaments.html", "text/html; charset=utf-8")
+
     def route_get_logo(self, q):
         self._file("webapp/logo.jpg", "image/jpeg")
 

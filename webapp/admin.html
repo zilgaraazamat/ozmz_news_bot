@@ -1666,6 +1666,9 @@ function renderTournamentsList() {
       <div class="news-card-actions">
         <button class="mini-btn" onclick="openTournamentManage(${t.id})">Команды и матчи</button>
         <button class="mini-btn" onclick="openTournamentEditor(${t.id})">Изменить</button>
+        <button class="mini-btn" onclick="toggleTournamentArchive(${t.id}, '${t.status === "finished" ? "active" : "finished"}')">
+          ${t.status === "finished" ? "В активные" : "В архив"}
+        </button>
         <button class="mini-btn danger" onclick="deleteTournament(${t.id})">Удалить</button>
       </div>
     </div>`).join("");
@@ -1739,6 +1742,19 @@ async function saveTournament() {
     banner.innerHTML = `<div class="error-banner">⚠️ Ошибка сети</div>`;
   }
   btn.removeAttribute("disabled");
+}
+
+// Архивация: турнир уходит во вкладку «История» в меню турниров.
+// Турнир с сыгранным финалом попадает туда автоматически (есть чемпион),
+// эта кнопка — для случаев, когда финала не было (отменён, свёрнут).
+async function toggleTournamentArchive(id, status) {
+  try {
+    const res = await fetch("/api/admin/set-tournament-status", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, id, status })
+    }).then(r => r.json());
+    if (res.ok) loadTournamentsList();
+  } catch (e) {}
 }
 
 async function deleteTournament(id) {
