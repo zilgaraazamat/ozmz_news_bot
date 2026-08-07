@@ -56,6 +56,7 @@ from .games import (
     mark_game_completed, get_games_played_count,
     create_game, get_all_games, cancel_game, delete_game, get_active_games,
     get_history_games, get_game, get_completed_match_dates, get_games_awaiting_results,
+    get_games_played_and_dates_bulk,
 )
 
 from .leaderboards import get_leaderboard, CATEGORIES as LEADERBOARD_CATEGORIES
@@ -97,7 +98,7 @@ from .match_stats import (
     STAT_FIELDS,
     record_match_stat, get_match_stats, get_player_match_stats,
     get_player_stat_in_match, delete_match_stats, get_career_totals,
-    normalize_player_stats, record_match_stats_bulk,
+    normalize_player_stats, record_match_stats_bulk, get_career_totals_bulk,
 )
 
 from .match_completion import complete_match
@@ -128,6 +129,7 @@ __all__ = [
     "mark_game_completed", "get_games_played_count",
     "create_game", "get_all_games", "cancel_game", "delete_game", "get_active_games",
     "get_history_games", "get_game", "get_completed_match_dates", "get_games_awaiting_results",
+    "get_games_played_and_dates_bulk",
     "get_leaderboard", "LEADERBOARD_CATEGORIES",
     "create_game_template", "get_game_templates", "get_game_template",
     "update_game_template", "delete_game_template",
@@ -142,7 +144,7 @@ __all__ = [
     "STAT_FIELDS",
     "record_match_stat", "get_match_stats", "get_player_match_stats",
     "get_player_stat_in_match", "delete_match_stats", "get_career_totals",
-    "normalize_player_stats", "record_match_stats_bulk",
+    "normalize_player_stats", "record_match_stats_bulk", "get_career_totals_bulk",
     "complete_match",
     "get_match_report",
     "get_player_stats", "get_players_stats_bulk",

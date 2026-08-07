@@ -3,7 +3,7 @@
 эндпоинтов живёт в routes/* — этот файл только связывает всё воедино и
 поднимает сервер (см. run()/start_background(), которые вызывает bot.py)."""
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 from config import PORT
 from routes.base import BaseRoutesMixin
@@ -151,7 +151,13 @@ class Handler(
 
 
 def run():
-    httpd = HTTPServer(("0.0.0.0", PORT), Handler)
+    # ThreadingHTTPServer — обычный HTTPServer обрабатывает запросы строго по
+    # одному: пока идёт /api/games (10+ запросов к БД на карточку), остальные
+    # клиенты (в т.ч. частый поллинг чата/баттла) просто ждут в очереди. При
+    # нескольких открытых мини-аппах это и ощущается как подвисание. Каждый
+    # запрос теперь обрабатывается в своём потоке; общий доступ к SQLite и так
+    # уже защищён блокировкой в storage/_db.py, так что это безопасно.
+    httpd = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"  Admin panel: http://0.0.0.0:{PORT}")
     httpd.serve_forever()
 

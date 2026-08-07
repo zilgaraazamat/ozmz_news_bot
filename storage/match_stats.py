@@ -184,6 +184,27 @@ def get_career_totals(user_id):
     return {"matches_recorded": matches, "total_goals": total_goals, "mvp_count": mvp_count}
 
 
+def get_career_totals_bulk(user_ids):
+    """То же, что get_career_totals(), сразу для нескольких игроков одним
+    GROUP BY вместо отдельного запроса на каждого — см. docstring
+    get_games_played_and_dates_bulk() в storage/games.py про то, зачем."""
+    user_ids = [str(u) for u in user_ids if u]
+    if not user_ids:
+        return {}
+    placeholders = ",".join("?" * len(user_ids))
+    with _lock, _conn() as c:
+        rows = c.execute(f"""
+            SELECT user_id, COUNT(*), COALESCE(SUM(goals), 0), COALESCE(SUM(is_mvp), 0)
+            FROM match_player_stats
+            WHERE user_id IN ({placeholders})
+            GROUP BY user_id
+        """, user_ids).fetchall()
+    result = {u: {"matches_recorded": 0, "total_goals": 0, "mvp_count": 0} for u in user_ids}
+    for user_id, matches, total_goals, mvp_count in rows:
+        result[user_id] = {"matches_recorded": matches, "total_goals": total_goals, "mvp_count": mvp_count}
+    return result
+
+
 def _row_to_dict(row):
     keys = ["id", "game_id", "user_id", *STAT_FIELDS, "created_at"]
     d = dict(zip(keys, row))

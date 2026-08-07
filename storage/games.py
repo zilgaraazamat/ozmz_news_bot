@@ -59,6 +59,39 @@ def get_completed_match_dates(user_id):
     return [g["date"] for g in _get_completed_confirmed_games(user_id) if g["date"]]
 
 
+def get_games_played_and_dates_bulk(user_ids):
+    """То же, что get_games_played_count() + get_completed_match_dates(), но
+    сразу для нескольких игроков ОДНИМ запросом к БД вместо двух отдельных
+    запросов на каждого. Используется get_players_stats_bulk() (см.
+    storage/player_stats.py) — она обслуживает /api/games, который опрашивается
+    каждые несколько секунд с каждого открытого приложения, поэтому N игроков
+    в списке игр раньше означали до 2×N отдельных SQLite-соединений на один
+    такой запрос.
+
+    Возвращает {user_id: {"count": int, "dates": [str, ...]}}."""
+    user_ids = [str(u) for u in user_ids if u]
+    if not user_ids:
+        return {}
+    placeholders = ",".join("?" * len(user_ids))
+    with _lock, _conn() as c:
+        rows = c.execute(f"""
+            SELECT DISTINCT s.user_id, g.id, g.game_date, g.game_time, g.status
+            FROM game_signups s JOIN games g ON g.id = s.game_id
+            WHERE s.user_id IN ({placeholders}) AND s.status='confirmed'
+        """, user_ids).fetchall()
+
+    by_user = {u: [] for u in user_ids}
+    for user_id, game_id, d, t, status in rows:
+        game = {"id": game_id, "date": d, "time": t, "status": status}
+        if is_match_completed(game):
+            by_user[user_id].append(game)
+
+    return {
+        u: {"count": len(games), "dates": [g["date"] for g in games if g["date"]]}
+        for u, games in by_user.items()
+    }
+
+
 def create_game(game_date, game_time, location, num_players, num_teams,
                  players_per_team, price, extra_info, created_by, payment_link=None, image=None):
     with _lock, _conn() as c:

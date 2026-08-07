@@ -28,10 +28,10 @@ get_player_stats() / get_players_stats_bulk() отсюда. Так статис�
 и, если нужно, в get_players_stats_bulk() — это единственное место, которое
 понадобится тронуть. Экраны продолжат просто читать словарь.
 """
-from .games import get_games_played_count
-from .match_stats import get_career_totals
+from .games import get_games_played_count, get_games_played_and_dates_bulk
+from .match_stats import get_career_totals, get_career_totals_bulk
 from .ovr import calculate_ovr
-from .streak import get_weekly_streak
+from .streak import get_weekly_streak, calculate_weekly_streak
 
 
 def get_player_stats(user_id):
@@ -59,7 +59,32 @@ def get_player_stats(user_id):
 
 def get_players_stats_bulk(user_ids):
     """То же самое сразу для нескольких игроков — {user_id: stats}.
-    Использует ту же get_player_stats() для каждого, чтобы бизнес-логика
-    жила ровно в одном месте — это про то, ГДЕ считается статистика, а не
-    про то, сколько запросов к БД для этого нужно."""
-    return {str(uid): get_player_stats(uid) for uid in user_ids}
+
+    Формулы ровно те же, что и в get_player_stats() (calculate_ovr /
+    calculate_weekly_streak — те же чистые функции), поэтому статистика
+    считается по-прежнему в одном месте. Разница только в том, ОТКУДА
+    берутся сырые числа: наивный цикл по get_player_stats() делал бы
+    2-3 отдельных запроса к БД на каждого игрока, а /api/games (главный
+    вызывающий) опрашивается каждые несколько секунд с каждого открытого
+    приложения — при десятках игроков в списке игр это превращалось в
+    десятки лишних SQLite-соединений на каждый такой запрос и ощутимо
+    подтормаживало приложение. Тут те же данные достаются двумя batched-
+    запросами (get_career_totals_bulk / get_games_played_and_dates_bulk)
+    на всех игроков сразу, независимо от их числа."""
+    user_ids = [str(uid) for uid in user_ids if uid]
+    if not user_ids:
+        return {}
+    careers = get_career_totals_bulk(user_ids)
+    games = get_games_played_and_dates_bulk(user_ids)
+    out = {}
+    for uid in user_ids:
+        career = careers.get(uid) or {"total_goals": 0, "mvp_count": 0}
+        g = games.get(uid) or {"count": 0, "dates": []}
+        out[uid] = {
+            "games_played": g["count"],
+            "goals": career["total_goals"],
+            "mvp_count": career["mvp_count"],
+            "ovr": calculate_ovr(g["count"], career["total_goals"], career["mvp_count"]),
+            "weekly_streak": calculate_weekly_streak(g["dates"]),
+        }
+    return out
