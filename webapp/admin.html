@@ -641,6 +641,18 @@ function showError(msg) {
    Используются во всех трёх типах списков: игры, новости, игроки.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+// Перерисовка длинного списка (раскрыть/свернуть карточку, подтвердить,
+// удалить) может резко уменьшить высоту контейнера. Если в этот момент
+// страница проскроллена ниже новой высоты, браузер сам обрезает scrollTop —
+// экран «улетает» наверх. Сохраняем и восстанавливаем позицию скролла вокруг
+// таких перерисовок, чтобы админ оставался там же, где был.
+function setListHtml(el, html) {
+  if (!el) return;
+  const y = window.scrollY;
+  el.innerHTML = html;
+  if (y > 0) requestAnimationFrame(() => window.scrollTo(0, y));
+}
+
 function chipsHtml(filters, activeId, handlerName) {
   return filters.map(f => `
     <div class="filter-chip ${activeId === f.id ? "active" : ""}" onclick="${handlerName}('${f.id}')">${f.label}</div>
@@ -942,10 +954,10 @@ function renderManageGames() {
   const active = filterManageGames(window.__allManageGames || []);
   const el = document.getElementById("games-manage-list");
   if (active.length === 0) {
-    el.innerHTML = `<div class="list-empty">Игр по этому фильтру нет</div>`;
+    setListHtml(el, `<div class="list-empty">Игр по этому фильтру нет</div>`);
     return;
   }
-  el.innerHTML = active.map(g => {
+  setListHtml(el, active.map(g => {
     const past = isPastGame(g);
     const open = !!expandedGames[g.id];
     const confirmedCount = (g.signups || []).filter(s => s.status === "confirmed").length;
@@ -960,7 +972,7 @@ function renderManageGames() {
       </div>
       ${open ? `<div class="game-card-body">${renderGameCardBody(g, past)}</div>` : ""}
     </div>`;
-  }).join("");
+  }).join(""));
 }
 
 function toggleGameCard(gameId) {
@@ -1510,10 +1522,10 @@ function renderTemplatesList() {
   const list = window.__allTemplates || [];
   const el = document.getElementById("templates-list");
   if (list.length === 0) {
-    el.innerHTML = `<div class="list-empty">Шаблонов пока нет — создай первый, чтобы публиковать игры за секунды</div>`;
+    setListHtml(el, `<div class="list-empty">Шаблонов пока нет — создай первый, чтобы публиковать игры за секунды</div>`);
     return;
   }
-  el.innerHTML = list.map(t => `
+  setListHtml(el, list.map(t => `
     <div class="news-card">
       <div class="news-card-top">
         <div>
@@ -1536,7 +1548,7 @@ function renderTemplatesList() {
         <button class="mini-btn" style="border-color:#DDE1E8;background:#F9FAFB;color:#334155" onclick="duplicateTemplate(${t.id})">📄 Копия</button>
         <button class="mini-btn mini-btn-danger" onclick="deleteTemplate(${t.id})">🗑 Удалить</button>
       </div>
-    </div>`).join("");
+    </div>`).join(""));
 }
 
 /* ── Управление шаблонами: создание / редактирование ─────────────────────── */
@@ -1650,10 +1662,10 @@ function renderTournamentsList() {
   const list = window.__allTournaments || [];
   const el = document.getElementById("tournaments-list");
   if (!list.length) {
-    el.innerHTML = `<div class="list-empty">Турниров пока нет — создай первый</div>`;
+    setListHtml(el, `<div class="list-empty">Турниров пока нет — создай первый</div>`);
     return;
   }
-  el.innerHTML = list.map(t => `
+  setListHtml(el, list.map(t => `
     <div class="news-card">
       <div class="news-card-top">
         <div>
@@ -1677,7 +1689,7 @@ function renderTournamentsList() {
         </button>
         <button class="mini-btn danger" onclick="deleteTournament(${t.id})">Удалить</button>
       </div>
-    </div>`).join("");
+    </div>`).join(""));
 }
 
 function openTournamentEditor(id) {
@@ -1848,7 +1860,7 @@ function renderTournamentManage() {
       </span>
     </div>`;
 
-  document.getElementById("tournament-manage-body").innerHTML = `
+  setListHtml(document.getElementById("tournament-manage-body"), `
     <div class="section-card">
       <div class="fs-title">👥 Команды (${confirmed.length} подтв. / ${teams.length} всего)</div>
       ${teams.length ? teams.map(teamRow).join("") : `<div class="list-empty">Заявок пока нет</div>`}
@@ -1892,7 +1904,7 @@ function renderTournamentManage() {
     <div class="section-card">
       <div class="fs-title">📋 Матчи (${matches.length})</div>
       ${matches.length ? matches.map(matchRow).join("") : `<div class="list-empty">Матчей пока нет</div>`}
-    </div>`;
+    </div>`);
 }
 
 function toggleMatchStage() {
@@ -2147,10 +2159,10 @@ function renderAnnouncements() {
   const items = filterAnnouncements(window.__allAnnouncements || []);
   const el = document.getElementById("announce-list");
   if (items.length === 0) {
-    el.innerHTML = `<div class="list-empty">Новостей по этому фильтру нет</div>`;
+    setListHtml(el, `<div class="list-empty">Новостей по этому фильтру нет</div>`);
     return;
   }
-  el.innerHTML = items.map(a => {
+  setListHtml(el, items.map(a => {
     const isDraft = a.status === "draft";
     return `
       <div class="news-card">
@@ -2169,7 +2181,7 @@ function renderAnnouncements() {
           <button class="mini-btn mini-btn-danger" onclick="deleteAnnouncement(${a.id})">🗑 Удалить</button>
         </div>
       </div>`;
-  }).join("");
+  }).join(""));
 }
 
 async function publishAnnouncement(id) {
@@ -2230,10 +2242,10 @@ function renderPlayers() {
 
   const el = document.getElementById("players-list");
   if (list.length === 0) {
-    el.innerHTML = `<div class="list-empty">Игроки не найдены</div>`;
+    setListHtml(el, `<div class="list-empty">Игроки не найдены</div>`);
     return;
   }
-  el.innerHTML = list.map(u => {
+  setListHtml(el, list.map(u => {
     const display = u.nickname || u.name || (u.username ? "@" + u.username : "Игрок");
     const meta = u.username ? "@" + u.username : "без username";
     return `
@@ -2248,7 +2260,7 @@ function renderPlayers() {
           <div class="player-stats-extra">⚽ ${u.goals || 0} · 🏅 ${u.mvp_count || 0}</div>
         </div>
       </div>`;
-  }).join("");
+  }).join(""));
 }
 
 checkAccess();
