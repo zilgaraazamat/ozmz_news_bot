@@ -519,12 +519,18 @@ input[type="date"]{font-size:13.5px;padding-left:6px;padding-right:6px}
 
     <div class="section-card">
       <div class="fs-title">👥 Формат</div>
+      <label>Тип турнира</label>
+      <select id="tr-type" onchange="onTournamentTypeChange()">
+        <option value="cup">🏆 Кубок — 2 группы по 4, потом плей-офф</option>
+        <option value="league">📊 Лига — каждый играет с каждым</option>
+      </select>
       <div class="row2">
-        <div><label>Максимум команд</label><input id="tr-max-teams" type="number" min="2" placeholder="8"></div>
+        <div id="tr-max-teams-wrap"><label>Максимум команд</label><input id="tr-max-teams" type="number" min="2" placeholder="8"></div>
         <div><label>Игроков в команде</label><input id="tr-team-size" type="number" min="1" placeholder="7"></div>
       </div>
-      <label>Групп</label>
-      <input id="tr-num-groups" type="number" min="1" max="8" placeholder="2">
+      <div id="tr-cup-note" class="hidden" style="font-size:12px;color:#7C818B;margin-top:-8px">
+        Формат кубка фиксирован: 2 группы по 4 команды (всего 8), затем перекрёстные полуфиналы и финал.
+      </div>
     </div>
 
     <div class="section-card">
@@ -1657,9 +1663,9 @@ function renderTournamentsList() {
             <span>${t.location || "место не указано"}</span>
           </div>
           <div class="news-card-meta">
+            <span>${t.tournament_type === "league" ? "📊 Лига" : "🏆 Кубок"}</span>
             ${t.entry_fee ? `<span>💰 ${t.entry_fee}</span>` : ""}
             ${t.max_teams ? `<span>👥 до ${t.max_teams} команд</span>` : ""}
-            ${t.num_groups ? `<span>🔢 ${t.num_groups} группы</span>` : ""}
           </div>
         </div>
       </div>
@@ -1687,10 +1693,11 @@ function openTournamentEditor(id) {
   val("tr-end", t && t.end_date);
   val("tr-max-teams", t && t.max_teams);
   val("tr-team-size", t && t.team_size);
-  val("tr-num-groups", t ? t.num_groups : 2);
   val("tr-entry-fee", t && t.entry_fee);
   document.getElementById("tr-payment-link").value =
     t ? (t.payment_link || "") : "https://pay.kaspi.kz/pay/ybsrtfje";
+  document.getElementById("tr-type").value = t ? (t.tournament_type || "cup") : "cup";
+  onTournamentTypeChange();
 
   selectedTournamentPhotoBase64 = t && t.image ? `data:image/jpeg;base64,${t.image}` : null;
   renderPhotoZone("tr-photo-zone", "tr-photo", selectedTournamentPhotoBase64);
@@ -1698,6 +1705,17 @@ function openTournamentEditor(id) {
   document.getElementById("tournament-edit-title").textContent = t ? "Изменить турнир" : "Создать турнир";
   document.getElementById("tournament-submit-btn").textContent = t ? "Сохранить изменения" : "Создать турнир";
   showScreen("tournament-edit");
+}
+
+// Кубок — фиксированный формат (2×4, потом плей-офф), поэтому лимит команд
+// не редактируется и всегда 8; лига — лимит свободный, «не важно сколько команд».
+function onTournamentTypeChange() {
+  const isCup = document.getElementById("tr-type").value === "cup";
+  document.getElementById("tr-cup-note").classList.toggle("hidden", !isCup);
+  const maxTeamsInput = document.getElementById("tr-max-teams");
+  maxTeamsInput.disabled = isCup;
+  document.getElementById("tr-max-teams-wrap").style.opacity = isCup ? .5 : 1;
+  if (isCup) maxTeamsInput.value = 8;
 }
 
 async function saveTournament() {
@@ -1714,9 +1732,9 @@ async function saveTournament() {
     location: document.getElementById("tr-location").value.trim(),
     start_date: document.getElementById("tr-start").value,
     end_date: document.getElementById("tr-end").value,
+    tournament_type: document.getElementById("tr-type").value,
     max_teams: document.getElementById("tr-max-teams").value,
     team_size: document.getElementById("tr-team-size").value,
-    num_groups: document.getElementById("tr-num-groups").value || 2,
     entry_fee: document.getElementById("tr-entry-fee").value.trim(),
     payment_link: document.getElementById("tr-payment-link").value.trim(),
     image: selectedTournamentPhotoBase64,
@@ -1835,16 +1853,19 @@ function renderTournamentManage() {
       <div class="fs-title">👥 Команды (${confirmed.length} подтв. / ${teams.length} всего)</div>
       ${teams.length ? teams.map(teamRow).join("") : `<div class="list-empty">Заявок пока нет</div>`}
       ${confirmed.length ? `<button class="btn btn-secondary" style="margin-top:10px" onclick="distributeGroups()">🔢 Разбить по группам</button>` : ""}
+      ${t.tournament_type === "cup" && confirmed.length >= 4
+        ? `<button class="btn btn-secondary" style="margin-top:8px" onclick="generateCupSemifinals()">🔀 Сформировать 1/2 финала</button>`
+        : ""}
     </div>
 
     <div class="section-card">
       <div class="fs-title">⚽ Добавить матч</div>
       <label>Этап</label>
       <select id="tm-stage" onchange="toggleMatchStage()">
-        <option value="group">Групповой этап</option>
-        <option value="playoff">Плей-офф</option>
+        <option value="group">${t.tournament_type === "league" ? "Круговой этап" : "Групповой этап"}</option>
+        ${t.tournament_type !== "league" ? `<option value="playoff">Плей-офф</option>` : ""}
       </select>
-      <div id="tm-group-wrap">
+      <div id="tm-group-wrap" class="${t.tournament_type === "league" ? "hidden" : ""}">
         <label>Группа</label>
         <select id="tm-group">${groupOptions()}</select>
       </div>
@@ -1909,6 +1930,17 @@ async function distributeGroups() {
     }).then(r => r.json());
     if (res.ok) refreshTournamentManage(currentTournament.tournament.id);
   } catch (e) {}
+}
+
+async function generateCupSemifinals() {
+  try {
+    const res = await fetch("/api/admin/generate-cup-semifinals", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, tournament_id: currentTournament.tournament.id })
+    }).then(r => r.json());
+    if (res.ok) refreshTournamentManage(currentTournament.tournament.id);
+    else alert(res.error || "Не удалось сформировать плей-офф");
+  } catch (e) { alert("Ошибка сети"); }
 }
 
 async function addTournamentMatch() {

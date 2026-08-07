@@ -46,6 +46,7 @@ POST_ROUTES = {
     "/api/admin/set-tournament-status": "route_post_admin_set_tournament_status",
     "/api/admin/set-team-group":        "route_post_admin_set_team_group",
     "/api/admin/distribute-groups":     "route_post_admin_distribute_groups",
+    "/api/admin/generate-cup-semifinals": "route_post_admin_generate_cup_semifinals",
     "/api/admin/save-tournament-match": "route_post_admin_save_tournament_match",
     "/api/admin/tournament-match-result": "route_post_admin_tournament_match_result",
     "/api/admin/delete-tournament-match": "route_post_admin_delete_tournament_match",

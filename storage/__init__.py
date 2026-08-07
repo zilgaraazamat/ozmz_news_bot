@@ -49,6 +49,7 @@ from .tournaments import (
     confirm_team, cancel_team, set_team_group, autodistribute_groups,
     create_match, update_match, set_match_result, delete_match, get_matches,
     group_standings, get_champion, get_tournaments_overview, set_tournament_status,
+    generate_cup_semifinals,
 )
 
 from .games import (
@@ -158,4 +159,5 @@ __all__ = [
     "confirm_team", "cancel_team", "set_team_group", "autodistribute_groups",
     "create_match", "update_match", "set_match_result", "delete_match", "get_matches",
     "group_standings", "get_champion", "get_tournaments_overview", "set_tournament_status",
+    "generate_cup_semifinals",
 ]

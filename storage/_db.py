@@ -366,6 +366,14 @@ def init_db():
         except sqlite3.OperationalError:
             pass
 
+        # Тип турнира: 'cup' (2 группы по 4 команды → перекрёстные полуфиналы →
+        # финал) или 'league' (каждый играет с каждым, без плей-офф). Задаётся
+        # админом при создании, см. storage/tournaments.py.
+        try:
+            c.execute("ALTER TABLE tournaments ADD COLUMN tournament_type TEXT DEFAULT 'cup'")
+        except sqlite3.OperationalError:
+            pass
+
         # ── Индексы ────────────────────────────────────────────────────────
         # Без них SQLite делает полный скан таблицы на каждый запрос. Больнее
         # всего это бьёт по /api/games: он опрашивается каждые 4 секунды и на

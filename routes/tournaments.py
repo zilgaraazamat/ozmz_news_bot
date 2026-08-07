@@ -13,6 +13,7 @@ from storage import (
     create_match, update_match, set_match_result, delete_match, get_matches,
     group_standings, get_profile, display_name_from_profile,
     get_champion, get_tournaments_overview, set_tournament_status,
+    generate_cup_semifinals,
 )
 
 _MAX_PLAYERS_PER_TEAM = 30
@@ -184,6 +185,10 @@ class TournamentRoutesMixin:
                 self._json({"ok": False, "error": "Укажи название турнира"})
                 return
 
+            tournament_type = (data.get("tournament_type") or "cup").strip().lower()
+            if tournament_type not in ("cup", "league"):
+                tournament_type = "cup"
+
             fields = dict(
                 description=(data.get("description") or "").strip() or None,
                 location=(data.get("location") or "").strip() or None,
@@ -208,13 +213,15 @@ class TournamentRoutesMixin:
                 update_tournament(tid, name, fields["description"], fields["location"],
                                    fields["start_date"], fields["end_date"], fields["entry_fee"],
                                    fields["payment_link"], fields["max_teams"],
-                                   fields["team_size"], fields["num_groups"], image)
+                                   fields["team_size"], fields["num_groups"], image,
+                                   tournament_type=tournament_type)
             else:
                 tid = create_tournament(name, fields["description"], fields["location"],
                                          fields["start_date"], fields["end_date"],
                                          fields["entry_fee"], fields["payment_link"],
                                          fields["max_teams"], fields["team_size"],
-                                         fields["num_groups"], image, admin_id)
+                                         fields["num_groups"], image, admin_id,
+                                         tournament_type=tournament_type)
 
             ann_id = data.get("announcement_id")
             if ann_id:
@@ -297,6 +304,18 @@ class TournamentRoutesMixin:
             self._json({"ok": True})
         except Exception as e:
             print(f"  [WARN] admin/distribute-groups: {e}")
+            self.send_response(400); self.end_headers()
+
+    def route_post_admin_generate_cup_semifinals(self, body):
+        """Кубок: перекрёстные полуфиналы (1-е место группы против 2-го места
+        другой группы) автоматически из уже посчитанных таблиц групп."""
+        try:
+            data = json.loads(body)
+            if not self._require_admin(data):
+                return
+            self._json(generate_cup_semifinals(data.get("tournament_id")))
+        except Exception as e:
+            print(f"  [WARN] admin/generate-cup-semifinals: {e}")
             self.send_response(400); self.end_headers()
 
     def route_post_admin_save_tournament_match(self, body):

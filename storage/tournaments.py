@@ -23,7 +23,7 @@ _WIN, _DRAW, _LOSS = 3, 1, 0
 
 _T_KEYS = ["id", "announcement_id", "name", "description", "location", "start_date",
            "end_date", "entry_fee", "payment_link", "max_teams", "team_size",
-           "num_groups", "image", "status", "created_by", "created_at"]
+           "num_groups", "tournament_type", "image", "status", "created_by", "created_at"]
 _T_SELECT = f"SELECT {', '.join(_T_KEYS)} FROM tournaments"
 
 _TEAM_KEYS = ["id", "tournament_id", "captain_id", "captain_name", "name", "amount",
@@ -47,31 +47,47 @@ def entry_fee_amount(tournament):
 
 # ── Турнир ──────────────────────────────────────────────────────────────────
 
+def _normalize_format(tournament_type, max_teams, num_groups):
+    """Формат жёстко привязан к типу турнира — не отдаём его на откуп
+    произвольному вводу админа:
+      - 'cup'    — ровно 2 группы по 4 команды (см. модульный докстринг);
+      - 'league' — один общий круговой этап, группы не нужны, лимит команд
+                   свободный («не важно сколько команд»).
+    Возвращает (tournament_type, max_teams, num_groups) уже нормализованными."""
+    tournament_type = tournament_type if tournament_type in ("cup", "league") else "cup"
+    if tournament_type == "league":
+        return tournament_type, max_teams, 1
+    return tournament_type, 8, 2
+
+
 def create_tournament(name, description, location, start_date, end_date, entry_fee,
                        payment_link, max_teams, team_size, num_groups, image,
-                       created_by, announcement_id=None):
+                       created_by, announcement_id=None, tournament_type="cup"):
+    tournament_type, max_teams, num_groups = _normalize_format(tournament_type, max_teams, num_groups)
     with _lock, _conn() as c:
         cur = c.execute(
             """INSERT INTO tournaments(announcement_id, name, description, location,
                     start_date, end_date, entry_fee, payment_link, max_teams, team_size,
-                    num_groups, image, status, created_by, created_at)
-               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,'active',?,datetime('now'))""",
+                    num_groups, tournament_type, image, status, created_by, created_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?,datetime('now'))""",
             (announcement_id, name, description, location, start_date, end_date,
-             entry_fee, payment_link, max_teams, team_size, num_groups or 2,
-             image, str(created_by)))
+             entry_fee, payment_link, max_teams, team_size, num_groups,
+             tournament_type, image, str(created_by)))
         return cur.lastrowid
 
 
 def update_tournament(tournament_id, name, description, location, start_date, end_date,
-                       entry_fee, payment_link, max_teams, team_size, num_groups, image):
+                       entry_fee, payment_link, max_teams, team_size, num_groups, image,
+                       tournament_type="cup"):
+    tournament_type, max_teams, num_groups = _normalize_format(tournament_type, max_teams, num_groups)
     with _lock, _conn() as c:
         c.execute(
             """UPDATE tournaments SET name=?, description=?, location=?, start_date=?,
                     end_date=?, entry_fee=?, payment_link=?, max_teams=?, team_size=?,
-                    num_groups=?, image=COALESCE(?, image)
+                    num_groups=?, tournament_type=?, image=COALESCE(?, image)
                WHERE id=?""",
             (name, description, location, start_date, end_date, entry_fee, payment_link,
-             max_teams, team_size, num_groups, image, tournament_id))
+             max_teams, team_size, num_groups, tournament_type, image, tournament_id))
 
 
 def get_tournaments(only_active=False):
@@ -280,7 +296,44 @@ def get_matches(tournament_id):
 # ── Турнирная таблица ───────────────────────────────────────────────────────
 
 def get_champion(tournament_id):
-    """Чемпион турнира — победитель сыгранного финала.
+    """Чемпион турнира — определяется по типу турнира (tournament_type):
+      - 'cup'    — победитель сыгранного финала плей-офф (см. _cup_champion);
+      - 'league' — лидер общей таблицы после того, как организатор закрыл
+                   турнир (см. _league_champion) — в лиге нет отдельного
+                   финального матча, поэтому момент завершения фиксирует админ.
+    Как и раньше, ничего не хранится — считается заново на каждый вызов."""
+    t = get_tournament(tournament_id)
+    if not t:
+        return None
+    if (t.get("tournament_type") or "cup") == "league":
+        return _league_champion(tournament_id, t)
+    return _cup_champion(tournament_id)
+
+
+def _league_champion(tournament_id, t):
+    """Лига без плей-офф: чемпион — первая строка общей таблицы (группа 0),
+    но только после того, как админ перевёл турнир в статус 'finished' —
+    формат «каждый с каждым» не даёт автоматического признака «всё сыграно»."""
+    if t.get("status") != "finished":
+        return None
+    standings = group_standings(tournament_id)
+    rows = standings.get(0) or (next(iter(standings.values()), None))
+    if not rows:
+        return None
+    winner = rows[0]
+    runner_up = rows[1] if len(rows) > 1 else None
+    return {
+        "team_id": winner["team_id"],
+        "name": winner["name"],
+        "runner_up_id": runner_up["team_id"] if runner_up else None,
+        "runner_up_name": runner_up["name"] if runner_up else None,
+        "score": None,
+        "final_date": None,
+    }
+
+
+def _cup_champion(tournament_id):
+    """Чемпион кубка — победитель сыгранного финала.
 
     Ничего не хранится: смотрим матч плей-офф, у которого в названии раунда
     есть «Финал» (но не «3-е место» — это матч за бронзу), и берём команду
@@ -395,3 +448,34 @@ def group_standings(tournament_id):
         lst.sort(key=lambda r: (-r["points"], -r["diff"], -r["goals_for"], r["name"]))
         out[g] = lst
     return out
+
+
+def generate_cup_semifinals(tournament_id):
+    """Кубок: из таблиц двух групп строит перекрёстные полуфиналы —
+    1-е место группы А против 2-го места группы Б, и наоборот. Финал
+    админ создаёт вручную (как обычный матч плей-офф) после того, как
+    оба полуфинала сыграны — победители заранее не известны.
+
+    Создаёт полуфиналы один раз: если в плей-офф уже есть матчи, просит
+    сперва удалить их вручную, чтобы не наплодить дублей."""
+    t = get_tournament(tournament_id)
+    if not t or (t.get("tournament_type") or "cup") != "cup":
+        return {"ok": False, "error": "Доступно только для турниров типа «Кубок»"}
+
+    if any(m["stage"] == "playoff" for m in get_matches(tournament_id)):
+        return {"ok": False, "error": "Плей-офф уже сформирован — удали старые матчи, чтобы пересоздать"}
+
+    standings = group_standings(tournament_id)
+    group_a, group_b = standings.get(0) or [], standings.get(1) or []
+    if len(group_a) < 2 or len(group_b) < 2:
+        return {"ok": False, "error": "Нужно 2 группы минимум по 2 подтверждённые команды в каждой"}
+    if not any(r["played"] for r in group_a) or not any(r["played"] for r in group_b):
+        return {"ok": False, "error": "Групповой этап ещё не сыгран — сначала внеси результаты матчей"}
+
+    a1, a2 = group_a[0], group_a[1]
+    b1, b2 = group_b[0], group_b[1]
+    create_match(tournament_id, "playoff", None, "Полуфинал", a1["team_id"], b2["team_id"],
+                 None, None, t.get("location"), sort_order=0)
+    create_match(tournament_id, "playoff", None, "Полуфинал", a2["team_id"], b1["team_id"],
+                 None, None, t.get("location"), sort_order=1)
+    return {"ok": True}

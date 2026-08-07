@@ -243,20 +243,26 @@ function renderHero() {
     <div class="t-hero-body">
       <div class="t-title">${esc(t.name)}</div>
       <div class="t-sub">
+        <span class="t-pill accent">${t.tournament_type === "league" ? "📊 Лига" : "🏆 Кубок"}</span>
         ${when ? `<span class="t-pill">📅 ${when}</span>` : ""}
-        <span class="t-pill accent">👥 ${confirmed} команд</span>
+        <span class="t-pill">👥 ${confirmed} команд</span>
         ${DATA.entry_amount ? `<span class="t-pill">💰 ${DATA.entry_amount} ₸</span>` : ""}
       </div>
     </div>`;
+}
+
+function isLeague() {
+  return DATA.tournament.tournament_type === "league";
 }
 
 function renderTabs() {
   const tabs = [
     ["overview", "Обзор"],
     ["teams", "Команды"],
-    ["groups", "Группы"],
-    ["playoff", "Плей-офф"],
+    ["groups", isLeague() ? "Таблица" : "Группы"],
   ];
+  if (!isLeague()) tabs.push(["playoff", "Плей-офф"]);
+  if (!tabs.some(([k]) => k === activeTab)) activeTab = "overview";
   const existing = document.getElementById("t-tabs");
   const html = `<div class="t-tabs" id="t-tabs">
     ${tabs.map(([k, label]) => `<button class="t-tab ${activeTab === k ? "active" : ""}" onclick="switchTab('${k}')">${label}</button>`).join("")}
@@ -300,10 +306,10 @@ function overviewHtml() {
   const rows = [
     t.location ? ["📍", "Место", esc(t.location)] : null,
     dateRange(t.start_date, t.end_date) ? ["📅", "Даты", dateRange(t.start_date, t.end_date)] : null,
+    ["🏆", "Формат", t.tournament_type === "league" ? "Лига — каждый с каждым" : "Кубок — группы + плей-офф"],
     DATA.entry_amount ? ["💰", "Взнос за команду", `${DATA.entry_amount} ₸`] : null,
     t.team_size ? ["👤", "Игроков в команде", t.team_size] : null,
     t.max_teams ? ["🏁", "Максимум команд", t.max_teams] : null,
-    t.num_groups ? ["🔢", "Групп", t.num_groups] : null,
   ].filter(Boolean);
 
   return `
@@ -395,17 +401,18 @@ function teamsHtml() {
 
 // ── Группы ──────────────────────────────────────────────────────────────────
 function groupsHtml() {
+  const league = isLeague();
   const st = DATA.standings || {};
   const keys = Object.keys(st).sort((a, b) => Number(a) - Number(b));
   if (!keys.length) {
-    return `<div class="empty"><div class="empty-icon">🔢</div>Группы ещё не сформированы<div style="font-size:12px;margin-top:4px">Появятся, когда организатор подтвердит команды</div></div>`;
+    return `<div class="empty"><div class="empty-icon">🔢</div>${league ? "Таблица ещё не сформирована" : "Группы ещё не сформированы"}<div style="font-size:12px;margin-top:4px">Появятся, когда организатор подтвердит команды</div></div>`;
   }
   return keys.map(g => {
     const rows = st[g];
     const groupMatches = (DATA.matches || []).filter(m => m.stage === "group" && String(m.group_index) === String(g));
     return `
       <div class="group-block">
-        <div class="group-title">Группа ${Number(g) + 1}</div>
+        <div class="group-title">${league ? "Турнирная таблица" : `Группа ${Number(g) + 1}`}</div>
         <div class="standings">
           <div class="st-row head">
             <span class="st-pos">#</span>
@@ -414,7 +421,7 @@ function groupsHtml() {
             <span class="st-pts">О</span>
           </div>
           ${rows.map((r, i) => `
-            <div class="st-row ${i < 2 ? "qualify" : ""}">
+            <div class="st-row ${!league && i < 2 ? "qualify" : ""}">
               <span class="st-pos">${i + 1}</span>
               <span class="st-name">${esc(r.name)}</span>
               <span class="st-num">${r.played}</span>
@@ -448,7 +455,8 @@ function matchHtml(m) {
   const when = [fmtDate(m.match_date), m.match_time].filter(Boolean).join(", ");
   const aWin = played && m.score_a > m.score_b;
   const bWin = played && m.score_b > m.score_a;
-  const tag = m.stage === "playoff" ? (m.round_name || "Плей-офф") : `Группа ${(m.group_index ?? 0) + 1}`;
+  const tag = m.stage === "playoff" ? (m.round_name || "Плей-офф")
+    : (isLeague() ? "Лига" : `Группа ${(m.group_index ?? 0) + 1}`);
   return `
     <div class="match-card">
       <div class="match-top">
@@ -530,13 +538,10 @@ async function submitRegistration() {
     else {
       haptic("success");
       closeRegSheet();
-      // Взнос платный — сразу ведём на оплату, сумма уже известна.
-      const link = DATA.tournament.payment_link;
-      if (res.amount && link) {
-        const tw = window.Telegram && Telegram.WebApp;
-        if (tw && typeof tw.openLink === "function") tw.openLink(link);
-        else window.open(link, "_blank");
-      }
+      // Не уводим сразу по ссылке оплаты — открытие внешней ссылки из Telegram
+      // Mini App часто сворачивает приложение, и капитан не видит экран
+      // с суммой и ссылкой. Вместо этого сразу показываем «Обзор»: там уже
+      // есть карточка «Взнос ждёт оплаты» с кнопкой оплаты и «Я оплатил(а)».
       activeTab = "overview";
       await load();
     }
