@@ -12,7 +12,7 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{height:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0B0D10;color:#F5F6F7;min-height:100%;padding:24px 16px calc(40px + env(safe-area-inset-bottom));-webkit-hyphens:none;hyphens:none;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative}
-body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(600px circle at 50% -10%, rgba(94,106,210,.10), transparent 60%)}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(600px circle at 50% -10%, rgba(255,61,141,.10), transparent 60%)}
 .wrap{width:100%;max-width:420px;margin:0 auto;position:relative;z-index:1}
 .hidden{display:none!important}
 
@@ -34,14 +34,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .mr-empty{text-align:center;background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:44px 20px;opacity:0;animation:reveal-up .4s ease forwards}
 .mr-empty-icon{font-size:38px;margin-bottom:14px;opacity:.7}
 .mr-empty-text{font-size:14px;color:#9BA1AC;line-height:1.5;margin-bottom:20px}
-.mr-empty-btn{display:inline-flex;align-items:center;gap:6px;background:#5E6AD2;color:#fff;font-size:13px;font-weight:700;padding:11px 22px;border-radius:12px;text-decoration:none;box-shadow:0 4px 14px rgba(94,106,210,.3)}
+.mr-empty-btn{display:inline-flex;align-items:center;gap:6px;background:#FF3D8A;color:#fff;font-size:13px;font-weight:700;padding:11px 22px;border-radius:12px;text-decoration:none;box-shadow:0 4px 14px rgba(255,61,141,.3)}
 .mr-empty-btn:active{transform:scale(.97)}
 
 /* ── шапка: дата/время/поле/длительность/число игроков ── */
 .mr-header-card{position:relative;overflow:hidden;background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 10px 26px rgba(0,0,0,.35);opacity:0;animation:reveal-up .4s ease forwards}
-.mr-header-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#5E6AD2,#8B93F5,transparent)}
+.mr-header-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#FF3D8A,#FF8FC4,transparent)}
 @keyframes reveal-up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.mr-header-title{font-family:'Oswald',-apple-system,sans-serif;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#8B93F5;margin-bottom:12px}
+.mr-header-title{font-family:'Oswald',-apple-system,sans-serif;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#FF8FC4;margin-bottom:12px}
 .mr-header-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .mr-header-item{min-width:0}
 .mr-header-item.span2{grid-column:1 / -1}
@@ -50,8 +50,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 
 /* ── премиальное табло с результатом ── */
 .mr-scoreboard{position:relative;overflow:hidden;background:linear-gradient(160deg,#1B1E26 0%,#14151A 65%,#101116 100%);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:20px 16px;margin-bottom:16px;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 20px 46px rgba(0,0,0,.45);opacity:0;animation:reveal-up .4s ease .05s forwards}
-.mr-scoreboard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#5E6AD2,#8B93F5,transparent);z-index:2}
-.mr-scoreboard::after{content:'';position:absolute;top:-40%;right:-20%;width:70%;height:70%;background:radial-gradient(circle,rgba(94,106,210,.16),transparent 70%);pointer-events:none}
+.mr-scoreboard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#FF3D8A,#FF8FC4,transparent);z-index:2}
+.mr-scoreboard::after{content:'';position:absolute;top:-40%;right:-20%;width:70%;height:70%;background:radial-gradient(circle,rgba(255,61,141,.16),transparent 70%);pointer-events:none}
 .mr-scoreboard-title{position:relative;z-index:1;font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#9BA1AC;text-align:center;margin-bottom:16px}
 .mr-team-block{position:relative;z-index:1;margin-bottom:14px}
 .mr-team-block:last-of-type{margin-bottom:0}
@@ -67,12 +67,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
    голы/MVP — из тех же данных, что и командный счёт выше ── */
 .mr-roster{display:flex;flex-direction:column;gap:3px}
 .mr-player-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px}
-.mr-player-row.viewer{background:rgba(94,106,210,.14);border:1px solid rgba(94,106,210,.3)}
+.mr-player-row.viewer{background:rgba(255,61,141,.14);border:1px solid rgba(255,61,141,.3)}
 .mr-player-avatar{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.06);color:#9BA1AC;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;flex-shrink:0}
-.mr-player-row.viewer .mr-player-avatar{background:#5E6AD2;color:#fff}
+.mr-player-row.viewer .mr-player-avatar{background:#FF3D8A;color:#fff}
 .mr-player-name{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:#C7CAD1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mr-player-row.viewer .mr-player-name{color:#F5F6F7;font-weight:700}
-.mr-player-you{color:#8B93F5;font-weight:700}
+.mr-player-you{color:#FF8FC4;font-weight:700}
 .mr-player-extra{flex-shrink:0;display:flex;align-items:center;gap:6px}
 .mr-player-goals{font-size:12px;letter-spacing:1px;white-space:nowrap}
 .mr-player-mvp{display:inline-flex;align-items:center;gap:3px;background:rgba(255,193,7,.14);color:#FFD866;border-radius:100px;padding:2px 8px;font-size:10px;font-weight:700;white-space:nowrap}
@@ -89,14 +89,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .mr-awards-title{font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#FFD866;text-align:center;margin-bottom:14px}
 .mr-awards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .mr-award-chip{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px 12px;text-align:center;opacity:0;animation:reveal-up .35s ease forwards}
-.mr-award-chip.viewer{background:rgba(94,106,210,.14);border-color:rgba(94,106,210,.35)}
+.mr-award-chip.viewer{background:rgba(255,61,141,.14);border-color:rgba(255,61,141,.35)}
 .mr-award-avatar{width:40px;height:40px;margin:0 auto 8px;border-radius:50%;background:rgba(255,193,7,.14);color:#FFD866;display:flex;align-items:center;justify-content:center;font-family:'Oswald',-apple-system,sans-serif;font-size:15px;font-weight:700;border:2px solid rgba(255,193,7,.3)}
-.mr-award-chip.viewer .mr-award-avatar{background:#5E6AD2;color:#fff;border-color:rgba(94,106,210,.5)}
+.mr-award-chip.viewer .mr-award-avatar{background:#FF3D8A;color:#fff;border-color:rgba(255,61,141,.5)}
 .mr-award-name{font-size:13px;font-weight:700;color:#F5F6F7;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mr-award-badges{display:flex;flex-direction:column;align-items:center;gap:5px}
 .mr-award-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-size:10.5px;font-weight:700;white-space:nowrap}
 .mr-award-badge.mvp{background:rgba(255,193,7,.16);color:#FFD866}
-.mr-award-badge.scorer{background:rgba(94,106,210,.16);color:#8B93F5}
+.mr-award-badge.scorer{background:rgba(255,61,141,.16);color:#FF8FC4}
 
 /* ── итог: победившая команда + всего голов ── */
 .mr-summary-row{display:flex;gap:10px;margin-bottom:16px}

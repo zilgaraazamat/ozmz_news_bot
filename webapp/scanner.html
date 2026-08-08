@@ -8,7 +8,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:#000}
-body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;color:#f5f5f0;-webkit-hyphens:none;hyphens:none}
+body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;color:#F5F6F7;-webkit-hyphens:none;hyphens:none}
 .hidden{display:none!important}
 
 /* ── экран камеры ── */
@@ -16,58 +16,58 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;color:#f5f5f0
 #video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .cam-topbar{position:absolute;top:0;left:0;right:0;padding:16px;display:flex;justify-content:space-between;align-items:center;z-index:5;background:linear-gradient(rgba(0,0,0,.5),transparent)}
 .cam-title{font-size:14px;font-weight:800;text-shadow:0 1px 4px rgba(0,0,0,.6)}
-.cam-hint{position:absolute;top:64px;left:0;right:0;text-align:center;font-size:12px;color:#e8f5ea;z-index:5;padding:0 24px;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.cam-hint{position:absolute;top:64px;left:0;right:0;text-align:center;font-size:12px;color:#F5F6F7;z-index:5;padding:0 24px;text-shadow:0 1px 4px rgba(0,0,0,.6)}
 .cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:4}
-.scan-ring{width:min(82vw,360px);height:min(82vw,360px);border-radius:50%;border:3px solid rgba(126,217,87,.55);position:relative;transition:border-color .25s,box-shadow .25s}
-.scan-ring.locked{border-color:#7ed957;box-shadow:0 0 0 6px rgba(126,217,87,.18),0 0 30px rgba(126,217,87,.5)}
-.scan-ring::before{content:"";position:absolute;inset:-10px;border-radius:50%;border:1px solid rgba(126,217,87,.25);animation:pulse-ring 2.2s ease-in-out infinite}
+.scan-ring{width:min(82vw,360px);height:min(82vw,360px);border-radius:50%;border:3px solid rgba(255,61,141,.55);position:relative;transition:border-color .25s,box-shadow .25s}
+.scan-ring.locked{border-color:#FF3D8A;box-shadow:0 0 0 6px rgba(255,61,141,.18),0 0 30px rgba(255,61,141,.5)}
+.scan-ring::before{content:"";position:absolute;inset:-10px;border-radius:50%;border:1px solid rgba(255,61,141,.25);animation:pulse-ring 2.2s ease-in-out infinite}
 @keyframes pulse-ring{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.06);opacity:.15}}
 .progress-ring{position:absolute;inset:0;transform:rotate(-90deg)}
-.progress-ring circle{fill:none;stroke:#7ed957;stroke-width:4;stroke-linecap:round;stroke-dasharray:754;stroke-dashoffset:754;transition:stroke-dashoffset .08s linear}
+.progress-ring circle{fill:none;stroke:#FF3D8A;stroke-width:4;stroke-linecap:round;stroke-dasharray:754;stroke-dashoffset:754;transition:stroke-dashoffset .08s linear}
 .cam-status{position:absolute;bottom:100px;left:0;right:0;text-align:center;z-index:5}
-.cam-status-text{display:inline-block;padding:8px 18px;border-radius:20px;background:rgba(14,26,18,.75);font-size:13px;font-weight:700;color:#e8f5ea;backdrop-filter:blur(6px)}
-.cam-manual-hint{margin-top:8px;font-size:11px;color:rgba(232,245,234,.65);text-shadow:0 1px 4px rgba(0,0,0,.6)}
-.cam-debug{position:absolute;bottom:8px;left:8px;right:8px;font-family:monospace;font-size:9px;color:#7ed957;background:rgba(0,0,0,.55);padding:6px 8px;border-radius:8px;z-index:6;white-space:pre-wrap;pointer-events:none}
-.cam-status-text.found{color:#7ed957}
+.cam-status-text{display:inline-block;padding:8px 18px;border-radius:20px;background:rgba(19,19,22,.75);font-size:13px;font-weight:700;color:#F5F6F7;backdrop-filter:blur(6px)}
+.cam-manual-hint{margin-top:8px;font-size:11px;color:rgba(245,246,247,.65);text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.cam-debug{position:absolute;bottom:8px;left:8px;right:8px;font-family:monospace;font-size:9px;color:#FF8FC4;background:rgba(0,0,0,.55);padding:6px 8px;border-radius:8px;z-index:6;white-space:pre-wrap;pointer-events:none}
+.cam-status-text.found{color:#FF3D8A}
 .flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20}
 .flash.on{animation:flash-anim .35s ease-out}
 @keyframes flash-anim{0%{opacity:.9}100%{opacity:0}}
-.cam-error{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;z-index:6;background:#0e1a12}
+.cam-error{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;z-index:6;background:#0A0A0C}
 .cam-error .ic{font-size:40px}
-.btn-retry{padding:12px 24px;border-radius:12px;border:1px solid rgba(126,217,87,.4);background:transparent;color:#7ed957;font-weight:700;font-size:14px;cursor:pointer}
+.btn-retry{padding:12px 24px;border-radius:999px;border:1px solid rgba(255,61,141,.4);background:transparent;color:#FF8FC4;font-weight:700;font-size:14px;cursor:pointer}
 
 /* ── экран анализа ── */
-#screen-analyzing{position:fixed;inset:0;background:#0e1a12;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:10}
-.analyzing-photo-wrap{width:160px;height:160px;border-radius:50%;overflow:hidden;border:3px solid rgba(126,217,87,.4);position:relative}
+#screen-analyzing{position:fixed;inset:0;background:#0A0A0C;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:10}
+.analyzing-photo-wrap{width:160px;height:160px;border-radius:50%;overflow:hidden;border:3px solid rgba(255,61,141,.4);position:relative}
 .analyzing-photo-wrap img{width:100%;height:100%;object-fit:cover}
-.scan-sweep{position:absolute;inset:0;background:linear-gradient(180deg,transparent 0%,rgba(126,217,87,.35) 50%,transparent 100%);animation:sweep 1.4s linear infinite}
+.scan-sweep{position:absolute;inset:0;background:linear-gradient(180deg,transparent 0%,rgba(255,61,141,.35) 50%,transparent 100%);animation:sweep 1.4s linear infinite}
 @keyframes sweep{0%{transform:translateY(-100%)}100%{transform:translateY(100%)}}
-.analyzing-text{font-size:15px;font-weight:800;color:#7ed957}
+.analyzing-text{font-size:15px;font-weight:800;color:#FF3D8A}
 .analyzing-dots::after{content:"";animation:dots 1.4s steps(4,end) infinite}
 @keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}100%{content:""}}
 
 /* ── экран результата ── */
-#screen-result{position:fixed;inset:0;overflow-y:auto;background:#0e1a12;-webkit-overflow-scrolling:touch;z-index:10}
+#screen-result{position:fixed;inset:0;overflow-y:auto;background:#0A0A0C;-webkit-overflow-scrolling:touch;z-index:10}
 .result-wrap{max-width:420px;margin:0 auto;padding:8px 16px 40px}
-.result-photo-circle{width:190px;height:190px;border-radius:50%;overflow:hidden;margin:0 auto 18px;position:relative;background:#0e1a12;border:3px solid rgba(126,217,87,.5);box-shadow:0 0 40px rgba(126,217,87,.25)}
+.result-photo-circle{width:190px;height:190px;border-radius:50%;overflow:hidden;margin:0 auto 18px;position:relative;background:#0A0A0C;border:3px solid rgba(255,61,141,.5);box-shadow:0 0 40px rgba(255,61,141,.25)}
 .result-photo-circle img{width:100%;height:100%;object-fit:cover}
 .result-name{font-size:21px;font-weight:900;text-align:center;margin-bottom:6px;padding:0 8px}
-.result-conf{text-align:center;font-size:12px;font-weight:700;color:#7ed957;margin-bottom:20px}
+.result-conf{text-align:center;font-size:12px;font-weight:700;color:#FF3D8A;margin-bottom:20px}
 .result-conf.low{color:#e0b84a}
 .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.quick-item{background:#1e3024;border:1px solid rgba(126,217,87,.18);border-radius:14px;padding:12px}
-.qi-label{font-size:11px;color:#6b7c6e;font-weight:700;margin-bottom:4px}
+.quick-item{background:#131316;border:1px solid rgba(255,61,141,.18);border-radius:14px;padding:12px}
+.qi-label{font-size:11px;color:#7C818B;font-weight:700;margin-bottom:4px}
 .qi-value{font-size:14px;font-weight:800}
-.info-line{font-size:13px;color:#d7e6da;line-height:1.5;padding:9px 2px}
-.fun-fact-card{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(135deg,rgba(126,217,87,.14),rgba(126,217,87,.04));border:1px solid rgba(126,217,87,.3);border-radius:16px;padding:16px;margin:14px 0 8px}
+.info-line{font-size:13px;color:#C8CBD1;line-height:1.5;padding:9px 2px}
+.fun-fact-card{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(135deg,rgba(255,61,141,.14),rgba(255,61,141,.04));border:1px solid rgba(255,61,141,.3);border-radius:16px;padding:16px;margin:14px 0 8px}
 .fun-fact-card .ff-icon{font-size:22px;flex-shrink:0}
 .fun-fact-card .ff-text{font-size:14px;line-height:1.5;font-weight:600}
 .not-found-box{text-align:center;padding:20px 20px}
 .not-found-box .ic{font-size:44px;margin-bottom:14px}
-.not-found-box p{font-size:14px;color:#9db3a3;line-height:1.5}
-.btn-scan-again{width:100%;padding:15px;border:none;border-radius:14px;background:#7ed957;color:#0e1a12;font-weight:800;font-size:15px;cursor:pointer;margin-top:10px}
-.result-topbar{position:sticky;top:0;padding:14px 16px;background:linear-gradient(180deg,#0e1a12 60%,transparent);z-index:2}
-.back-chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#9db3a3;cursor:pointer}
+.not-found-box p{font-size:14px;color:#7C818B;line-height:1.5}
+.btn-scan-again{width:100%;padding:15px;border:none;border-radius:999px;background:linear-gradient(135deg,#FF3D8A,#D6217E);color:#fff;font-weight:800;font-size:15px;cursor:pointer;margin-top:10px;box-shadow:0 6px 18px rgba(255,61,141,.35)}
+.result-topbar{position:sticky;top:0;padding:14px 16px;background:linear-gradient(180deg,#0A0A0C 60%,transparent);z-index:2}
+.back-chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#7C818B;cursor:pointer}
 </style>
 </head>
 <body>
@@ -429,7 +429,7 @@ function doCapture() {
   const ctx = captureCanvas.getContext("2d");
 
   // заливаем фон под тон приложения — после circle-clip всё вне круга станет этим цветом
-  ctx.fillStyle = "#0e1a12";
+  ctx.fillStyle = "#0A0A0C";
   ctx.fillRect(0, 0, cropSize, cropSize);
 
   ctx.save();

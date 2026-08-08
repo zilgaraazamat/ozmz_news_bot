@@ -19,15 +19,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 /* ── Вкладки ── */
 .tabs{display:flex;gap:6px;margin-bottom:16px}
 .tab{flex:1;padding:10px;border-radius:11px;background:#181A1F;border:1px solid rgba(255,255,255,.06);color:#9BA1AC;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,color .15s}
-.tab.active{background:#5E6AD2;border-color:#5E6AD2;color:#fff}
+.tab.active{background:#FF3D8A;border-color:#FF3D8A;color:#fff}
 
 /* ── Карточка турнира ── */
 .t-card{position:relative;background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px;margin-bottom:11px;cursor:pointer;overflow:hidden;transition:transform .12s;box-shadow:0 8px 22px rgba(0,0,0,.3)}
 .t-card:active{transform:scale(.985)}
-.t-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#5E6AD2,#8B93F5,transparent)}
+.t-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#FF3D8A,#FF8FC4,transparent)}
 .t-card.done::before{background:linear-gradient(90deg,#E5A93C,#FFCE73,transparent)}
 .tc-top{display:flex;align-items:flex-start;gap:11px}
-.tc-icon{width:44px;height:44px;flex-shrink:0;border-radius:13px;background:rgba(94,106,210,.16);display:flex;align-items:center;justify-content:center;font-size:21px}
+.tc-icon{width:44px;height:44px;flex-shrink:0;border-radius:13px;background:rgba(255,61,141,.16);display:flex;align-items:center;justify-content:center;font-size:21px}
 .t-card.done .tc-icon{background:rgba(229,169,60,.16)}
 .tc-body{flex:1;min-width:0}
 .tc-name{font-size:15.5px;font-weight:800;letter-spacing:-.2px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
@@ -49,7 +49,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 
 .progress-line{display:flex;align-items:center;gap:8px;margin-top:11px}
 .pl-bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
-.pl-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#5E6AD2,#8B93F5)}
+.pl-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#FF3D8A,#FF8FC4)}
 .pl-text{font-size:10.5px;color:#7C818B;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
 
 .empty{text-align:center;padding:44px 16px}

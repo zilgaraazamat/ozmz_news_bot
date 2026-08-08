@@ -53,13 +53,13 @@ body{
 /* ── формы: секции, поля, кнопки ── */
 .screen-sub{font-size:13px;color:#64748B;margin:16px 0 22px;line-height:1.5}
 .section-card{background:#fff;border:1px solid #E4E7EC;border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
-.fs-title{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:#5E6AD2;text-transform:uppercase;letter-spacing:.4px;margin-bottom:14px}
+.fs-title{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:#FF3D8A;text-transform:uppercase;letter-spacing:.4px;margin-bottom:14px}
 label{font-size:12.5px;color:#475569;font-weight:600;display:block;margin-bottom:7px;margin-top:16px}
 label:first-of-type{margin-top:0}
 input,textarea,select{width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid #E1E4EA;background:#FBFBFC;color:#0F172A;font-size:15.5px;font-family:inherit;min-height:48px;box-sizing:border-box;transition:border-color .15s,background .15s,box-shadow .15s}
 input[type="file"]{display:none}
 textarea{resize:vertical;min-height:76px}
-input:focus,textarea:focus,select:focus{outline:none;border-color:#5E6AD2;background:#fff;box-shadow:0 0 0 4px rgba(94,106,210,.1)}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#FF3D8A;background:#fff;box-shadow:0 0 0 4px rgba(255,61,141,.1)}
 .row2{display:flex;gap:10px}
 /* Колонки должны сжиматься: у flex-элементов min-width по умолчанию auto, и
    нативные date/time инпуты на iOS распирают колонку своей внутренней
@@ -106,7 +106,7 @@ input[type="date"]{font-size:13.5px;padding-left:6px;padding-right:6px}
 .btn{flex:1;padding:14px;border:none;border-radius:13px;font-weight:700;font-size:14.5px;cursor:pointer;transition:transform .15s,background .15s,opacity .15s}
 .btn:active{transform:scale(.98)}
 .btn[disabled]{opacity:.5;pointer-events:none}
-.btn-primary{background:#5E6AD2;color:#fff;box-shadow:0 4px 12px rgba(94,106,210,.25)}
+.btn-primary{background:#FF3D8A;color:#fff;box-shadow:0 4px 12px rgba(255,61,141,.25)}
 .btn-primary:active{background:#4E59BE}
 .btn-secondary{background:#fff;color:#334155;border:1.5px solid #E1E4EA}
 .btn-secondary:active{background:#F1F2F5}
@@ -123,13 +123,13 @@ input[type="date"]{font-size:13.5px;padding-left:6px;padding-right:6px}
 .toolbar-row{display:flex;align-items:center;gap:8px}
 .filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;flex:1}
 .filter-chip{flex-shrink:0;padding:8px 14px;border-radius:100px;background:#fff;border:1px solid #E4E7EC;color:#64748B;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
-.filter-chip.active{background:#5E6AD2;border-color:#5E6AD2;color:#fff}
+.filter-chip.active{background:#FF3D8A;border-color:#FF3D8A;color:#fff}
 .sort-toggle{flex-shrink:0;display:flex;align-items:center;gap:4px;padding:8px 12px;border-radius:100px;background:#fff;border:1px solid #E4E7EC;color:#475569;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .sort-toggle:active{background:#F1F2F5}
 
 .badge-pill{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:100px;text-transform:uppercase;letter-spacing:.3px}
 .badge-neutral{background:#F1F2F5;color:#64748B}
-.badge-accent{background:#EEF0FD;color:#5E6AD2}
+.badge-accent{background:#EEF0FD;color:#FF3D8A}
 .badge-success{background:#ECFDF3;color:#15803D}
 .badge-warning{background:#FFFBEB;color:#B45309}
 .badge-danger{background:#FEF2F2;color:#B91C1C}
@@ -149,20 +149,20 @@ input[type="date"]{font-size:13.5px;padding-left:6px;padding-right:6px}
 .manage-row:first-of-type{border-top:none}
 .manage-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .manage-name{font-size:13px;color:#1E293B}
-.manage-msg-btn{font-size:11.5px;color:#5E6AD2;text-decoration:none;background:#EEF0FD;padding:5px 10px;border-radius:100px;white-space:nowrap;font-weight:600}
+.manage-msg-btn{font-size:11.5px;color:#FF3D8A;text-decoration:none;background:#EEF0FD;padding:5px 10px;border-radius:100px;white-space:nowrap;font-weight:600}
 .manage-no-username{font-size:11px;color:#94A3B8;white-space:nowrap}
 .manage-guests{font-size:11px;color:#D97706;font-weight:700}
 .manage-paid-claim{font-size:11px;color:#16A34A;font-weight:700}
-.manage-amount{font-size:11px;color:#5E6AD2;font-weight:700;white-space:nowrap}
-.manage-confirm-btn{padding:6px 12px;border:none;border-radius:100px;background:#5E6AD2;color:#fff;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.manage-amount{font-size:11px;color:#FF3D8A;font-weight:700;white-space:nowrap}
+.manage-confirm-btn{padding:6px 12px;border:none;border-radius:100px;background:#FF3D8A;color:#fff;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
 .manage-confirmed-badge{font-size:13px}
 .manage-empty{font-size:12.5px;color:#94A3B8;padding:8px 0}
 
-.teams-toggle-btn{width:100%;padding:9px;border:1px solid #DDE1E8;background:#F9FAFB;color:#5E6AD2;border-radius:10px;font-size:11.5px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.4px;margin-top:12px}
+.teams-toggle-btn{width:100%;padding:9px;border:1px solid #DDE1E8;background:#F9FAFB;color:#FF3D8A;border-radius:10px;font-size:11.5px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.4px;margin-top:12px}
 .team-block{background:#F9FAFB;border:1px solid #EEF0F2;border-radius:12px;padding:10px 12px;margin-top:8px}
-.team-title{font-size:11.5px;font-weight:700;color:#5E6AD2;margin-bottom:6px}
+.team-title{font-size:11.5px;font-weight:700;color:#FF3D8A;margin-bottom:6px}
 .manage-move-select{font-size:11px;padding:5px 6px;border-radius:8px;border:1px solid #DDE1E8;background:#fff;color:#0F172A;min-height:0}
-.manage-move-btn{padding:5px 9px;border:1px solid #DDE1E8;background:#fff;color:#5E6AD2;border-radius:8px;font-size:12px;cursor:pointer}
+.manage-move-btn{padding:5px 9px;border:1px solid #DDE1E8;background:#fff;color:#FF3D8A;border-radius:8px;font-size:12px;cursor:pointer}
 
 .game-actions-row{display:flex;gap:8px;margin-top:14px}
 .mini-btn{flex:1;padding:9px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid}
@@ -180,14 +180,14 @@ input[type="date"]{font-size:13.5px;padding-left:6px;padding-right:6px}
 .ar-card-title{font-size:13.5px;font-weight:700;color:#0F172A;margin-bottom:6px}
 .ar-card-meta{font-size:12px;color:#64748B;margin-bottom:4px;line-height:1.5}
 .ar-card-players{font-size:12px;color:#64748B;margin-bottom:10px}
-.ar-card-players b{color:#5E6AD2;font-weight:700}
+.ar-card-players b{color:#FF3D8A;font-weight:700}
 .cm-player-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid #EEF0F2;flex-wrap:wrap}
 .cm-player-row:first-of-type{border-top:none}
 .cm-player-name{font-size:13.5px;font-weight:600;color:#0F172A;flex:1;min-width:120px}
 .cm-player-fields{display:flex;align-items:center;gap:14px;flex-shrink:0}
 .cm-goals-label{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#64748B;font-weight:600}
 .cm-goals-input{width:52px;padding:7px 8px;border:1px solid #DDE1E8;border-radius:8px;font-size:14px;text-align:center;color:#0F172A}
-.cm-goals-input:focus{outline:none;border-color:#5E6AD2}
+.cm-goals-input:focus{outline:none;border-color:#FF3D8A}
 .cm-mvp-label{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#B45309;font-weight:700;cursor:pointer;padding:6px 10px;border-radius:100px;background:#FFFBEB;border:1px solid #FDE4C7}
 .cm-mvp-label input{margin:0;cursor:pointer}
 .cm-mvp-label:has(input:checked){background:#FEF3C7;border-color:#F59E0B;color:#92400E}
@@ -201,11 +201,11 @@ input[type="date"]{font-size:13.5px;padding-left:6px;padding-right:6px}
 
 /* ── игроки ── */
 .player-row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #E4E7EC;border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 2px rgba(16,24,40,.03)}
-.player-avatar{width:38px;height:38px;border-radius:50%;background:#EEF0FD;color:#5E6AD2;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+.player-avatar{width:38px;height:38px;border-radius:50%;background:#EEF0FD;color:#FF3D8A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
 .player-info{flex:1;min-width:0}
 .player-name{font-size:13.5px;font-weight:700;color:#0F172A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .player-meta{font-size:11.5px;color:#94A3B8;margin-top:1px}
-.player-games{font-size:12px;font-weight:700;color:#5E6AD2;background:#EEF0FD;padding:4px 10px;border-radius:100px;flex-shrink:0}
+.player-games{font-size:12px;font-weight:700;color:#FF3D8A;background:#EEF0FD;padding:4px 10px;border-radius:100px;flex-shrink:0}
 .player-stats-col{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
 .player-stats-extra{font-size:10.5px;color:#94A3B8;white-space:nowrap}
 
@@ -256,7 +256,7 @@ input[type="date"]{font-size:13.5px;padding-left:6px;padding-right:6px}
     <div class="section-card" id="template-picker-card">
       <div class="fs-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>⚡ Шаблон игры</span>
-        <span style="color:#5E6AD2;font-weight:700;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12px" onclick="showScreen('templates-list')">Управлять →</span>
+        <span style="color:#FF3D8A;font-weight:700;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12px" onclick="showScreen('templates-list')">Управлять →</span>
       </div>
       <div class="hint" style="margin:-4px 0 12px">Выбери шаблон — все поля заполнятся сами, останется проверить дату.</div>
       <div class="filters" id="template-chips"></div>
@@ -1475,7 +1475,7 @@ function renderTemplateChips() {
   const el = document.getElementById("template-chips");
   if (!el) return;
   if (gameTemplates.length === 0) {
-    el.innerHTML = `<div class="hint">Шаблонов пока нет — <span style="color:#5E6AD2;font-weight:700;cursor:pointer" onclick="openTemplateEditor(null)">создай первый</span>, чтобы публиковать игры за секунды</div>`;
+    el.innerHTML = `<div class="hint">Шаблонов пока нет — <span style="color:#FF3D8A;font-weight:700;cursor:pointer" onclick="openTemplateEditor(null)">создай первый</span>, чтобы публиковать игры за секунды</div>`;
     return;
   }
   el.innerHTML = gameTemplates.map(t => `

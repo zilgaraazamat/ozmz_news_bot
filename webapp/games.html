@@ -16,7 +16,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .hidden{display:none!important}
 .empty{text-align:center;color:#6B7280;font-size:14px;padding:40px 10px}
 .game-card{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 10px 26px rgba(0,0,0,.35);opacity:0;transform:translateY(8px);animation:gc-in .32s cubic-bezier(.2,.8,.2,1) forwards;position:relative;overflow:hidden}
-.game-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#5E6AD2,#8B93F5,transparent)}
+.game-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#FF3D8A,#FF8FC4,transparent)}
 @keyframes gc-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── информационная иерархия карточки, сверху вниз: заголовок → фото поля
@@ -24,7 +24,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
    записи → кнопка действия → участники. Ощущение бронирования события,
    а не заполнения формы — фото, когда оно есть, идёт баннером сразу под
    заголовком, а не мелкой иконкой сбоку. ── */
-.gc-title{font-size:13px;font-weight:700;color:#8B93F5;letter-spacing:.2px;margin-bottom:6px}
+.gc-title{font-size:13px;font-weight:700;color:#FF8FC4;letter-spacing:.2px;margin-bottom:6px}
 .gc-photo-banner{width:100%;height:112px;border-radius:14px;overflow:hidden;margin-bottom:10px;background:#20232B}
 .gc-photo-banner img{width:100%;height:100%;object-fit:cover;display:block}
 .gc-field-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
@@ -32,7 +32,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .gc-field-addr{color:#6B7280;font-weight:500}
 .gc-datetime-row{display:flex;align-items:center;gap:6px;margin-bottom:8px}
 .gc-date-chip,.gc-time-chip{font-size:12px;font-weight:700;padding:3px 9px;border-radius:7px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.gc-date-chip{background:rgba(94,106,210,.14);color:#8B93F5}
+.gc-date-chip{background:rgba(255,61,141,.14);color:#FF8FC4}
 .gc-time-chip{background:rgba(255,255,255,.06);color:#C7CAD1}
 
 /* ── строка ключевых цифр: цена / записано / свободно — сканируется за долю секунды ── */
@@ -44,7 +44,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .gc-capacity{margin-bottom:10px}
 .gc-capacity-bar{display:flex;gap:3px;margin-bottom:7px}
 .gc-capacity-seg{flex:1;height:8px;border-radius:3px;background:rgba(255,255,255,.07)}
-.gc-capacity-seg.filled{background:linear-gradient(90deg,#5E6AD2,#8B93F5)}
+.gc-capacity-seg.filled{background:linear-gradient(90deg,#FF3D8A,#FF8FC4)}
 .gc-capacity-seg.filled.urgent{background:linear-gradient(90deg,#E5533D,#FF7A5C)}
 .gc-capacity-meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .gc-capacity-count{font-size:12.5px;font-weight:700;color:#C7CAD1;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -54,7 +54,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .roster{background:#1D2027;border-radius:12px;padding:12px 10px 10px;margin-bottom:8px}
 .roster-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .roster-title{font-size:11.5px;font-weight:800;color:#C9CDD4;letter-spacing:.2px;display:flex;align-items:center;gap:6px}
-.roster-count{min-width:20px;height:18px;padding:0 6px;border-radius:9px;background:rgba(94,106,210,.16);color:#8B93F5;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;font-variant-numeric:tabular-nums}
+.roster-count{min-width:20px;height:18px;padding:0 6px;border-radius:9px;background:rgba(255,61,141,.16);color:#FF8FC4;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;font-variant-numeric:tabular-nums}
 .roster-legend{display:flex;align-items:center;gap:10px}
 .rl-item{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:#6B7280;font-weight:600;white-space:nowrap}
 .rl-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
@@ -65,19 +65,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .player-card{background:#23262D;border-radius:12px;padding:10px 6px 9px;text-align:center;cursor:pointer;transition:transform .12s,background .12s}
 .player-card:active{transform:scale(.95);background:#282B33}
 .player-card-avatar-wrap{position:relative;width:34px;margin:0 auto 6px}
-.player-card-avatar{width:34px;height:34px;border-radius:50%;background:rgba(94,106,210,.16);color:#8B93F5;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;border:2px solid transparent}
+.player-card-avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,61,141,.16);color:#FF8FC4;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;border:2px solid transparent}
 .player-card-avatar.confirmed{border-color:#30D158}
 .player-card-avatar.pending{border-color:#E5A93C}
 .player-card-dot{position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;border:2px solid #23262D}
 .player-card-dot.confirmed{background:#30D158}
 .player-card-dot.pending{background:#E5A93C}
 .player-card-name{font-size:11.5px;font-weight:700;color:#F5F6F7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
-.player-card-guests{color:#8B93F5;font-weight:700;margin-left:3px}
-.player-card-ovr{font-size:10px;color:#8B93F5;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
+.player-card-guests{color:#FF8FC4;font-weight:700;margin-left:3px}
+.player-card-ovr{font-size:10px;color:#FF8FC4;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
 .player-card-ovr-empty{color:#4A4E56}
 .player-card-stats{display:flex;align-items:center;justify-content:center;gap:7px;font-size:9.5px;color:#6B7280;margin-top:3px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.roster-more-btn{width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px dashed rgba(255,255,255,.12);background:transparent;color:#8B93F5;font-size:12px;font-weight:700;cursor:pointer;text-align:center}
-.roster-more-btn:active{background:rgba(94,106,210,.08)}
+.roster-more-btn{width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px dashed rgba(255,255,255,.12);background:transparent;color:#FF8FC4;font-size:12px;font-weight:700;cursor:pointer;text-align:center}
+.roster-more-btn:active{background:rgba(255,61,141,.08)}
 /* ── Bottom Sheet записи на игру: две карточки выбора (сам / компания) в
    стиле нативных Telegram-шитов — затемнение, скруглённая панель снизу,
    ручка-грип, iOS-кривая анимации, свайп-вниз для закрытия ── */
@@ -90,15 +90,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .sheet-title{font-size:16px;font-weight:800;text-align:center;margin-bottom:14px;letter-spacing:-.2px}
 .sheet-card{width:100%;display:flex;align-items:center;gap:12px;text-align:left;background:#23262D;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;color:#F5F6F7;transition:transform .12s,background .12s;font-family:inherit}
 .sheet-card:active{transform:scale(.97);background:#282B33}
-.sheet-card-icon{width:44px;height:44px;flex-shrink:0;border-radius:12px;background:rgba(94,106,210,.16);display:flex;align-items:center;justify-content:center;font-size:22px}
+.sheet-card-icon{width:44px;height:44px;flex-shrink:0;border-radius:12px;background:rgba(255,61,141,.16);display:flex;align-items:center;justify-content:center;font-size:22px}
 .sheet-card-body{flex:1;min-width:0}
 .sheet-card-title{font-size:14.5px;font-weight:700;margin-bottom:2px}
 .sheet-card-sub{font-size:12px;color:#6B7280;line-height:1.35}
 .sheet-card-chevron{color:#565A61;font-size:20px;font-weight:600;flex-shrink:0}
-.sheet-back{display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:#8B93F5;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;margin-bottom:8px;font-family:inherit}
+.sheet-back{display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:#FF8FC4;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;margin-bottom:8px;font-family:inherit}
 .sheet-stepper{display:flex;align-items:center;justify-content:center;gap:18px;margin:10px 0 16px}
-.sheet-step-btn{width:48px;height:48px;border-radius:50%;border:1.5px solid rgba(94,106,210,.4);background:rgba(94,106,210,.1);color:#8B93F5;font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .12s,background .12s;font-family:inherit}
-.sheet-step-btn:active{transform:scale(.92);background:rgba(94,106,210,.22)}
+.sheet-step-btn{width:48px;height:48px;border-radius:50%;border:1.5px solid rgba(255,61,141,.4);background:rgba(255,61,141,.1);color:#FF8FC4;font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .12s,background .12s;font-family:inherit}
+.sheet-step-btn:active{transform:scale(.92);background:rgba(255,61,141,.22)}
 .sheet-step-btn[disabled]{opacity:.35;pointer-events:none}
 .sheet-step-value{min-width:64px;text-align:center;font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}
 .sheet-price-rows{background:#101116;border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:4px 14px;margin-bottom:14px}
@@ -106,10 +106,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .sheet-price-row-total{border-top:1px solid rgba(255,255,255,.07)}
 .sheet-price-label{font-size:13px;color:#9BA1AC;font-weight:600}
 .sheet-price-value{font-size:14px;font-weight:700;color:#F5F6F7;font-variant-numeric:tabular-nums;white-space:nowrap}
-.sheet-price-total{font-size:18px;font-weight:800;color:#8B93F5}
+.sheet-price-total{font-size:18px;font-weight:800;color:#FF8FC4}
 /* Пульс суммы при изменении количества игроков — класс вешается заново на
    каждый пересчёт (см. sheetRenderCompany), поэтому анимация перезапускается */
-@keyframes price-pop{0%{transform:scale(1)}35%{transform:scale(1.16);color:#B4BAFF}100%{transform:scale(1)}}
+@keyframes price-pop{0%{transform:scale(1)}35%{transform:scale(1.16);color:#FF8FC4}100%{transform:scale(1)}}
 .price-pop{animation:price-pop .28s cubic-bezier(.2,.8,.2,1)}
 .sheet-footer{position:sticky;bottom:0;background:#181A1F;padding-top:10px;margin:0 -16px -1px;padding-left:16px;padding-right:16px}
 #sheet-confirm-btn{font-variant-numeric:tabular-nums}
@@ -127,12 +127,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .sheet-invite-row{display:flex;align-items:center;gap:10px;background:#23262D;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:11px 12px}
 .sheet-invite-name{flex:1;min-width:0;font-size:14px;font-weight:700;color:#F5F6F7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sheet-invite-name.claimed{color:#30D158}
-.sheet-invite-copy{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;border:1.5px solid rgba(94,106,210,.4);background:rgba(94,106,210,.1);color:#8B93F5;border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .12s,background .12s}
-.sheet-invite-copy:active{transform:scale(.94);background:rgba(94,106,210,.22)}
+.sheet-invite-copy{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;border:1.5px solid rgba(255,61,141,.4);background:rgba(255,61,141,.1);color:#FF8FC4;border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .12s,background .12s}
+.sheet-invite-copy:active{transform:scale(.94);background:rgba(255,61,141,.22)}
 .sheet-invite-copy.copied{color:#30D158;border-color:rgba(48,209,88,.5);background:rgba(48,209,88,.12)}
 .sheet-invite-copy.done{color:#30D158;border-color:transparent;background:transparent;pointer-events:none}
-.btn{width:100%;padding:14px;border:none;border-radius:14px;font-weight:700;font-size:15px;cursor:pointer;background:#5E6AD2;color:#fff;transition:transform .15s,background .15s;box-shadow:0 4px 14px rgba(94,106,210,.3)}
-.btn:active{transform:scale(.97);background:#525DC4}
+.btn{width:100%;padding:14px;border:none;border-radius:999px;font-weight:700;font-size:15px;cursor:pointer;background:linear-gradient(135deg,#FF3D8A,#D6217E);color:#fff;transition:transform .15s,background .15s;box-shadow:0 6px 18px rgba(255,61,141,.4)}
+.btn:active{transform:scale(.97);background:#D6217E}
 .btn[disabled]{opacity:.5;pointer-events:none}
 .status-badge{width:100%;text-align:center;padding:12px;border-radius:12px;font-size:13px;font-weight:700}
 .status-pending{background:rgba(229,169,60,.12);color:#E5A93C;border:1px solid rgba(229,169,60,.3)}
@@ -166,16 +166,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .teams-empty-text{font-size:13px;font-weight:700;color:#9BA1AC}
 .teams-empty-hint{font-size:11.5px;color:#565A61;margin-top:3px}
 .teams-title{font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px}
-.text-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;box-sizing:border-box;padding:14px;border-radius:12px;font-weight:700;font-size:15px;text-align:center;cursor:pointer;text-decoration:none;transition:transform .15s,background .15s}
+.text-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;box-sizing:border-box;padding:14px;border-radius:999px;font-weight:700;font-size:15px;text-align:center;cursor:pointer;text-decoration:none;transition:transform .15s,background .15s}
 .text-btn:active{transform:scale(.97)}
-.text-btn-primary{border:none;background:#5E6AD2;color:#fff;box-shadow:0 4px 14px rgba(94,106,210,.3)}
-.text-btn-primary:active{background:#525DC4}
-.text-btn-secondary{border:1px solid rgba(94,106,210,.4);background:rgba(94,106,210,.12);color:#8B93F5}
+.text-btn-primary{border:none;background:linear-gradient(135deg,#FF3D8A,#D6217E);color:#fff;box-shadow:0 6px 18px rgba(255,61,141,.4)}
+.text-btn-primary:active{background:#D6217E}
+.text-btn-secondary{border:1px solid rgba(255,61,141,.4);background:rgba(255,61,141,.12);color:#FF8FC4}
 .text-btn-danger{border:1px solid rgba(255,69,58,.35);background:rgba(255,69,58,.08);color:#FF6961}
 .secondary-row{display:flex;gap:8px;margin-top:8px}
 .secondary-btn{flex:1;height:36px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 8px;border:1px solid rgba(255,255,255,.08);background:#1D2027;color:#D7D9DC;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
-.add-toggle-btn{width:100%;height:44px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:7px;border:1.5px solid rgba(94,106,210,.35);background:rgba(94,106,210,.09);color:#8B93F5;border-radius:12px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .12s,background .12s}
-.add-toggle-btn:active{transform:scale(.98);background:rgba(94,106,210,.18)}
+.add-toggle-btn{width:100%;height:44px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:7px;border:1.5px solid rgba(255,61,141,.35);background:rgba(255,61,141,.09);color:#FF8FC4;border-radius:12px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .12s,background .12s}
+.add-toggle-btn:active{transform:scale(.98);background:rgba(255,61,141,.18)}
 /* Игра заполнена — вместо кнопок записи показываем понятную заглушку */
 .capacity-full-note{display:flex;align-items:center;gap:11px;margin-top:8px;padding:12px 13px;border-radius:12px;background:rgba(236,106,94,.08);border:1px solid rgba(236,106,94,.22)}
 .cfn-icon{font-size:19px;flex-shrink:0;line-height:1}
@@ -201,38 +201,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .reg-extra-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .reg-extra-cancel-btn{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,69,58,.3);background:rgba(255,69,58,.08);color:#FF6961;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 
-.gc-location-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#8B93F5;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
+.gc-location-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#FF8FC4;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
 .gc-location-btn:active{background:rgba(255,255,255,.08)}
 .reg-stats-row{display:flex;gap:8px;margin-top:4px}
 .reg-stat-badge{flex:1;background:#101116;border-radius:10px;padding:10px 6px;text-align:center}
 .reg-stat-badge-value{font-size:17px;font-weight:800;color:#F5F6F7;font-variant-numeric:tabular-nums}
 .reg-stat-badge-label{font-size:9.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;margin-top:3px;font-weight:600}
-.reg-report-link{display:block;margin-top:12px;text-align:center;font-size:12.5px;font-weight:700;color:#8B93F5;text-decoration:none;padding:10px;border-radius:10px;background:rgba(94,106,210,.08);border:1px solid rgba(94,106,210,.2)}
-.reg-report-link:active{background:rgba(94,106,210,.16)}
+.reg-report-link{display:block;margin-top:12px;text-align:center;font-size:12.5px;font-weight:700;color:#FF8FC4;text-decoration:none;padding:10px;border-radius:10px;background:rgba(255,61,141,.08);border:1px solid rgba(255,61,141,.2)}
+.reg-report-link:active{background:rgba(255,61,141,.16)}
 .atb-plus{font-size:16px;font-weight:800;line-height:1}
 .teams-body{margin-top:8px}
 .filters{position:sticky;top:0;z-index:20;display:flex;gap:8px;margin:0 0 16px;padding:14px 0 10px;overflow-x:auto;background:#0B0D10}
 .filter-chip{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:20px;background:#181A1F;border:1px solid rgba(255,255,255,.08);color:#9BA1AC;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s,border-color .2s,transform .12s}
 .filter-chip:active{transform:scale(.95)}
-.filter-chip.active{background:#5E6AD2;border-color:#5E6AD2;color:#fff;box-shadow:0 4px 14px rgba(94,106,210,.35)}
+.filter-chip.active{background:#FF3D8A;border-color:#FF3D8A;color:#fff;box-shadow:0 4px 14px rgba(255,61,141,.35)}
 
 /* ── нижняя навигация: тот же компонент, что и на главной ── */
 .bottom-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(11,13,16,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid rgba(255,255,255,.07);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
 .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:56px;cursor:pointer;color:#565A61;transition:color .15s;-webkit-tap-highlight-color:transparent}
 .bn-item .bn-icon{font-size:20px;line-height:1}
 .bn-item .bn-label{font-size:10px;font-weight:700}
-.bn-item.active{color:#8B93F5}
+.bn-item.active{color:#FF8FC4}
 .bn-item:active{opacity:.7}
 .chat-box{margin-top:8px;background:#1D2027;border-radius:12px;padding:8px}
 .chat-messages{max-height:220px;overflow-y:auto;margin-bottom:8px;display:flex;flex-direction:column;gap:8px}
 .chat-msg{font-size:12px;line-height:1.4;color:#D7D9DC}
 .chat-msg .who{font-weight:700;color:#9BA1AC;margin-right:4px}
-.chat-msg.mine .who{color:#8B93F5}
+.chat-msg.mine .who{color:#FF8FC4}
 .chat-empty{font-size:12px;color:#565A61;text-align:center;padding:8px 0}
 .chat-input-row{display:flex;gap:8px}
 .chat-input{flex:1;padding:9px 12px;border-radius:9px;border:1px solid rgba(255,255,255,.08);background:#23262D;color:#F5F6F7;font-size:14px}
-.chat-input:focus{outline:none;border-color:#5E6AD2}
-.chat-send-btn{padding:9px 14px;border:none;border-radius:9px;background:#5E6AD2;color:#fff;font-weight:800;font-size:13px;cursor:pointer}
+.chat-input:focus{outline:none;border-color:#FF3D8A}
+.chat-send-btn{padding:9px 14px;border:none;border-radius:9px;background:#FF3D8A;color:#fff;font-weight:800;font-size:13px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -977,7 +977,7 @@ function renderGames(games) {
 // цветной бейдж-номер), списком игроков с аватарами и OVR, и сводкой снизу
 // (число игроков + средний OVR), чтобы на глаз оценить баланс команд.
 const TEAM_THEMES = [
-  { name: "Команда 1", accent: "#5E6AD2", soft: "rgba(94,106,210,.16)", label: "A" },
+  { name: "Команда 1", accent: "#FF3D8A", soft: "rgba(255,61,141,.16)", label: "A" },
   { name: "Команда 2", accent: "#30D158", soft: "rgba(48,209,88,.16)",  label: "B" },
   { name: "Команда 3", accent: "#E5A93C", soft: "rgba(229,169,60,.16)", label: "C" },
   { name: "Команда 4", accent: "#EC6A5E", soft: "rgba(236,106,94,.16)", label: "D" },
