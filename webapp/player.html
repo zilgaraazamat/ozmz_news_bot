@@ -63,6 +63,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .match-empty{text-align:center;color:#6B7280;font-size:13px;padding:26px 10px}
 
 .loading{text-align:center;color:#6B7280;font-size:13px;padding:60px 10px}
+
+.pf-ovr-chip{cursor:pointer}
+.info-ic{opacity:.6}
+.rating-toast{position:fixed;left:50%;bottom:40px;transform:translate(-50%,10px);opacity:0;background:#23262D;border:1px solid rgba(255,255,255,.1);color:#F5F6F7;font-size:13px;font-weight:500;padding:12px 18px;border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.4);z-index:200;transition:opacity .25s,transform .25s;white-space:normal;max-width:280px;text-align:center;line-height:1.5}
+.rating-toast.show{opacity:1;transform:translate(-50%,0)}
 </style>
 </head>
 <body>
@@ -124,6 +129,21 @@ function avatarLetter(name) {
   return ((name || "?").trim().charAt(0) || "?").toUpperCase();
 }
 
+// Объяснение формулы рейтинга — по тапу на чип OVR.
+function showRatingInfo() {
+  const h = window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback;
+  if (h) try { h.impactOccurred("light"); } catch (e) {}
+  const el = document.createElement("div");
+  el.className = "rating-toast";
+  el.textContent = "Рейтинг стартует с 1. +1 за каждые 5 сыгранных игр, +1 за каждый MVP, +3 за победу в турнире (капитану команды-чемпиона).";
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("show"));
+  setTimeout(() => {
+    el.classList.remove("show");
+    setTimeout(() => el.remove(), 300);
+  }, 4500);
+}
+
 function localeCode() {
   const tw = window.Telegram && Telegram.WebApp;
   const tgLang = tw && tw.initDataUnsafe && tw.initDataUnsafe.user && tw.initDataUnsafe.user.language_code;
@@ -150,7 +170,9 @@ function renderProfile(p) {
   const isMine = myId && String(myId) === String(p.user_id);
   const r = 54;
   const circumference = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(1, (p.ovr || 0) / 99));
+  // Рейтинг стартует с 1 и растёт медленно — см. showRatingInfo(). 50 —
+  // ориентир «очень сильный сезон», а не жёсткий потолок.
+  const pct = Math.max(0, Math.min(1, (p.ovr || 0) / 50));
 
   const matchesHtml = (p.recent_matches && p.recent_matches.length)
     ? p.recent_matches.map(m => `
@@ -180,7 +202,7 @@ function renderProfile(p) {
         <div class="pf-avatar">${avatarLetter(p.name)}</div>
       </div>
       <div class="pf-chip-row">
-        <div class="pf-ovr-chip">⚡ ${p.ovr} OVR</div>
+        <div class="pf-ovr-chip" onclick="showRatingInfo()">⚡ ${p.ovr} OVR <span class="info-ic">ⓘ</span></div>
         <div class="pf-level-chip">🎖 Ур. ${p.level ?? 1}</div>
         ${(p.weekly_streak || 0) > 0 ? `<div class="pf-streak-chip">🔥 ${p.weekly_streak}</div>` : ""}
       </div>
@@ -205,6 +227,10 @@ function renderProfile(p) {
       <div class="stat-tile">
         <div class="stat-num ${p.achievements_implemented ? "" : "soon"}">${p.achievements_implemented ? (p.achievements_count || 0) : "Скоро"}</div>
         <div class="stat-label">Награды</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-num">${p.tournament_wins || 0}</div>
+        <div class="stat-label">Турниры</div>
       </div>
     </div>
 

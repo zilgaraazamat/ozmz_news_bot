@@ -9,8 +9,8 @@ from storage import (
     create_game, get_all_games, get_game, cancel_game, delete_game, mark_game_completed,
     create_game_template, get_game_templates, update_game_template, delete_game_template,
     get_signups, confirm_signup, move_team_member, get_team_members,
-    complete_match, settle_completed_games_xp, get_player_stats, get_games_awaiting_results,
-    record_match_stats_bulk, get_match_stats,
+    complete_match, settle_completed_games_xp, get_players_stats_bulk,
+    get_games_awaiting_results, record_match_stats_bulk, get_match_stats,
 )
 from .helpers import _recompute_teams
 
@@ -371,12 +371,14 @@ class AdminGamesRoutesMixin:
             self._json({"error": "forbidden"})
         else:
             users = get_all_users()
+            stats_by_id = get_players_stats_bulk([u["user_id"] for u in users])
             for u in users:
-                stats = get_player_stats(u["user_id"])
-                u["games_played"] = stats["games_played"]
-                u["goals"] = stats["goals"]
-                u["mvp_count"] = stats["mvp_count"]
-                u["ovr"] = stats["ovr"]
+                stats = stats_by_id.get(str(u["user_id"])) or {}
+                u["games_played"] = stats.get("games_played", 0)
+                u["goals"] = stats.get("goals", 0)
+                u["mvp_count"] = stats.get("mvp_count", 0)
+                u["tournament_wins"] = stats.get("tournament_wins", 0)
+                u["ovr"] = stats.get("ovr", 1)
             self._json({"users": users})
 
     def route_get_admin_awaiting_results(self, q):

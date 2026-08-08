@@ -50,7 +50,10 @@ class ProfileRoutesMixin:
         user_id = (q.get("user_id") or [""])[0]
         profile = get_profile(user_id)
         role = get_role(user_id)
-        stats = get_player_stats(user_id) if user_id else {"games_played": 0, "goals": 0, "mvp_count": 0, "ovr": 60, "weekly_streak": 0}
+        stats = get_player_stats(user_id) if user_id else {
+            "games_played": 0, "goals": 0, "mvp_count": 0, "tournament_wins": 0,
+            "ovr": 1, "weekly_streak": 0,
+        }
         if user_id:
             settle_completed_games_xp(user_id)  # начислить XP за игры, завершившиеся с прошлого визита
         progression = get_progression(user_id)
@@ -63,6 +66,7 @@ class ProfileRoutesMixin:
             "games_played": stats["games_played"],
             "goals": stats["goals"],
             "mvp_count": stats["mvp_count"],
+            "tournament_wins": stats["tournament_wins"],
             "weekly_streak": stats["weekly_streak"],
             "level": progression["level"],
             "xp": progression["xp"],
@@ -98,6 +102,7 @@ class ProfileRoutesMixin:
                 "games_played": stats["games_played"],
                 "goals": stats["goals"],
                 "mvp_count": stats["mvp_count"],
+                "tournament_wins": stats["tournament_wins"],
                 "weekly_streak": stats["weekly_streak"],
                 "recent_matches": recent_out,
                 "level": progression["level"],

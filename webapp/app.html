@@ -38,7 +38,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .hero-gauge-fill{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1)}
 .hero-gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .hero-ovr-num{font-family:'Oswald',-apple-system,sans-serif;font-size:52px;font-weight:700;color:#F5F6F7;line-height:1;letter-spacing:-.5px;text-shadow:0 0 26px rgba(255,61,141,.5)}
-.hero-ovr-label{font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:600;letter-spacing:2px;color:#FF8FC4;margin-top:4px}
+.hero-ovr-label{font-family:'Oswald',-apple-system,sans-serif;font-size:13px;font-weight:600;letter-spacing:2px;color:#FF8FC4;margin-top:4px;cursor:pointer}
+.info-ic{opacity:.6;letter-spacing:0}
+.rating-toast{white-space:normal!important;max-width:280px;text-align:center;line-height:1.5;font-weight:500!important}
 .hero-level-badge{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);z-index:2;background:#FF3D8A;color:#fff;font-family:'Oswald',-apple-system,sans-serif;font-size:12px;font-weight:700;letter-spacing:.4px;padding:4px 14px;border-radius:20px;box-shadow:0 4px 12px rgba(255,61,141,.45);border:2px solid #14151A;white-space:nowrap}
 .hero-xp-row{position:relative;z-index:1;max-width:260px;margin:8px auto 16px}
 .hero-xp-track{height:8px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden}
@@ -303,8 +305,8 @@ input:focus{outline:none;border-color:#FF3D8A}
           <circle class="hero-gauge-fill" id="hero-gauge-fill" cx="80" cy="80" r="70" stroke="url(#heroGaugeGrad)"></circle>
         </svg>
         <div class="hero-gauge-center">
-          <div class="hero-ovr-num" id="hero-ovr-num">60</div>
-          <div class="hero-ovr-label">OVR</div>
+          <div class="hero-ovr-num" id="hero-ovr-num">1</div>
+          <div class="hero-ovr-label" onclick="showRatingInfo()">OVR <span class="info-ic">ⓘ</span></div>
         </div>
         <div class="hero-level-badge" id="hero-level-badge">Ур. 1</div>
       </div>
@@ -393,10 +395,10 @@ input:focus{outline:none;border-color:#FF3D8A}
 
       <!-- ═══ Статистика игрока — из Player Statistics service (/api/profile) ═══ -->
       <div class="stat-cards" id="stat-cards">
-        <div class="stat-card stat-card-featured">
+        <div class="stat-card stat-card-featured" onclick="showRatingInfo()" style="cursor:pointer">
           <div class="stat-card-icon">⭐</div>
-          <div class="stat-card-num" id="sc-ovr">60</div>
-          <div class="stat-card-label">OVR</div>
+          <div class="stat-card-num" id="sc-ovr">1</div>
+          <div class="stat-card-label">OVR <span class="info-ic">ⓘ</span></div>
         </div>
         <div class="stat-cards-grid">
           <div class="stat-card">
@@ -418,6 +420,11 @@ input:focus{outline:none;border-color:#FF3D8A}
             <div class="stat-card-icon">🔥</div>
             <div class="stat-card-num" id="sc-streak">0</div>
             <div class="stat-card-label">Серия</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">🏆</div>
+            <div class="stat-card-num" id="sc-tournaments">0</div>
+            <div class="stat-card-label">Турниры</div>
           </div>
         </div>
       </div>
@@ -696,7 +703,7 @@ function renderHeroProgression(p) {
   const streakNumEl = document.getElementById("hero-streak-num");
   if (!fillEl || !numEl) return;
 
-  const ovr = p.ovr ?? 60;
+  const ovr = p.ovr ?? 1;
   const level = p.level ?? 1;
   const xp = p.xp ?? 0;
   const xpForNext = p.xp_for_next_level ?? 100;
@@ -705,7 +712,10 @@ function renderHeroProgression(p) {
 
   const r = 70;
   const circumference = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(1, ovr / 99));
+  // Рейтинг стартует с 1 и растёт медленно (+1 за 5 игр, +1 за MVP, +3 за
+  // турнир) — старая шкала "из 99" почти всегда рисовала пустое кольцо.
+  // 50 — ориентир «очень сильный сезон», кольцо заполняется реалистично.
+  const pct = Math.max(0, Math.min(1, ovr / 50));
   fillEl.style.strokeDasharray = `${circumference}`;
   fillEl.style.strokeDashoffset = `${circumference}`;
   numEl.textContent = ovr;
@@ -750,19 +760,37 @@ function renderProgressionCard(p) {
   if (xpFillEl) setTimeout(() => { xpFillEl.style.width = `${xpPct}%`; }, 200);
 }
 
-// Пять карточек статистики экрана профиля — OVR, игры, голы, MVP, серия.
-// Все пять значений приходят из ОДНОГО ответа /api/profile, который на
-// бэкенде собирается сервисом статистики игрока (get_player_stats(),
+// Карточки статистики экрана профиля — OVR, игры, голы, MVP, серия, турниры.
+// Все значения приходят из ОДНОГО ответа /api/profile, который на бэкенде
+// собирается сервисом статистики игрока (get_player_stats(),
 // storage/player_stats.py) — это единственный источник этих чисел,
 // экран просто их отображает, ничего сам не считает.
 function renderStatCards(p) {
   const ovrEl = document.getElementById("sc-ovr");
   if (!ovrEl) return;
-  ovrEl.textContent = p.ovr ?? 60;
+  ovrEl.textContent = p.ovr ?? 1;
   document.getElementById("sc-games").textContent = p.games_played ?? 0;
   document.getElementById("sc-goals").textContent = p.goals ?? 0;
   document.getElementById("sc-mvp").textContent = p.mvp_count ?? 0;
   document.getElementById("sc-streak").textContent = p.weekly_streak ?? 0;
+  document.getElementById("sc-tournaments").textContent = p.tournament_wins ?? 0;
+}
+
+// Объяснение формулы рейтинга — по тапу на OVR (Home и профиль). Простой
+// тост поверх экрана, без отдельного модального окна: сообщение короткое
+// и не требует отдельного flow для закрытия.
+function showRatingInfo() {
+  const h = window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback;
+  if (h) try { h.impactOccurred("light"); } catch (e) {}
+  const el = document.createElement("div");
+  el.className = "toast-soon rating-toast";
+  el.textContent = "Рейтинг стартует с 1. +1 за каждые 5 сыгранных игр, +1 за каждый MVP, +3 за победу в турнире (капитану команды-чемпиона).";
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("show"));
+  setTimeout(() => {
+    el.classList.remove("show");
+    setTimeout(() => el.remove(), 300);
+  }, 4500);
 }
 
 // Достижения — тоже целиком из /api/profile (поле achievements), которое на

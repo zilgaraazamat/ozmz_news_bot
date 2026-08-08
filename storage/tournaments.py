@@ -387,6 +387,28 @@ def get_tournaments_overview():
     return out
 
 
+def get_tournament_win_counts():
+    """Сколько турниров выиграл каждый капитан — {captain_id: число побед}.
+
+    Победа засчитывается только капитану команды-чемпиона: состав команды
+    (tournament_team_players) — это просто вписанные капитаном имена, без
+    привязки к реальным аккаунтам, и только у капитана (captain_id) есть
+    гарантированно настоящий user_id. Используется рейтингом игрока
+    (storage/ovr.py: +3 OVR за победу) — считается один раз для ВСЕХ
+    игроков разом (не по турниру на каждого игрока), потому что вызывается
+    из get_players_stats_bulk() на каждый опрос списка игр."""
+    counts = {}
+    for t in get_tournaments_overview():
+        champion = t.get("champion")
+        if not champion or not champion.get("team_id"):
+            continue
+        team = get_team(champion["team_id"])
+        captain_id = team.get("captain_id") if team else None
+        if captain_id:
+            counts[captain_id] = counts.get(captain_id, 0) + 1
+    return counts
+
+
 def set_tournament_status(tournament_id, status):
     """Архивирование/возврат турнира в активные ('finished' | 'active')."""
     with _lock, _conn() as c:
