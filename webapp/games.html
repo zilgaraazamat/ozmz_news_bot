@@ -19,6 +19,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .game-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#FF3D8A,#FF8FC4,transparent)}
 @keyframes gc-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
+/* ── скелетон загрузки: до первого ответа /api/games список не пустой и не
+   мигает спиннером — сразу видно форму карточек игр, которые вот-вот
+   появятся. Заменяется реальным контентом в renderGames() автоматически,
+   как только приходят данные — отдельный JS для этого не нужен. ── */
+.skel-card{background:#181A1F;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:14px;margin-bottom:12px}
+.skel-line{height:13px;border-radius:7px;margin-bottom:10px;background:linear-gradient(90deg,#1D2027 25%,#262A32 37%,#1D2027 63%);background-size:400% 100%;animation:skel-shimmer 1.4s ease-in-out infinite}
+.skel-line:last-child{margin-bottom:0}
+.skel-line.w70{width:70%}
+.skel-line.w40{width:40%}
+.skel-line.w100{width:100%;height:8px;border-radius:4px;margin-top:16px}
+@keyframes skel-shimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}
+
 /* ── информационная иерархия карточки, сверху вниз: заголовок → фото поля
    (если есть) → поле/адрес → дата+день недели → время → цена → прогресс
    записи → кнопка действия → участники. Ощущение бронирования события,
@@ -174,15 +186,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .text-btn-danger{border:1px solid rgba(255,69,58,.35);background:rgba(255,69,58,.08);color:#FF6961}
 .secondary-row{display:flex;gap:8px;margin-top:8px}
 .secondary-btn{flex:1;height:36px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 8px;border:1px solid rgba(255,255,255,.08);background:#1D2027;color:#D7D9DC;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
-.add-toggle-btn{width:100%;height:44px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:7px;border:1.5px solid rgba(255,61,141,.35);background:rgba(255,61,141,.09);color:#FF8FC4;border-radius:12px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .12s,background .12s}
-.add-toggle-btn:active{transform:scale(.98);background:rgba(255,61,141,.18)}
 /* Игра заполнена — вместо кнопок записи показываем понятную заглушку */
 .capacity-full-note{display:flex;align-items:center;gap:11px;margin-top:8px;padding:12px 13px;border-radius:12px;background:rgba(236,106,94,.08);border:1px solid rgba(236,106,94,.22)}
 .cfn-icon{font-size:19px;flex-shrink:0;line-height:1}
 .cfn-body{flex:1;min-width:0}
 .cfn-title{font-size:13.5px;font-weight:800;color:#EC6A5E;letter-spacing:-.2px}
 .cfn-sub{font-size:11.5px;color:#9BA1AC;margin-top:2px;font-variant-numeric:tabular-nums}
-.atb-plus{font-size:17px;font-weight:700;line-height:1}
 .sheet-subtitle{font-size:12.5px;color:#9BA1AC;text-align:center;margin:-8px 0 14px}
 
 /* ── статус регистрации: 4 понятных состояния (Доступно / Забронировано,
@@ -209,7 +218,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 .reg-stat-badge-label{font-size:9.5px;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;margin-top:3px;font-weight:600}
 .reg-report-link{display:block;margin-top:12px;text-align:center;font-size:12.5px;font-weight:700;color:#FF8FC4;text-decoration:none;padding:10px;border-radius:10px;background:rgba(255,61,141,.08);border:1px solid rgba(255,61,141,.2)}
 .reg-report-link:active{background:rgba(255,61,141,.16)}
-.atb-plus{font-size:16px;font-weight:800;line-height:1}
 .teams-body{margin-top:8px}
 .filters{position:sticky;top:0;z-index:20;display:flex;gap:8px;margin:0 0 16px;padding:14px 0 10px;overflow-x:auto;background:#0B0D10}
 .filter-chip{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:20px;background:#181A1F;border:1px solid rgba(255,255,255,.08);color:#9BA1AC;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s,border-color .2s,transform .12s}
@@ -219,7 +227,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 /* ── нижняя навигация: тот же компонент, что и на главной ── */
 .bottom-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(11,13,16,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid rgba(255,255,255,.07);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
 .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:56px;cursor:pointer;color:#565A61;transition:color .15s;-webkit-tap-highlight-color:transparent}
-.bn-item .bn-icon{font-size:20px;line-height:1}
+.bn-item .bn-icon{display:flex;line-height:1}
 .bn-item .bn-label{font-size:10px;font-weight:700}
 .bn-item.active{color:#FF8FC4}
 .bn-item:active{opacity:.7}
@@ -238,25 +246,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
 <body>
 <div class="wrap">
   <div class="head">
-    <h1>⚽ Игры</h1>
+    <h1><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.2l3.6 2.6-1.4 4.2H9.8l-1.4-4.2z"/><path d="M12 7.2V4.6M15.6 9.8l2.5-1.5M14.2 14l1.6 2.4M9.8 14l-1.6 2.4M8.4 9.8l-2.5-1.5"/></svg>Игры</h1>
     <p>Записывайся и приходи играть</p>
   </div>
   <div id="error-banner"></div>
   <div class="filters" id="filters"></div>
-  <div id="games-list"></div>
+  <div id="games-list">
+    <div class="skel-card"><div class="skel-line w70"></div><div class="skel-line w40"></div><div class="skel-line w100"></div></div>
+    <div class="skel-card"><div class="skel-line w70"></div><div class="skel-line w40"></div><div class="skel-line w100"></div></div>
+  </div>
 </div>
 
 <nav class="bottom-nav">
   <div class="bn-item" data-tab="home" onclick="bnGo('home')">
-    <div class="bn-icon">🏠</div>
+    <div class="bn-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5L12 5l8 6.5"/><path d="M6.5 10v8.5a1 1 0 001 1H10v-5a2 2 0 012-2h0a2 2 0 012 2v5h3.5a1 1 0 001-1V10"/></svg></div>
     <div class="bn-label">Home</div>
   </div>
   <div class="bn-item active" data-tab="games" onclick="bnGo('games')">
-    <div class="bn-icon">⚽</div>
+    <div class="bn-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.2l3.6 2.6-1.4 4.2H9.8l-1.4-4.2z"/><path d="M12 7.2V4.6M15.6 9.8l2.5-1.5M14.2 14l1.6 2.4M9.8 14l-1.6 2.4M8.4 9.8l-2.5-1.5"/></svg></div>
     <div class="bn-label">Игры</div>
   </div>
   <div class="bn-item" data-tab="profile" onclick="bnGo('profile')">
-    <div class="bn-icon">👤</div>
+    <div class="bn-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.3" r="3.4"/><path d="M5 20c1.2-4 3.8-6.2 7-6.2s5.8 2.2 7 6.2"/></svg></div>
     <div class="bn-label">Профиль</div>
   </div>
 </nav>
@@ -325,28 +336,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#0
     <div class="sheet-invite-list" id="sheet-invite-list"></div>
     <div class="sheet-footer">
       <button class="btn" id="sheet-invite-btn" onclick="sheetInvitePlayers()">Пригласить игроков</button>
-    </div>
-  </div>
-  <div id="sheet-view-add" class="hidden">
-    <div class="sheet-title">Добавить игроков</div>
-    <div class="sheet-subtitle">Сколько человек привести дополнительно?</div>
-    <div class="sheet-stepper">
-      <button class="sheet-step-btn" id="sheet-add-minus" onclick="sheetAddStep(-1)">−</button>
-      <div class="sheet-step-value" id="sheet-add-value">1</div>
-      <button class="sheet-step-btn" id="sheet-add-plus" onclick="sheetAddStep(1)">+</button>
-    </div>
-    <div class="sheet-price-rows" id="sheet-add-price-rows">
-      <div class="sheet-price-row">
-        <span class="sheet-price-label">Цена за игрока</span>
-        <span class="sheet-price-value" id="sheet-add-price-per">—</span>
-      </div>
-      <div class="sheet-price-row sheet-price-row-total">
-        <span class="sheet-price-label">Итого</span>
-        <span class="sheet-price-value sheet-price-total" id="sheet-add-price-total">—</span>
-      </div>
-    </div>
-    <div class="sheet-footer">
-      <button class="btn" id="sheet-add-btn" onclick="sheetConfirmAdd()">Оплатить</button>
     </div>
   </div>
 </div>
@@ -632,8 +621,20 @@ function mapsUrl(g) {
 }
 
 // 1. Заголовок матча — первое, что видно.
+const ICON_BALL = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.2l3.6 2.6-1.4 4.2H9.8l-1.4-4.2z"/></svg>';
+const ICON_PIN = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><path d="M12 21s6.5-6.1 6.5-11A6.5 6.5 0 105.5 10c0 4.9 6.5 11 6.5 11z"/><circle cx="12" cy="10" r="2.2"/></svg>';
+const ICON_CLOCK = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+const ICON_COIN = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M9.5 9.6c0-1 1-1.6 2.5-1.6s2.5.7 2.5 1.7-1 1.4-2.5 1.9-2.5.9-2.5 1.9 1 1.7 2.5 1.7 2.5-.6 2.5-1.6"/></svg>';
+const ICON_PEOPLE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><circle cx="9" cy="8.5" r="2.6"/><circle cx="16.5" cy="9.5" r="2.1"/><path d="M3.5 19c.7-3.3 2.8-5 5.5-5s4.8 1.7 5.5 5"/><path d="M14.8 15c2 .2 3.4 1.6 3.9 4"/></svg>';
+const ICON_TROPHY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M7 4h10v3.5a5 5 0 01-10 0V4z"/><path d="M7 5H4v1.5a4 4 0 004 4M17 5h3v1.5a4 4 0 01-4 4"/><path d="M12 12.5V16M9 19.5h6M9.8 16.5h4.4l.4 3h-5.2z"/></svg>';
+const ICON_CHAT = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M4 6.5h16v9H9l-4 3.5v-3.5H4z"/></svg>';
+const ICON_CARD = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg>';
+const ICON_CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
+const ICON_X = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const ICON_SEND = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 11.5L20 4l-7 17-3-7-7-2.5z"/></svg>';
+
 function gameTitleWidget(g) {
-  return `<div class="gc-title">⚽ Футбольный матч</div>`;
+  return `<div class="gc-title">${ICON_BALL}Футбольный матч</div>`;
 }
 
 // 2. Фото поля — если админ его загрузил, показываем баннером на всю
@@ -652,7 +653,7 @@ function gameFieldWidget(g) {
   const addr = g.extra_info ? ` <span class="gc-field-addr">· ${g.extra_info}</span>` : "";
   return `
     <div class="gc-field-row">
-      <div class="gc-field">📍 ${g.location}${addr}</div>
+      <div class="gc-field">${ICON_PIN}${g.location}${addr}</div>
       <a class="gc-location-btn" href="${mapsUrl(g)}" target="_blank" onclick="event.stopPropagation()">Открыть</a>
     </div>`;
 }
@@ -662,14 +663,14 @@ function gameDateTimeWidget(g) {
   return `
     <div class="gc-datetime-row">
       <span class="gc-date-chip">${shortDate(g)}</span>
-      <span class="gc-time-chip">🕐 ${g.time}</span>
+      <span class="gc-time-chip">${ICON_CLOCK}${g.time}</span>
     </div>`;
 }
 
 // 6. Цена.
 function gamePriceWidget(g) {
   if (!g.price) return "";
-  return `<div class="gc-price-chip">💰 ${g.price}</div>`;
+  return `<div class="gc-price-chip">${ICON_COIN}${g.price}</div>`;
 }
 
 // Русское склонение "место/места/мест" по числу (1 место, 2-4 места, 5+ мест).
@@ -694,7 +695,7 @@ function gameCapacityWidget(g) {
   if (!max) {
     // Лимит не задан — просто показываем, сколько человек уже записалось,
     // без полосы/сообщения о местах (их в принципе не может не хватить).
-    return `<div class="gc-capacity-meta"><span class="gc-capacity-count">👥 ${takenCount} игроков записано</span></div>`;
+    return `<div class="gc-capacity-meta"><span class="gc-capacity-count">${ICON_PEOPLE}${takenCount} игроков записано</span></div>`;
   }
 
   const freeSpots = Math.max(0, max - takenCount);
@@ -718,7 +719,7 @@ function gameCapacityWidget(g) {
     <div class="gc-capacity">
       <div class="gc-capacity-bar">${segmentsHtml}</div>
       <div class="gc-capacity-meta">
-        <span class="gc-capacity-count">👥 ${takenCount} / ${max} игроков</span>
+        <span class="gc-capacity-count">${ICON_PEOPLE}${takenCount} / ${max} игроков</span>
         <span class="gc-capacity-spots ${spotsCls}">${spotsText}</span>
       </div>
     </div>`;
@@ -738,7 +739,7 @@ function gameRosterWidget(g, totalCount) {
   return `
     <div class="roster">
       <div class="roster-head">
-        <div class="roster-title">👥 Участники <span class="roster-count">${totalCount}</span></div>
+        <div class="roster-title">${ICON_PEOPLE}Участники <span class="roster-count">${totalCount}</span></div>
         ${meta}
       </div>
       ${rosterHtml(g.id, g.signups)}
@@ -746,44 +747,46 @@ function gameRosterWidget(g, totalCount) {
 }
 
 function gameAddFormWidget(g, mySignups) {
-  // Матч уже прошёл — раздел "добавить игроков"/записаться тут не нужен,
-  // карточка уже показывает состояние «Матч завершён» (см.
-  // gameRegistrationStatusWidget → completedStateHtml).
+  // Матч уже прошёл — раздел записи тут не нужен, карточка уже показывает
+  // состояние «Матч завершён» (см. gameRegistrationStatusWidget → completedStateHtml).
   if (!isUpcoming(g)) return "";
 
-  // Мест не осталось — не даём ни записаться, ни добавить ещё людей.
-  // Раньше кнопки оставались активными, шит открывался и предлагал оплатить
-  // место, которого нет; бэкенд отклонял запись уже после оплаты.
+  // Уже записан — партия регистрации одна на игрока за игру: себя и
+  // друзей можно взять только при самой записи, дорегистрировать позже
+  // нельзя (см. route_post_games_signup, routes/games.py). Дальше карточка
+  // сама показывает статус записи (gameRegistrationStatusWidget).
+  if (mySignups.length > 0) return "";
+
+  // Мест не осталось — не даём записаться. Раньше кнопка оставалась
+  // активной, шит открывался и предлагал оплатить место, которого нет;
+  // бэкенд отклонял запись уже после оплаты.
   const free = freeSpots(g);
   if (free === 0) {
     return `<div class="capacity-full-note">
       <span class="cfn-icon">🚫</span>
       <div class="cfn-body">
         <div class="cfn-title">Набран максимум игроков</div>
-        <div class="cfn-sub">${gameCapacity(g)} из ${gameCapacity(g)} мест занято${mySignups.length ? "" : " — запись закрыта"}</div>
+        <div class="cfn-sub">${gameCapacity(g)} из ${gameCapacity(g)} мест занято — запись закрыта</div>
       </div>
     </div>`;
   }
 
-  if (mySignups.length === 0) {
-    return `<button class="btn" onclick="openSignupSheet(${g.id})">⚽ Записаться</button>`;
-  }
-  return `<button class="add-toggle-btn" onclick="openAddSheet(${g.id})"><span class="atb-plus">+</span> Добавить игроков</button>`;
+  return `<button class="btn" onclick="openSignupSheet(${g.id})">${ICON_BALL}Записаться</button>`;
 }
 
 function gameSecondaryWidget(g, mySignups) {
   if (!mySignups.length) return "";
   return `
     <div class="secondary-row">
-      <button class="secondary-btn" onclick="toggleTeamsDisplay(${g.id})">🏆 Команды</button>
-      <button class="secondary-btn" onclick="toggleChat(${g.id})" id="chat-toggle-${g.id}">💬 Чат</button>
+      <button class="secondary-btn" onclick="toggleTeamsDisplay(${g.id})">${ICON_TROPHY}Команды</button>
+      <button class="secondary-btn" onclick="toggleChat(${g.id})" id="chat-toggle-${g.id}">${ICON_CHAT}Чат</button>
     </div>
     <div class="teams-body ${teamsExpanded[g.id] ? "" : "hidden"}" id="teams-body-wrap-${g.id}">${teamsExpanded[g.id] ? teamsInnerHtml(g.teams) : ""}</div>
     <div class="chat-box hidden" id="chat-box-${g.id}">
       <div class="chat-messages" id="chat-messages-${g.id}"></div>
       <div class="chat-input-row">
         <input class="chat-input" id="chat-input-${g.id}" placeholder="Написать..." maxlength="500">
-        <button class="chat-send-btn" onclick="sendChatMessage(${g.id})">➤</button>
+        <button class="chat-send-btn" onclick="sendChatMessage(${g.id})">${ICON_SEND}</button>
       </div>
     </div>`;
 }
@@ -849,12 +852,12 @@ function extraEntryRow(g, s) {
   // Кнопки показываем, пока оплата не заявлена и не подтверждена.
   let actionsHtml = "";
   if (s.status !== "confirmed" && !s.payment_claimed) {
-    const payLabel = amount !== null ? `💳 Оплатить ${formatTenge(amount)}` : "💳 Оплатить";
+    const payLabel = amount !== null ? `${ICON_CARD}Оплатить ${formatTenge(amount)}` : `${ICON_CARD}Оплатить`;
     const payBtn = g.payment_link
       ? `<a class="text-btn text-btn-primary" href="${g.payment_link}" target="_blank">${payLabel}</a>`
       : `<button class="text-btn text-btn-primary" onclick="claimPayment(${g.id}, ${s.id})">${payLabel}</button>`;
     const confirmBtn = g.payment_link
-      ? `<button class="text-btn text-btn-secondary" onclick="claimPayment(${g.id}, ${s.id})">✅ Я оплатил(а)</button>`
+      ? `<button class="text-btn text-btn-secondary" onclick="claimPayment(${g.id}, ${s.id})">${ICON_CHECK}Я оплатил(а)</button>`
       : "";
     actionsHtml = `<div class="reg-extra-actions">${payBtn}${confirmBtn}</div>`;
   }
@@ -863,7 +866,7 @@ function extraEntryRow(g, s) {
     <div class="reg-extra-row">
       <div class="reg-extra-head">
         <span>+ Доп. игроки · ${count} чел.${amountLabel} — ${label}</span>
-        <button class="reg-extra-cancel-btn" onclick="cancelEntry(${g.id}, ${s.id}, ${warnNoRefund})">❌ Отменить</button>
+        <button class="reg-extra-cancel-btn" onclick="cancelEntry(${g.id}, ${s.id}, ${warnNoRefund})">${ICON_X}Отменить</button>
       </div>
       ${actionsHtml}
     </div>`;
@@ -881,18 +884,18 @@ function reservedStateHtml(g, mySignups) {
   let actionsHtml;
   if (claimed) {
     // Уже нажал «Я оплатил(а)» — платить больше нечего, ждём организатора.
-    actionsHtml = `<button class="text-btn text-btn-danger" onclick="cancelEntry(${g.id}, ${main.id}, true)">❌ Отменить бронь</button>`;
+    actionsHtml = `<button class="text-btn text-btn-danger" onclick="cancelEntry(${g.id}, ${main.id}, true)">${ICON_X}Отменить бронь</button>`;
   } else {
     const payBtn = g.payment_link
       ? `<a class="text-btn text-btn-primary" href="${g.payment_link}" target="_blank">${payLabel}</a>`
       : `<button class="text-btn text-btn-primary" onclick="claimPayment(${g.id}, ${main.id})">${payLabel}</button>`;
     const confirmBtn = g.payment_link
-      ? `<button class="text-btn text-btn-secondary" onclick="claimPayment(${g.id}, ${main.id})">✅ Я оплатил(а)</button>`
+      ? `<button class="text-btn text-btn-secondary" onclick="claimPayment(${g.id}, ${main.id})">${ICON_CHECK}Я оплатил(а)</button>`
       : "";
     actionsHtml = `
       ${payBtn}
       ${confirmBtn}
-      <button class="text-btn text-btn-danger" onclick="cancelEntry(${g.id}, ${main.id}, false)">❌ Отменить бронь</button>`;
+      <button class="text-btn text-btn-danger" onclick="cancelEntry(${g.id}, ${main.id}, false)">${ICON_X}Отменить бронь</button>`;
   }
 
   return `
@@ -914,10 +917,10 @@ function confirmedStateHtml(g, mySignups) {
 
   return `
     <div class="reg-card confirmed">
-      <div class="reg-headline">✅ Ты подтверждён на эту игру</div>
+      <div class="reg-headline">${ICON_CHECK}Ты подтверждён на эту игру</div>
       <div class="reg-status-line">Статус: <b class="confirmed">Подтверждено</b>${count > 1 ? ` · ${count} чел.` : ""}${amountLine}</div>
       <div class="reg-actions">
-        <button class="text-btn text-btn-danger" onclick="cancelEntry(${g.id}, ${main.id}, true)">❌ Отменить регистрацию</button>
+        <button class="text-btn text-btn-danger" onclick="cancelEntry(${g.id}, ${main.id}, true)">${ICON_X}Отменить регистрацию</button>
       </div>
       ${extra.map(s => extraEntryRow(g, s)).join("")}
     </div>`;
@@ -1052,6 +1055,14 @@ async function loadGames() {
     renderGames(r.games);
   } catch (e) {
     showError("Не удалось загрузить игры. Попробуй ещё раз.");
+    // Скелетон ещё не сменился реальным списком (window.__lastGames не
+    // выставлен renderGames()) — без этого он бы «грузился» бесконечно,
+    // хотя запрос уже провалился. На повторных опросах, когда список уже
+    // показан, оставляем его как есть — баннер сверху уже сообщил об ошибке.
+    if (!window.__lastGames) {
+      document.getElementById("games-list").innerHTML =
+        `<div class="empty">⚠️ Не удалось загрузить игры<br><span style="font-size:12px">Проверь соединение — пробуем снова каждые несколько секунд</span></div>`;
+    }
   }
 }
 
@@ -1160,7 +1171,6 @@ function sheetShowChoice() {
   document.getElementById("sheet-view-choice").classList.remove("hidden");
   document.getElementById("sheet-view-company").classList.add("hidden");
   document.getElementById("sheet-view-confirmed").classList.add("hidden");
-  document.getElementById("sheet-view-add").classList.add("hidden");
 }
 
 async function sheetChooseSolo() {
@@ -1374,123 +1384,6 @@ function sheetInvitePlayers() {
     startY = null;
   }, { passive: true });
 })();
-
-// ── Добавление игроков к уже существующей записи ─────────────────────────────
-// Тот же Bottom Sheet, что и при первой записи: степпер вместо поля ввода,
-// сумма считается на лету, кнопка сразу ведёт на оплату с точной суммой.
-let sheetAddCount = 1;
-
-const SHEET_ADD_MIN = 1;
-const SHEET_ADD_MAX = 20;
-
-function openAddSheet(gameId) {
-  const g = (window.__lastGames || []).find(x => x.id === gameId) || null;
-  if (freeSpots(g) === 0) {
-    haptic("error");
-    showError("Набран максимум игроков — добавить больше нельзя.");
-    loadGames();
-    return;
-  }
-  sheetGameId = gameId;
-  sheetGame = g;
-  sheetAddCount = 1;
-  sheetRenderAdd(false);
-
-  document.getElementById("sheet-view-choice").classList.add("hidden");
-  document.getElementById("sheet-view-company").classList.add("hidden");
-  document.getElementById("sheet-view-confirmed").classList.add("hidden");
-  document.getElementById("sheet-view-add").classList.remove("hidden");
-
-  document.getElementById("sheet-backdrop").classList.add("open");
-  document.getElementById("signup-sheet").classList.add("open");
-  haptic("light");
-}
-
-function sheetAddStep(delta) {
-  const next = sheetAddCount + delta;
-  if (next < SHEET_ADD_MIN || next > sheetMaxPeople(sheetGame)) return;
-  sheetAddCount = next;
-  sheetRenderAdd(true);
-  haptic("light");
-}
-
-// Счётчик, цена за игрока, итог и сумма на кнопке пересчитываются мгновенно.
-function sheetRenderAdd(animate) {
-  document.getElementById("sheet-add-value").textContent = sheetAddCount;
-  document.getElementById("sheet-add-minus").disabled = sheetAddCount <= SHEET_ADD_MIN;
-  document.getElementById("sheet-add-plus").disabled = sheetAddCount >= sheetMaxPeople(sheetGame);
-
-  const per = pricePerPlayer(sheetGame);
-  const rows = document.getElementById("sheet-add-price-rows");
-  const totalEl = document.getElementById("sheet-add-price-total");
-  const btn = document.getElementById("sheet-add-btn");
-
-  if (per === null) {
-    rows.classList.add("hidden");
-    btn.textContent = "⚽ Добавить игроков";
-    return;
-  }
-
-  rows.classList.remove("hidden");
-  const total = per * sheetAddCount;
-  document.getElementById("sheet-add-price-per").textContent = formatTenge(per);
-  totalEl.textContent = formatTenge(total);
-  btn.textContent = `Оплатить ${formatTenge(total)}`;
-
-  if (animate) {
-    for (const el of [totalEl, btn]) {
-      el.classList.remove("price-pop");
-      void el.offsetWidth; // reflow — чтобы анимация перезапустилась
-      el.classList.add("price-pop");
-    }
-  }
-}
-
-async function sheetConfirmAdd() {
-  if (sheetSubmitting || sheetGameId === null) return;
-  sheetSubmitting = true;
-  const btn = document.getElementById("sheet-add-btn");
-  btn.disabled = true;
-  haptic("medium");
-
-  const gameId = sheetGameId;
-  const paymentLink = sheetGame && sheetGame.payment_link;
-  const guestsCount = sheetAddCount;
-  closeSignupSheet();
-
-  const ok = await addMorePeople(gameId, guestsCount);
-  haptic(ok ? "success" : "error");
-  btn.disabled = false;
-  sheetSubmitting = false;
-
-  // Бронь создана — сразу ведём на оплату, сумма уже показана на кнопке.
-  // Подтверждение «Я оплатил(а)» остаётся в карточке игры.
-  if (ok && paymentLink) {
-    const tw = window.Telegram && Telegram.WebApp;
-    if (tw && typeof tw.openLink === "function") tw.openLink(paymentLink);
-    else window.open(paymentLink, "_blank");
-  }
-}
-
-async function addMorePeople(gameId, guestsCount) {
-  if (!userId) return false;
-  try {
-    const res = await fetch("/api/games/signup", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, game_id: gameId, guests_count: guestsCount, is_addition: true })
-    }).then(r => r.json());
-    if (!res.ok) {
-      showError(res.error || "Не удалось добавить игроков.");
-      return false;
-    }
-    document.getElementById("error-banner").innerHTML = "";
-    loadGames();
-    return true;
-  } catch (e) {
-    showError("Ошибка сети — попробуй ещё раз.");
-    return false;
-  }
-}
 
 async function claimPayment(gameId, entryId) {
   if (!userId) return;
