@@ -3,9 +3,12 @@ from ._db import _lock, _conn
 from .game_status import is_match_completed
 from .games import get_game
 
-def signup_for_game(game_id, user_id, name, player, guests_count=0, team_pref=None, is_addition=False, amount=None):
-    """Каждый вызов создаёт НОВУЮ партию регистрации — можно регистрироваться
-    повторно на одну и ту же игру, и каждая партия проходит оплату/подтверждение отдельно.
+def signup_for_game(game_id, user_id, name, player, guests_count=0, team_pref=None, amount=None):
+    """Создаёт партию регистрации игрока (сам + гости) на игру. Ровно одна
+    партия на игрока за игру — маршрут games/signup (routes/games.py) сам
+    следит, чтобы повторной записи не было; дорегистрировать ещё людей
+    после уже нельзя (is_addition — наследие старого флоу, здесь всегда 0,
+    колонка остаётся только ради чтения уже существующих старых записей).
     amount — сумма оплаты партии, посчитанная бэкендом (storage/pricing.py);
     None, если у игры нет распознаваемой цены."""
     user_id = str(user_id)
@@ -13,8 +16,8 @@ def signup_for_game(game_id, user_id, name, player, guests_count=0, team_pref=No
     with _lock, _conn() as c:
         cur = c.execute("""INSERT INTO game_signups(game_id, user_id, name, player, guests_count,
                         is_addition, team_pref, amount, payment_claimed, status, created_at)
-                     VALUES(?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending', datetime('now'))""",
-                  (game_id, user_id, name, player, guests_count, int(is_addition), team_pref, amount))
+                     VALUES(?, ?, ?, ?, ?, 0, ?, ?, 0, 'pending', datetime('now'))""",
+                  (game_id, user_id, name, player, guests_count, team_pref, amount))
         return cur.lastrowid
 
 

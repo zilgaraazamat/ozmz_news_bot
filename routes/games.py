@@ -40,19 +40,24 @@ class GamesRoutesMixin:
             user_id = str(data.get("user_id", ""))
             game_id = data.get("game_id")
             guests_count = int(data.get("guests_count") or 0)
-            is_addition = bool(data.get("is_addition"))
             if not user_id or not game_id:
                 self._json({"ok": False, "error": "bad_request"})
                 return
             if guests_count < 0 or guests_count > 20:
                 self._json({"ok": False, "error": "Некорректное число людей"})
                 return
-            if is_addition and guests_count < 1:
-                self._json({"ok": False, "error": "Укажи хотя бы одного человека"})
+
+            # Одна партия регистрации на игрока за игру — себя и друзей можно
+            # записать только один раз, при самой записи. Дорегистрировать
+            # ещё людей позже нельзя: если понадобилось больше друзей — нужно
+            # было сразу указать их при записи (или отменить бронь и
+            # записаться заново).
+            if get_my_signups(game_id, user_id):
+                self._json({"ok": False, "error": "Ты уже записан на эту игру"})
                 return
 
             game = get_game(game_id)
-            new_people = guests_count if is_addition else 1 + guests_count
+            new_people = 1 + guests_count
 
             # Лимит = число команд × игроков в команде (см. teams.game_capacity).
             # Считаем ВСЕ записи, включая неоплаченные: бронь держит место,
@@ -84,15 +89,15 @@ class GamesRoutesMixin:
             # Клиент сумму не присылает — подделать её из приложения нельзя.
             amount = entry_amount(game, new_people)
 
-            signup_id = signup_for_game(game_id, user_id, name, player, guests_count, None, is_addition, amount)
+            signup_id = signup_for_game(game_id, user_id, name, player, guests_count, None, amount=amount)
             _recompute_teams(game_id)
 
-            # Регистрация компании (не «добавление», людей больше одного) —
-            # автоматически заводим приглашения на все места, кроме места
-            # организатора: Player 2 … Player N. Возвращаем ссылки клиенту,
-            # чтобы экран подтверждения сразу показал их для копирования.
+            # Компания (людей больше одного) — автоматически заводим
+            # приглашения на все места, кроме места организатора:
+            # Player 2 … Player N. Возвращаем ссылки клиенту, чтобы экран
+            # подтверждения сразу показал их для копирования.
             invites = []
-            if not is_addition and new_people >= 2:
+            if new_people >= 2:
                 created = create_invites_for_signup(game_id, signup_id, user_id, new_people)
                 invites = [self._invite_public(inv) for inv in created]
 

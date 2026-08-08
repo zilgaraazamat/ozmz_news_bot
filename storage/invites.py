@@ -54,7 +54,7 @@ def get_invites_for_signup(signup_id):
     with _lock, _conn() as c:
         rows = c.execute(
             """SELECT token, game_id, signup_id, inviter_id, slot_index,
-                      claimed_by, claimed_at, created_at
+                      claimed_by, claimed_name, claimed_at, created_at
                FROM game_invites WHERE signup_id=? ORDER BY slot_index""",
             (signup_id,),
         ).fetchall()
